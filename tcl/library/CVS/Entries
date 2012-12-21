@@ -1,31 +1,31 @@
 D/dde////
-D/dde1.0////
-D/dde1.1////
-D/demos////
 D/encoding////
 D/http////
 D/http1.0////
+D/msgcat////
+D/opt////
+D/reg////
+D/tcltest////
+/auto.tcl/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/history.tcl/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/init.tcl/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/ldAout.tcl/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/license.terms/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/package.tcl/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/parray.tcl/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/safe.tcl/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/tclIndex/1.4/Sat Oct 27 22:59:31 2012/-ko/
+/word.tcl/1.5/Sat Oct 27 22:59:31 2012/-ko/
+D/dde1.0////
+D/dde1.1////
+D/demos////
 D/http2.0////
 D/images////
-D/msgcat////
 D/msgcat1.0////
 D/msgs////
-D/opt////
 D/opt0.1////
 D/opt0.4////
 D/platform////
-D/reg////
 D/reg1.0////
-D/tcltest////
 D/tcltest1.0////
 D/tzdata////
-/auto.tcl/1.5/Mon May  7 21:35:10 2012/-ko/
-/history.tcl/1.5/Mon May  7 21:35:10 2012/-ko/
-/init.tcl/1.5/Mon May  7 21:35:10 2012/-ko/
-/ldAout.tcl/1.5/Mon May  7 21:35:10 2012/-ko/
-/license.terms/1.5/Mon May  7 21:35:10 2012/-ko/
-/package.tcl/1.5/Mon May  7 21:35:10 2012/-ko/
-/parray.tcl/1.5/Mon May  7 21:35:10 2012/-ko/
-/safe.tcl/1.5/Mon May  7 21:35:10 2012/-ko/
-/tclIndex/1.4/Mon May  7 21:35:10 2012/-ko/
-/word.tcl/1.5/Mon May  7 21:35:10 2012/-ko/

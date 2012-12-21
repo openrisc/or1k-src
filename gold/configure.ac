@@ -15,7 +15,7 @@ AM_CONFIG_HEADER(config.h:config.in)
 AH_VERBATIM([00_CONFIG_H_CHECK],
 [/* Check that config.h is #included before system headers
    (this works only for glibc, but that should be enough).  */
-#if defined(__GLIBC__) && !defined(__CONFIG_H__)
+#if defined(__GLIBC__) && !defined(__FreeBSD_kernel__) && !defined(__CONFIG_H__)
 #  error config.h must be #included before system headers
 #endif
 #define __CONFIG_H__ 1])
@@ -199,6 +199,7 @@ for targ in $target $canon_targets; do
 	AM_CONDITIONAL(DEFAULT_TARGET_POWERPC, test "$targ_obj" = "powerpc")
 	AM_CONDITIONAL(DEFAULT_TARGET_SPARC, test "$targ_obj" = "sparc")
 	AM_CONDITIONAL(DEFAULT_TARGET_X86_64, test "$targ_obj" = "x86_64")
+	AM_CONDITIONAL(DEFAULT_TARGET_TILEGX, test "$targ_obj" = "tilegx")
       fi
     fi
   fi
@@ -304,7 +305,7 @@ dnl tell the unittest framework if we're compiling for one of those
 dnl targets, so it doesn't try to run the tests that do that.
 AM_CONDITIONAL(FN_PTRS_IN_SO_WITHOUT_PIC, [
   case $target_cpu in
-    i?86) true;;
+    powerpc*) false;;
     x86_64) false;;
     sparc64) false;;
     *) true;;
@@ -515,6 +516,25 @@ if test "$gold_cv_unordered_map_rehash" = "yes"; then
 	    [Define if ::std::tr1::unordered_map::rehash is usable])
 fi
 
+# Use of tr1/unordered_map with off_t as a key is not supported on GCC
+# 4.1.xx when compiling in 32-bit mode with a 64-bit off_t type.
+AC_CACHE_CHECK([whether std::tr1::hash<off_t> is defined],
+[gold_cv_hash_off_t],
+[CXXFLAGS_hold=$CXXFLAGS
+CXXFLAGS="$CXXFLAGS $LFS_CFLAGS"
+AC_COMPILE_IFELSE([
+#include <sys/types.h>
+#include <tr1/unordered_map>
+std::tr1::hash<off_t> h;
+],
+[gold_cv_hash_off_t=yes],
+[gold_cv_hash_off_t=no])
+CXXFLAGS=$CFLAGS_hold])
+if test "$gold_cv_hash_off_t" = "yes"; then
+   AC_DEFINE(HAVE_TR1_HASH_OFF_T, 1,
+	     [Define if std::tr1::hash<off_t> is usable])
+fi
+
 # gcc 4.3.0 doesn't recognize the printf attribute on a template
 # function.  Check for that.  This is gcc bug 35546.  This test can
 # probably be removed after the bug has been fixed for a while.
@@ -542,6 +562,13 @@ if test "$gold_cv_stat_st_mtim" = "yes"; then
   AC_DEFINE(HAVE_STAT_ST_MTIM, 1,
 	    [Define if struct stat has a field st_mtim with timespec for mtime])
 fi
+
+dnl Check if gcc supports the -gpubnames option.
+save_CXXFLAGS="$CXXFLAGS"
+CXXFLAGS="$CXXFLAGS -gpubnames"
+AC_COMPILE_IFELSE([int i;], [have_pubnames=yes], [have_pubnames=no])
+CXXFLAGS="$save_CXXFLAGS"
+AM_CONDITIONAL(HAVE_PUBNAMES, test "$have_pubnames" = "yes")
 
 AC_LANG_POP(C++)
 

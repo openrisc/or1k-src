@@ -41,9 +41,9 @@ check $STDOUT "^Version [45]"
 
 # Look for the symbols we know should be in the symbol table.
 
-check $STDOUT "^\[ *[0-9]*\] main: "
-check $STDOUT "^\[ *[0-9]*\] check_int: "
-check $STDOUT "^\[ *[0-9]*\] j: "
-check $STDOUT "^\[ *[0-9]*\] int: "
+check $STDOUT "^\[ *[0-9]*\] main:"
+check $STDOUT "^\[ *[0-9]*\] check_int:"
+check $STDOUT "^\[ *[0-9]*\] j:"
+check $STDOUT "^\[ *[0-9]*\] int:"
 
 exit 0

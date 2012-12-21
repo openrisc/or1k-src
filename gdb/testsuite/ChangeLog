@@ -1,3 +1,1998 @@
+2012-11-27  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	* gdb.cp/member-ptr.cc (class Diamond): Add func_ptr.
+	(func): New function.
+	(main): Initialize diamond.func_ptr and add diamond_pfunc_ptr.
+	* gdb.cp/member-ptr.exp: Add new tests for ptype and for
+	pointers to members with pointer-to-function type.
+
+2012-11-26  Jan Kratochvil  <jan.kratochvil@redhat.com>
+	    Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/gnu-debugdata.exp: New file.
+	* gdb.base/gnu-debugdata.c: New file.
+	* lib/gdb.exp (gdb_file_cmd): Handle LZMA warning.
+	(gdb_unload): Return 0 on success.
+
+2012-11-26  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/enumval.exp (print e, print f, print K): XFAIL on GCC <= 4.6.
+
+2012-11-26  Joel Brobecker  <brobecker@adacore.com>
+
+	* gdb.base/empty_exe.exp: New testcase.
+
+2012-11-20  Mike Frysinger  <vapier@gentoo.org>
+
+	* gdb.base/completion.exp: Add test for help aliases completion.
+
+2012-11-20  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi-cmd-param-changed.exp (test_command_param_changed):
+	Don't test 'maint set show-debug-regs'.
+	Use command 'set remotecache' instead of
+	'set circular-trace-buffer'.
+
+2012-11-16  Keith Seitz  <keiths@redhat.com>
+
+	PR c++/13615
+	* gdb.cp/baseenum.cc: New file.
+	* gdb.cp/baseenum.exp: New file.
+	* gdb.cp/derivation.cc (A): Add copyright.
+	Add a typedef.
+	(B): Use A::value_type instead of int.  Change all references.
+	(D): Use value_type instead of int.  Change all references.
+	(E): Likewise.
+	(F); Likewise.
+	(Z): New class.
+	(ZZ): New class.
+ 	(N, Base, Derived): New namespace and classes.
+	(main): Add instances of Z and ZZ.
+	Make sure all symbols from N are kept.
+	* gdb.cp/derivation.exp: Update typedef changes in tests.
+	Add tests for class typedefs both before and after starting
+	the inferior.
+	Add tests for searching for a typedef while stopped in a
+	method.
+
+2012-11-14  Luis Machado  <lgustavo@codesourcery.com>
+
+	* gdb.mi/mi-var-create-rtti.c: New file.
+	* gdb.mi/mi-var-create-rtti.exp: New file.
+
+2012-11-14  Luis Machado  <lgustavo@codesourcery.com>
+
+	* gdb.base/structs3.exp: Run to main before doing any tests.
+
+2012-11-14  Andrew Burgess  <aburgess@broadcom.com>
+
+	* gdb.python/py-type.exp: Uniquify test names.
+
+2012-11-14  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.threads/manythreads.c [DEBUG]: Include "stdio.h".
+	(thread_function) [DEBUG]: Call 'printf'.
+	* gdb.threads/manythreads.exp: Pass '-DDEBUG' to compilation
+	command line if 'DEBUG=1' is passed to test.
+	Remove a pattern to match inferior's output.
+
+2012-11-13  Giuseppe Montalto  <giuseppe.montalto@st.com>
+
+	* gdb.mi/mi-fill-memory.exp: New test.
+
+2012-11-12  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/completion.exp: Update for "info type-printers".
+	* gdb.python/py-typeprint.cc: New file.
+	* gdb.python/py-typeprint.exp: New file.
+	* gdb.python/py-typeprint.py: New file.
+
+2012-11-12  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/call-sc.exp: Use "ptype/r".
+	* gdb.base/volatile.exp: Don't expect "int".
+	* gdb.cp/ptype-flags.cc: New file.
+	* gdb.cp/ptype-flags.exp: New file.
+	* gdb.cp/templates.exp: Use ptype/r.
+	(test_ptype_of_templates, test_template_typedef): Likewise.
+	* lib/cp-support.exp (cp_test_ptype_class): Add in_ptype_arg
+	argument.  Handle template names and template parameters.
+	* gdb.mi/mi-var-cmd.exp: Accept "long".
+	* gdb.mi/mi-var-child.exp: Accept "long".
+	* gdb.mi/mi-var-display.exp: Accept "long".
+	* gdb.mi/mi2-var-child.exp: Accept "long".
+
+2012-11-12  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.cp/classes.exp (test_ptype_class_objects): Remove
+	"ptype" from calls to cp_test_ptype_class.
+	(test_enums): Likewise.
+	* gdb.cp/derivation.exp: Remove "ptype" from calls to
+	cp_test_ptype_class.
+	* gdb.cp/inherit.exp (test_ptype_si): Remove "ptype" from
+	calls to cp_test_ptype_class.
+	(test_ptype_mi, test_ptype_vi, test_ptype_mvi): Likewise.
+	* gdb.cp/virtfunc.exp (test_ptype_of_classes): Remove "ptype"
+	from calls to cp_test_ptype_class.
+	* lib/cp-support.exp (cp_test_ptype_class): Supply "ptype"
+	command here.  Change "in_command" argument to "in_exp".
+
+2012-11-10  Keith Seitz  <keiths@redhat.com>
+
+	PR gdb/14288
+	* gdb.base/printcmds.c: Add invalid_XXX globals
+	for repeated byte tests.
+	* gdb.base/printcmds.exp (test_repeat_bytes): New procedure.
+	* gdb.base/wchar.c (main): Add and construct a wchar_t
+	array with repeated characters.
+	* gdb.base/wchar.exp: Add repeated character tests.
+
+2012-11-09  Andrew Burgess  <aburgess@broadcom.com>
+
+	* gdb.mi/mi-disassemble.exp: Expect fullname field in mi
+	disassembly output.
+
+2012-11-09  Pedro Alves  <palves@redhat.com>
+
+	PR gdb/14306
+
+	* gdb.multi/multi-arch-exec.c: New file.
+	* gdb.multi/multi-arch-exec.exp: New file.
+
+2012-11-09  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi-break.exp (test_abreak_creation): New procedure.
+	(top level): Call it.
+
+2012-11-09  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi-watch.exp (test_rwatch_creation_and_listing): Fix
+	typo.
+
+2012-11-09  Pedro Alves  <palves@redhat.com>
+
+	* gdb.multi/multi-arch.exp: New.
+
+2012-11-08  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/siginfo-obj.exp: Create core file.  Test siginfo from
+	core files, if possible.
+	* gdb.base/siginfo-thread.c: New file
+	* gdb.base/siginfo-thread.exp: New file
+
+2012-11-08  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/comprdebug.exp: New file.
+
+2012-11-06  Pedro Alves  <palves@redhat.com>
+
+	PR gdb/14810
+
+	* gdb.base/disabled-location.c: New file.
+	* gdb.base/disabled-location.exp: New file.
+
+2012-11-06  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.threads/gcore-thread.exp: Use gdb_gcore_cmd.
+	* gdb.python/py-strfns.exp (test_strfns_core_file): Use
+	gdb_gcore_cmd.
+	* gdb.cell/gcore.exp: Use gdb_gcore_cmd.
+	* gdb.base/gcore.exp: Use gdb_gcore_cmd.
+	* gdb.base/gcore-relro.exp: Use gdb_gcore_cmd.
+	* gdb.base/gcore-buffer-overflow.exp: Use gdb_gcore_cmd.
+	* gdb.base/auxv.exp: Use gdb_gcore_cmd.
+	* gdb.arch/vsx-regs.exp: Use gdb_gcore_cmd.
+	* gdb.arch/system-gcore.exp: Use gdb_gcore_cmd.
+	* gdb.arch/pa-nullify.exp (test_core_bt): Use gdb_gcore_cmd.
+	* lib/gdb.exp (gdb_gcore_cmd): New proc.
+
+2012-11-05  Pedro Alves  <palves@redhat.com>
+
+	* gdb.base/foll-vfork.exp (vfork_relations_in_info_inferiors): New
+	procedure.
+	(do_vfork_and_follow_child_tests_exec)
+	(do_vfork_and_follow_child_tests_exit): Call it.
+
+2012-11-05  Pedro Alves  <palves@redhat.com>
+
+	* gdb.base/foll-vfork.c (main): Call perror and _exit if execlp()
+	fails.
+
+2012-11-03  Yao Qi  <yao@codesourcery.com>
+
+	Fix PR gdb/14617.
+	* gdb.mi/mi-breakpoint-changed.exp (test_insert_delete_modify):
+	Remove setup_kfail, and update test.
+
+2012-11-02  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/catch-syscall.exp (do_syscall_tests): Add completion
+	test.
+
+2012-11-02  Pedro Alves  <palves@redhat.com>
+
+	PR gdb/14766
+
+	* gdb.base/foll-vfork.exp (vfork_child_follow_to_exit): Remove
+	setup_kfail.
+	(tcatch_vfork_then_child_follow_exit): No longer expect "Couldn't
+	get registers".
+
+2012-11-02  Pedro Alves  <palves@redhat.com>
+
+	* gdb.base/foll-vfork-exit.c: New file.
+	* gdb.base/foll-vfork.exp (top level): New file-describing
+	comment.
+	(vfork_child_follow_to_exit): New procedure.
+	(tcatch_vfork_then_child_follow): Rename as ...
+	(tcatch_vfork_then_child_follow_exec): ... this.
+	(tcatch_vfork_then_child_follow_exit): New procedure.
+	(do_vfork_and_follow_parent_tests): New procedure, factored out
+	from do_vfork_and_exec_tests.
+	(do_vfork_and_follow_child_tests_exec): Ditto.
+	(do_vfork_and_exec_tests): Delete.
+	(do_vfork_and_follow_child_tests_exit): New procedure.
+	(top level): Run tests with both the program that has the vfork
+	child execing, and the program has the vfork child exiting.
+
+2012-11-02  Pedro Alves  <palves@redhat.com>
+
+	* gdb.base/foll-vfork.exp (setup_gdb): New procedure.
+	(check_vfork_catchpoints, vfork_parent_follow_through_step)
+	(vfork_parent_follow_to_bp): Call it.
+	(kill_child): Delete.
+	(vfork_and_exec_child_follow_to_main_bp)
+	(vfork_and_exec_child_follow_through_step): Call setup_gdb.  No
+	longer call kill_child.
+	(tcatch_vfork_then_parent_follow): Call setup_gdb.
+	(do_vfork_and_exec_tests): Don't runto_main before calling each
+	test procedure.
+	(top level): Don't clean restart and set verbose before running
+	each test procedure.
+
+2012-11-02  Pedro Alves  <palves@redhat.com>
+
+	* gdb.base/foll-vfork.exp (vfork_parent_follow_through_step)
+	(vfork_parent_follow_to_bp)
+	(vfork_and_exec_child_follow_to_main_bp)
+	(vfork_and_exec_child_follow_through_step)
+	(tcatch_vfork_then_parent_follow)
+	(tcatch_vfork_then_parent_follow, tcatch_vfork_then_child_follow):
+	Use with_test_prefix.
+
+2012-11-02  Pedro Alves  <palves@redhat.com>
+
+	* gdb.base/foll-vfork.c: Add copyright header.
+	* gdb.base/vforked-prog.c: Add copyright header.
+
+2012-11-02  Pedro Alves  <palves@redhat.com>
+
+	* gdb.base/foll-vfork.exp
+	(vfork_and_exec_child_follow_through_step): Don't skip on
+	non-HP/UX targets.  Expect the next to only step one line on
+	non-HP/UX targets, rather than stopping only after the exec.
+
+2012-11-02  Pedro Alves  <palves@redhat.com>
+
+	Don't hard code line numbers.
+
+	* gdb.base/foll-vfork.exp (vfork_parent_follow_through_step):
+	Expect text from the sources instead of a line number.
+	(vfork_parent_follow_to_bp)
+	(vfork_and_exec_child_follow_to_main_bp)
+	(vfork_and_exec_child_follow_through_step)
+	(tcatch_vfork_then_parent_follow, tcatch_vfork_then_child_follow):
+	Use gdb_get_line_number.
+
+2012-11-02  Pedro Alves  <palves@redhat.com>
+
+	Modernize.
+
+	* gdb.base/foll-vfork.exp: Use standard_testfile and
+	build_executable.  Pass descriptive string to untested.
+	(vfork_parent_follow_through_step, vfork_parent_follow_to_bp)
+	(vfork_and_exec_child_follow_to_main_bp)
+	(vfork_and_exec_child_follow_through_step)
+	(tcatch_vfork_then_parent_follow, tcatch_vfork_then_child_follow)
+	(do_vfork_and_exec_tests): Use gdb_test/gdb_test_multiple instead
+	of send_gdb/gdb_expect.
+
+	(kill_child): New procedure.
+	(vfork_and_exec_child_follow_to_main_bp)
+	(vfork_and_exec_child_follow_through_step): Use it.
+
+2012-11-02  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.base/setvar.exp: Test setting nested struct.
+	* gdb.base/setvar.c (v_struct3): New.
+
+2012-11-01  Doug Evans  <dje@google.com>
+
+	* gdb.arch/amd64-pseudo.c (main): Mark registers that the testsuite
+	changes as clobbered (e.g., amd64-dword.exp) so gcc doesn't try to
+	use them.
+
+2012-10-31  Andrew Burgess  <aburgess@broadcom.com>
+
+	PR cli/14772
+	* gdb.base/gnu_vector.c (union_with_vector_1)
+	(struct_with_vector_1): Add new struct and union for testing
+	ptype.
+	* gdb.base/gnu_vector.exp: Add testing of ptype on vectors, and
+	structs / unions containing vectors.
+
+2012-10-25  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.trace/ftrace.exp (test_fast_tracepoints): Use
+	'setup_kfail' instead of 'setup_kfail_for_target'.
+	* gdb.base/varargs.exp: Likewise.
+	* lib/gdb.exp (setup_kfail_for_target): Remove.
+
+2012-10-25  Mark Kettenis  <kettenis@openbsd.nfra.nl>
+
+	* gdb.base/varargs.exp: PR gdb/12790 is now fixed.
+
+2012-10-25  Mark Kettenis  <kettenis@gnu.org>
+
+	* gdb.base/varargs.exp: PR gdb/12776 is now fixed.
+
+2012-10-24  Joel Brobecker  <brobecker@adacore.com>
+
+	* gdb.ada/set_wstr: New testcase.
+
+2012-10-24  Joel Brobecker  <brobecker@adacore.com>
+
+	* gdb.base/ldbl_e308.c, gdb.base/ldbl_e308.exp: New files.
+
+2012-10-24  Joel Brobecker  <brobecker@adacore.com>
+
+	* gdb.ada/unc_arr_ptr_in_var_rec: New testcase.
+
+2012-10-24  Mark Kettenis  <kettenis@gnu.org>
+
+	* gdb.base/callfuncs.exp: PR gdb/12783 is now fixed.
+
+2012-10-24  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/callfuncs.exp (do_function_calls): Fix
+	setup_kfail_for_target for -m32 mode.
+
+2012-10-23  Mark Kettenis  <kettenis@gnu.org>
+
+	* gdb.base/callfuncs.exp: PR gdb/12796, gdb/12798 and gdb/12800
+	are now fixed.
+
+2012-10-23  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.base/info-os.exp: Resume the inferior until it exits.
+
+2012-10-18  Yufeng Zhang  <yufeng.zhang@arm.com>
+
+	* gdb.base/ctxobj.exp: Skip if skip_shlib_tests returns true.
+	* gdb.base/print-file-var.exp: Likewise.
+	* gdb.base/type-opaque.exp: Likewise.
+
+2012-10-17  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi-memory-changed.exp: New.
+
+2012-10-16  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.reverse/solib-precsave.exp: Skip if skip_shlib_test
+	returns true.
+	Call gdb_load_shlibs.
+	* gdb.reverse/solib-reverse.exp: Likewise.
+
+2012-10-15  Keith Seitz  <keiths@redhat.com>
+
+	* lib/cp-support.exp (cp_test_ptype_class): Add support
+	for class typedefs.
+
+	* gdb.cp/derivation.exp: Add tests for g_instance.
+
+2012-10-15  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix entry values resolving in inlined frames.
+	* gdb.arch/amd64-entry-value-inline.S: New file.
+	* gdb.arch/amd64-entry-value-inline.c: New file.
+	* gdb.arch/amd64-entry-value-inline.exp: New file.
+
+2012-10-15  Jan Kratochvil  <jan.kratochvil@redhat.com>
+	    Doug Evans  <dje@google.com>
+
+	Fix recent gdb_breakpoint regression.
+	* gdb.java/jmisc.exp: gdb_breakpoint for $function - remove curly
+	braces from the parameter.
+	* gdb.java/jprint.exp: Likewise.
+
+2012-10-15  Doug Evans  <dje@google.com>
+
+	* lib/gdb.exp (runto): Fix call to gdb_breakpoint.
+
+2012-10-15  Yufeng Zhang  <yufeng.zhang@arm.com>
+
+	* gdb.dwarf2/dw2-icc-opaque.S: Remove '#'.
+
+2012-10-15  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.python/py-symtab.exp: Test sal and symtab destructors.
+
+2012-10-15  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.python/py-symbol.exp: Test symbol destructor.
+
+2012-10-14  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi2-cli.exp: Move to mi-cli.exp.
+	* gdb.mi/mi-cli.exp: New.
+
+	* gdb.mi/mi2-basics.exp: Remove.
+	* gdb.mi/mi2-break.exp: Remove.
+	* gdb.mi/mi2-console.exp: Remove.
+	* gdb.mi/mi2-disassemble.exp: Remove.
+	* gdb.mi/mi2-eval.exp: Remove.
+	* gdb.mi/mi2-file.exp: Remove.
+	* gdb.mi/mi2-hack-cli.exp: Remove.
+	* gdb.mi/mi2-pthreads.exp: Remove.
+	* gdb.mi/mi2-read-memory.exp: Remove.
+	* gdb.mi/mi2-regs.exp: Remove.
+	* gdb.mi/mi2-return.exp: Remove.
+	* gdb.mi/mi2-simplerun.exp: Remove.
+	* gdb.mi/mi2-stack.exp: Remove.
+	* gdb.mi/mi2-stepi.exp: Remove.
+	* gdb.mi/mi2-syn-frame.exp: Remove.
+	* gdb.mi/mi2-until.exp: Remove.
+	* gdb.mi/mi2-watch.exp: Remove.
+	* gdb.mi/mi2-var-block.exp: Remove.
+	* gdb.mi/mi2-var-cmd.exp: Remove.
+	* gdb.mi/mi2-var-display.exp: Remove.
+
+2012-10-12  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi-breakpoint-changed.exp (test_pending_resolved): Remove
+	trail '.*' on matching patterns.
+
+2012-10-11  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* gdb.arch/i386-bp_permanent.exp: Skip if not is_x86_like_target.
+	* gdb.arch/i386-cfi-notcurrent.exp: Likewise.
+	* gdb.arch/i386-disp-step.exp: Likewise.
+	* gdb.arch/i386-gnu-cfi.exp: Likewise.
+	* gdb.arch/i386-prologue.exp: Likewise.
+	* gdb.arch/i386-size-overlap.exp: Likewise.
+	* gdb.arch/i386-size.exp: Likewise.
+	* gdb.arch/i386-unwind.exp: Likewise.
+
+2012-10-11  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* gdb.arch/i386-byte.exp: Remove is_ilp32_target check.
+	* gdb.arch/i386-word.exp: Likewise.
+
+2012-10-11  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* gdb.arch/i386-avx.exp: Check is_amd64_regs_target instead of
+	is_ilp32_target to set nr_regs.
+	* gdb.arch/i386-sse.exp: Likewise.
+
+2012-10-11  Doug Evans  <dje@google.com>
+
+	PR breakpoints/14643.
+	* gdb.linespec/ls-errs.exp: Change tests of "b if|task|thread".
+	* gdb.linespec/thread.c: New file.
+	* gdb.linespec/thread.exp: New file.
+
+	* lib/gdb.exp (gdb_breakpoint): Fix varargs scan.
+	Recognize "message" -> print pass and fail.  Add eof case.
+	(runto): Recognize message, no-message.  Print pass/fail if requested,
+	with same treatment as gdb_breakpoint.
+	(runto_main): Pass no-message to runto.
+	(gdb_internal_error_resync): Add log message.
+	(gdb_file_cmd): Tweak internal error fail text for consistency.
+
+2012-10-06  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix crash during stepping on ppc32.
+	* gdb.base/step-symless.c: New file.
+	* gdb.base/step-symless.exp: New file.
+
+2012-10-03  Doug Evans  <dje@google.com>
+
+	PR symtab/14601
+	* gdb.cp/using-crash.exp: New file.
+	* gdb.cp/using-crash.cc: New file.
+
+2012-10-02  Doug Evans  <dje@google.com>
+
+	* lib/gdb.exp (gdb_unload): Change wording of perror text to be
+	more consistent.
+	(runto,gdb_debug_format): Ditto.
+	(gdb_file_cmd): Watch for eof in nested gdb_expect.
+	Clean up logging and error messages.
+
+2012-10-01  Andrew Burgess  <aburgess@broadcom.com>
+
+	Test find command on unmapped memory.
+	* gdb.base/find-unmapped.c: New file.
+	* gdb.base/find-unmapped.exp: New file.
+
+2012-09-29  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.trace/mi-tracepoint-changed.exp: New.
+	* gdb.mi/mi-breakpoint-changed.exp: New.
+	* gdb.mi/pending.c, gdb.mi/pendshr1.c: New
+	* gdb.mi/pendshr2.c: New.
+
+2012-09-28  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/pr11022.exp: New.
+	* gdb.mi/pr11022.c: New.  Copied from gdb.base/.
+
+2012-09-27  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.cp/derivation.exp: Add regression test.
+	* gdb.cp/derivation.cc (class V_base, class V_inter, class
+	V_derived): New.
+	(vderived): New global.
+
+2012-09-26  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.dwarf2/dw2-common-block.S: New file.
+	* gdb.dwarf2/dw2-common-block.exp: New file.
+
+2012-09-26  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.fortran/common-block.exp: New file.
+	* gdb.fortran/common-block.f90: New file.
+
+2012-09-26  Andrew Burgess  <aburgess@broadcom.com>
+
+	* gdb.base/duplicate-bp.c: New file.
+	* gdb.base/duplicate-bp.exp: New file.
+
+2012-09-26  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi2-cli.exp:  Avoid line number in test summary.
+
+	Revert:
+	2012-09-21  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi2-cli.exp: Remove redundant '\'.
+
+2012-09-25  Siddhesh Poyarekar  <siddhesh@redhat.com>
+
+	* gdb.base/longest-types.c: New test case.
+	* gdb.base/longest-types.exp: New test case.
+
+2012-09-25  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi2-cli.exp: Check breakpoint notification.
+
+2012-09-21  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix internal error on canonicalization of clang types.
+	* gdb.dwarf2/dw2-canonicalize-type.S: New file.
+	* gdb.dwarf2/dw2-canonicalize-type.exp: New file.
+	* lib/gdb.exp (gdb_file_cmd): Catch also GDB internal error.
+
+2012-09-21  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix disassemble without parameters in tailcall frame.
+	* gdb.arch/amd64-entry-value.exp (down, disassemble): New tests.
+
+2012-09-21  Andrew Burgess  <aburgess@broadcom.com>
+
+	* gdb.dwarf2/dw2-op-out-param.S: New file.
+	* gdb.dwarf2/dw2-op-out-param.exp: New file.
+
+2012-09-21  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi2-cli.exp: Remove redundant '\'.
+
+2012-09-21  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi-cli.exp: Remove.
+	* gdb.mi/mi2-cli.exp: Merged from mi-cli.exp.
+
+2012-09-21  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi-reverse.exp: Fix the typo in expected output of
+	"=record-started" notification.
+
+2012-09-21  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi-record-changed.exp: New.
+	* gdb.mi/mi-reverse.exp: Adjust expected output.
+
+2012-09-20  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.python/python.exp: Test atexit.register.
+
+2012-09-20  Doug Evans  <dje@google.com>
+
+	* boards/dwarf4-gdb-index.exp: New file.
+
+	* gdb.base/callfuncs.exp (do_function_calls): Set unwindonsignal to on
+	while running the tests.
+
+2012-09-18  Joel Brobecker  <brobecker@adacore.com>
+
+	* gdb.ada/bp_reset: New testcase.
+
+2012-09-18  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.trace/mi-tsv-changed.exp: New.
+
+2012-09-18  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.trace/mi-traceframe-changed.exp: New.
+
+2012-09-17  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.base/list.exp (set_listsize): Don't set arg to "unlimited"
+	when it is less than 0.
+
+2012-09-17  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	PR 14119
+	* gdb.arch/amd64-tailcall-ret.S: New file.
+	* gdb.arch/amd64-tailcall-ret.c: New file.
+	* gdb.arch/amd64-tailcall-ret.exp: New file.
+	* gdb.reverse/amd64-tailcall-reverse.S: New file.
+	* gdb.reverse/amd64-tailcall-reverse.c: New file.
+	* gdb.reverse/amd64-tailcall-reverse.exp: New file.
+
+2012-09-17  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	PR 14548
+	* gdb.reverse/singlejmp-reverse-nodebug.S: New file.
+	* gdb.reverse/singlejmp-reverse-nodebug.c: New file.
+	* gdb.reverse/singlejmp-reverse.S: New file.
+	* gdb.reverse/singlejmp-reverse.c: New file.
+	* gdb.reverse/singlejmp-reverse.exp: New file.
+
+2012-09-16  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix compatibility with old GCC (~4.1).
+	* gdb.cp/converts.cc (my_enum_var): New variable.
+
+2012-09-14  Andrew Burgess  <aburgess@broadcom.com>
+
+	* gdb.xml/tdesc-regs.exp: Update expected output for new
+	vector_size syntax of vector types.
+
+2012-09-13  Khoo Yit Phang  <khooyp@cs.umd.edu>
+
+	Refactor Python "gdb" module into a proper Python package, by
+	introducing a new "_gdb" module for code implemented in C, and
+	using reload/__import__ instead of exec.
+	* gdb.python/python.exp (Test stderr location): Update module
+	location of GDB-specific sys.stderr.
+	(Test stdout location): Ditto for sys.stdout.
+
+2012-09-13  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/valgrind-infcall.exp: Remove comment about Ubuntu.
+
+2012-09-12  Keith Seitz  <keiths@redhat.com>
+
+	* gdb.cp/converts.cc (main): Comment out the pointer to boolean
+	conversion statement.
+
+2012-09-12  Doug Evans  <dje@google.com>
+
+	* gdb.base/help.exp: Remove testing of individual command help text,
+	too much of a maintenance burden.  Instead, test the functionality
+	of "help" itself.
+
+2012-09-11  Doug Evans  <dje@google.com>
+
+	* gdb.cp/mb-inline.exp: Do "info break" after setting multi-location
+	breakpoint.
+
+	* gdb.dwarf2/fission-base.S: Include gdb.dwarf2/ in dwo_name.
+	* gdb.dwarf2/fission-reread.S: Ditto.
+	* gdb.dwarf2/fission-base.exp: Remove setting of debug-file-directory.
+	* gdb.dwarf2/fission-reread.exp: Ditto.
+
+2012-09-11  Andrew Burgess  <aburgess@broadcom.com>
+
+	* gdb.base/ptype.exp: Test ptype on a pointer to a typedef.
+
+2012-09-10  Joel Brobecker  <brobecker@adacore.com>
+
+	* gdb.ada/optim_drec: New testcase.
+
+2012-09-10  Doug Evans  <dje@google.com>
+
+	* boards/fission.exp: Explicitly mark "board" as not remote.
+
+2012-09-10  Keith Seitz  <keiths@redhat.com>
+
+	PR gdb/13483
+	* gdb.cp/converts.cc (A::A): Add ctor.
+	(A::member_): Add member.
+	(enum my_enum): New enumeration.
+	(main): Add calls to foo1_7 with various
+	permitted arguments.
+	* gdb.cp/converts.exp: Add tests for boolean
+	conversions permitted by the standard.
+
+2012-09-08  Khoo Yit Phang  <khooyp@cs.umd.edu>
+
+	Replace -nw option with $INTERNAL_GDBFLAGS in "xgdb" tests to
+	avoid spurious results due to ~/.gdbinit.
+	* gdb.gdb/complaint.exp (setup_test): Replace -nw option with
+	$INTERNAL_GDBFLAGS in run command.
+	* gdb.gdb/observer.exp (setup_test): Ditto.
+	* gdb.gdb/selftest.exp (test_with_self): Ditto.
+	* gdb.gdb/xfullpath.exp (setup_test): Ditto.
+
+2012-09-06  Doug Evans  <dje@google.com>
+
+	* boards/fission.exp: New file.
+
+	* gdb.python/py-value.exp: Use clean_restart.
+
+2012-09-05  Doug Evans  <dje@google.com>
+
+	* gdb.base/info-macros.c: Fix whitespace.
+
+2012-08-28  Pedro Alves  <palves@redhat.com>
+
+	PR gdb/14428
+
+	* gdb.base/pc-fp.exp: Adjust expected output of 'info registers pc fp'.
+
+2012-08-27  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/break-caller-line.c: New file.
+	* gdb.base/break-caller-line.exp: New file.
+
+2012-08-27  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.ada/rdv_wait.exp (set debug-file-directory): New command.
+	* gdb.arch/i386-cfi-notcurrent.S: New file.
+	* gdb.arch/i386-cfi-notcurrent.exp: New file.
+
+2012-08-27  Wei-cheng Wang  <cole945@gmail.com>
+	    Yao Qi <yao@codesourcery.com>
+	    Pedro Alves <palves@redhat.com>
+
+	* gdb.base/memattr.exp (delete_memory, region_pass, region_fail):
+	New procedures.
+	(top level): Add overlap checking tests.
+
+2012-08-24  Tom Tromey  <tromey@redhat.com>
+
+	* lib/gdb.exp (skip_unwinder_tests): Don't leave 'ok' set if
+	gdb_test_multiple fails for other reasons.
+
+2012-08-24  Yao Qi  <yao@codesourcery.com>
+
+	* lib/gdb.exp (skip_unwinder_tests): Remove pass.
+
+2012-08-23  Pedro Alves  <palves@redhat.com>
+
+	* gdb.base/help.exp: Adjust to "handle" help text change.
+
+2012-08-23  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.trace/disconnected-tracing.c (start, end): New.
+	(main): Call start and end.
+	* gdb.trace/disconnected-tracing.exp (disconnected_tracing): Move
+	existing tests into this proc.
+	(disconnected_tfind): New.
+
+2012-08-23  Yao Qi  <yao@codesourcery.com>
+
+	* boards/native-gdbserver.exp (${board}_upload): New.
+	* boards/native-stdio-gdbserver.exp (${board}_upload): New.
+	* gdb.trace/tfile.exp: Don't check 'gdb,nofileio'.
+	Execute tfile on remote target.
+	Copy trace file from target to host.
+
+2012-08-22  Joseph Myers  <joseph@codesourcery.com>
+
+	* gdb.arch/thumb-bx-pc.S: New file.
+	* gdb.arch/thumb-bx-pc.exp: New file.
+
+2012-08-22  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/maint.exp: Update.
+
+2012-08-22  Tom Tromey  <tromey@redhat.com>
+
+	* lib/gdb.exp (skip_unwinder_tests): New proc.
+	* gdb.cp/nextoverthrow.exp: Use skip_unwinder_tests.
+	* gdb.java/jnpe.exp: Use skip_unwinder_tests.
+
+2012-08-21  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.hp/gdb.aCC/exception.exp: Remove.
+
+012-08-19  Andrew Pinski  <apinski@cavium.com>
+
+	* gdb.arch/mips-octeon-bbit.c: New file.
+	* gdb.arch/mips-octeon-bbit.exp: New Test.
+
+012-08-19  Keith Seitz  <keiths@redhat.com>
+
+	PR c++/14365
+	* gdb.dwarf2/dw2-anon-mptr.exp: New file.
+	* gdb.dwarf2/dw2-anon-mptr.S: New file.
+
+2012-08-18  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/solib-corrupted.exp (make solibs looping): Replace
+	verbose -log by more specific untested call.
+
+2012-08-18  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.trace/tfind.exp: Move tests on various command help before
+	checking target supports trace.
+	Fix the expected output of 'help tfind end'.
+
+2012-08-17  Keith Seitz  <keiths@redhat.com>
+
+	PR c++/13356
+	* gdb.base/default.exp: Update all "check type" tests.
+	* gdb.base/help.exp: Likewise.
+	* gdb.base/setshow.exp: Likewise.
+	* gdb.cp/converts.cc (foo1_type_check): New function.
+	(foo2_type_check): New function.
+	(foo3_type_check): New function.
+	(main): Call new functions.
+	* converts.exp: Add tests for integer-to-pointer conversions
+	with/without strict type-checking.
+
+2012-08-16  Mike Frysinger  <vapier@gentoo.org>
+
+	* gdb.base/help.exp: Update expected output.
+
+2012-08-16  Joel Brobecker  <brobecker@adacore.com>
+
+	* gdb.ada/rdv_wait: New testcase.
+
+2012-08-14  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/attach-twice.exp: Remove excessive ps exec.
+
+2012-08-13  Doug Evans  <dje@google.com>
+
+	* gdb.base/help.exp: Update expected output.
+	* gdb.base/default.exp: Update expected output of "show convenience".
+
+2012-08-10  Doug Evans  <dje@google.com>
+
+	* gdb.python/py-strfns.c: New file.
+	* gdb.python/py-strfns.exp: New file.
+	* gdb.python/py-type.exp (test_fields): Add vector tests.
+
+2012-08-10  Mike Frysinger  <vapier@gentoo.org>
+
+	PR cli/10436:
+	* gdb.base/completion.exp: Add tests for handle completion.
+
+2012-08-09  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/mi-cmd-param-changed.exp: New.
+	* gdb.mi/mi-cli.exp: Update for MI notification "=cmd-param-changed".
+	* gdb.mi/mi-var-rtti.exp, gdb.mi/mi2-cli.exp: Likewise.
+	* gdb.mi/mi2-prompt.exp: Likewise.
+
+2012-08-08  Doug Evans  <dje@google.com>
+
+	* gdb.base/debug-expr.c: New file.
+	* gdb.base/debug-expr.exp: New file.
+	* gdb.base/exprs.exp: Test {type} casts.
+	* gdb.cp/debug-expr.exp: New file.
+
+2012-08-07  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/valgrind-infcall.exp (continue #$continue_count): Use
+	global variable loop, not a 'break'.  Add loop count limit to 100.
+	Add new fail case for terminated vgdb.
+
+2012-08-07  Jan Kratochvil  <jan.kratochvil@redhat.com>
+	    Jean-Marc Saffroy  <saffroy@gmail.com>
+
+	PR 11804
+	* gdb.base/gcore-relro.exp: New file.
+	* gdb.base/gcore-relro-main.c: New file.
+	* gdb.base/gcore-relro-lib.c: New file.
+
+2012-08-07  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Do not false FAIL with old GCCs.
+	* gdb.base/watchpoint.exp (self-delete local watch) <$no_hw>: XFAIL for
+	GCC < 4.5 in $no_hw mode.
+
+2012-08-07  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/default.exp (cd): Accept new directory with no arguments.
+
+2012-08-06  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/list.exp (test_only_end): New function.
+	Call it.
+
+2012-08-06  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.python/py-mi.exp: Add test for printer whose children
+	are a list.
+	* gdb.python/py-prettyprint.c (struct children_as_list): New.
+	(main): New variable children_as_list.
+	* gdb.python/py-prettyprint.py (class pp_children_as_list):
+	New.
+	(register_pretty_printers): Register new printer.
+
+2012-08-03  Edjunior Machado  <emachado@linux.vnet.ibm.com>
+
+	* gdb.base/valgrind-infcall.exp: Expect leading `.' on ppc64's
+	symbols. Abort if vgdb remote connection is closed.
+
+2012-08-02  Doug Evans  <dje@google.com>
+
+	* gdb.base/info-fun.exp: Fix failures on m68k, ppc64, s390x.
+
+2012-08-02  Sergio Durigan Junior  <sergiodj@redhat.com>
+
+	* gdb.base/pc-fp.exp: Adjust testcase to match different outputs from
+	s390x, PowerPC 64 and m68k-linux.
+
+2012-08-02  Ulrich Weigand  <uweigand@de.ibm.com>
+
+	* gdb.base/annota1.exp: Accept no frames-invalid notification
+	when starting up the program.
+	* gdb.python/py-value.exp (test_value_numeric_ops): Pointers may
+	show a symbolic value as well.
+	* gdb.server/server-exec-info.exp: Skip test when skipping
+	gdbserver test and/or when skipping shared library tests.
+	* gdb.threads/linux-dp.exp: Unset "seen" when done with it to
+	avoid name conflicts with other tests.
+
+2012-08-02  Ulrich Weigand  <uweigand@de.ibm.com>
+
+	* gdb.dwarf2/dw2-icc-opaque.S: Remove .align directives.
+	Fix wrong output on big-endian systems.
+	* gdb.dwarf2/dw2-icc-opaque.exp: Expect @mode32 attribute on
+	4-byte pointer types on 64-bit s390x.
+
+2012-08-02  Ulrich Weigand  <uweigand@de.ibm.com>
+
+	* gdb.base/watchpoint.c (func2): Initialize local_a.  Add
+	marker comment at the beginning (after intialization).
+	* gdb.base/watchpoint.exp (test_complex_watchpoint): Set func2
+	breakpoint on marker comment instead of function begin.
+	(test_wide_location_1): Do not expect HW watchpoints on 32-bit
+	PowerPC.
+	(test_wide_location_2): Do not expect HW watchpoints on 32-bit
+	or 64-bit PowerPC.
+	(do_tests): Consistently set can-use-hw-watchpoints to 0 if
+	gdb,no_hardware_watchpoints flag is set.
+	(initialize): Remove now redundant can-use-hw-watchpoints change.
+
+2012-08-02  Yao Qi  <yao@codesourcery.com>
+	    Pedro Alves  <palves@redhat.com>
+
+	* boards/local-remote-host.exp: New.
+
+2012-08-01  Ulrich Weigand  <ulrich.weigand@linaro.org>
+
+	* gdb.base/catch-load.exp: Fix argument to gdb_load_shlibs.
+	* gdb.base/ctxobj.exp: Call gdb_load_shlibs.
+	* gdb.base/print-file-var.exp: Likewise.
+	* gdb.server/solib-list.exp: Skip on remote targets.
+
+2012-08-01  Ulrich Weigand  <ulrich.weigand@linaro.org>
+
+	* gdb.base/watchpoint.exp (test_wide_location_1): Expect software
+	watchpoints on ARM.  When expecting software watchpoints, tolerate
+	(remote) targets that report unsupported hardware watchpoint only
+	at continue time.
+	(test_wide_location_2): Likewise.
+
+2012-08-01  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/valgrind-infcall.exp: Relax the UNSUPPORTED check for more
+	valgrind versions.
+
+2012-07-31  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/valgrind-infcall.c: New file.
+	* gdb.base/valgrind-infcall.exp: New file.
+
+	* gdb.base/valgrind-db-attach.exp: Do not run in remote mode.
+
+2012-07-30  Keith Seitz  <keiths@redhat.com>
+
+	* gdb.linespec/ls-errs.exp: Check some quote-enclosed
+	linespecs.
+
+2012-07-30  Doug Evans  <dje@google.com>
+
+	* gdb.dwarf2/fission-reread.S: Use .data instead of .bss.
+	* gdb.dwarf2/pr13961.S: Ditto.
+
+	* gdb.dwarf2/dw4-sig-types.exp: Fix typo.
+
+2012-07-30  Andrew Burgess  <aburgess@broadcom.com>
+
+	* gdb.mi/mi-var-invalidate.exp: Create a floating variable and
+	change its format immediately after reloading the binary.
+
+2012-07-27  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix testsuite regression after --use-deprecated-index-sections removal.
+	* gdb.base/annota1.exp (run until main breakpoint): Update the expect
+	string.
+	* gdb.base/async-shell.exp (gdbindex_warning_re): Likewise.
+
+2012-07-27  Yao Qi  <yao@codesourcery.com>
+
+	KFAIL for PR remote/14161.
+	* gdb.trace/strace.exp (strace_remove_socket): kfail for native.
+	Cleanup socket files.
+	(strace_info_marker): Detach inferior.
+
+2012-07-26  Tom Tromey  <tromey@redhat.com>
+
+    	* gdb.objc/print.exp (test_float_accepted): Remove kfails.
+
+2012-07-26  Markus Metzger  <markus.t.metzger@intel.com>
+
+	* gdb.python/py-inferior.c (thread): New function.
+	(check_threads): New function.
+	(test_threads): New function.
+	* gdb.python/py-inferior.exp: Added test.
+	Replaced runto with continue to breakpoint.
+
+2012-07-26  Tom Tromey  <tromey@redhat.com>
+
+	* lib/ada.exp (standard_ada_testfile): New proc.
+	* gdb.ada/aliased_array.exp: Use standard_ada_testfile.
+	* gdb.ada/array_bounds.exp: Use standard_ada_testfile.
+	* gdb.ada/array_return.exp: Use standard_ada_testfile.
+	* gdb.ada/array_subscript_addr.exp: Use standard_ada_testfile.
+	* gdb.ada/arrayidx.exp: Use standard_ada_testfile.
+	* gdb.ada/arrayparam.exp: Use standard_ada_testfile.
+	* gdb.ada/arrayptr.exp: Use standard_ada_testfile.
+	* gdb.ada/atomic_enum.exp: Use standard_ada_testfile.
+	* gdb.ada/bad-task-bp-keyword.exp: Use standard_ada_testfile.
+	* gdb.ada/bp_enum_homonym.exp: Use standard_ada_testfile.
+	* gdb.ada/bp_on_var.exp: Use standard_ada_testfile.
+	* gdb.ada/bp_range_type.exp: Use standard_ada_testfile.
+	* gdb.ada/call_pn.exp: Use standard_ada_testfile.
+	* gdb.ada/catch_ex.exp: Use standard_ada_testfile.
+	* gdb.ada/char_enum.exp: Use standard_ada_testfile.
+	* gdb.ada/char_param.exp: Use standard_ada_testfile.
+	* gdb.ada/complete.exp: Use standard_ada_testfile.
+	* gdb.ada/cond_lang.exp: Use standard_ada_testfile,
+	standard_output_file.
+	* gdb.ada/dyn_loc.exp: Use standard_ada_testfile.
+	* gdb.ada/enum_idx_packed.exp: Use standard_ada_testfile.
+	* gdb.ada/exec_changed.exp: Use standard_ada_testfile,
+	standard_output_file.
+	* gdb.ada/exprs.exp: Use standard_ada_testfile.
+	* gdb.ada/fixed_cmp.exp: Use standard_ada_testfile.
+	* gdb.ada/fixed_points.exp: Use standard_ada_testfile.
+	* gdb.ada/formatted_ref.exp: Use standard_ada_testfile.
+	* gdb.ada/frame_args.exp: Use standard_ada_testfile.
+	* gdb.ada/fullname_bp.exp: Use standard_ada_testfile.
+	* gdb.ada/fun_addr.exp: Use standard_ada_testfile.
+	* gdb.ada/fun_in_declare.exp: Use standard_ada_testfile.
+	* gdb.ada/funcall_param.exp: Use standard_ada_testfile.
+	* gdb.ada/homonym.exp: Use standard_ada_testfile.
+	* gdb.ada/info_locals_renaming.exp: Use standard_ada_testfile.
+	* gdb.ada/int_deref.exp: Use standard_ada_testfile.
+	* gdb.ada/interface.exp: Use standard_ada_testfile.
+	* gdb.ada/lang_switch.exp: Use standard_ada_testfile,
+	standard_output_file
+	* gdb.ada/mi_catch_ex.exp: Use standard_ada_testfile.
+	* gdb.ada/mi_task_arg.exp: Use standard_ada_testfile.
+	* gdb.ada/mi_task_info.exp: Use standard_ada_testfile.
+	* gdb.ada/mod_from_name.exp: Use standard_ada_testfile.
+	* gdb.ada/nested.exp: Use standard_ada_testfile.
+	* gdb.ada/null_array.exp: Use standard_ada_testfile.
+	* gdb.ada/null_record.exp: Use standard_ada_testfile.
+	* gdb.ada/operator_bp.exp: Use standard_ada_testfile.
+	* gdb.ada/packed_array.exp: Use standard_ada_testfile.
+	* gdb.ada/packed_tagged.exp: Use standard_ada_testfile.
+	* gdb.ada/print_chars.exp: Use standard_ada_testfile.
+	* gdb.ada/print_pc.exp: Use standard_ada_testfile.
+	* gdb.ada/ptr_typedef.exp: Use standard_ada_testfile.
+	* gdb.ada/ptype_field.exp: Use standard_ada_testfile.
+	* gdb.ada/ptype_tagged_param.exp: Use standard_ada_testfile.
+	* gdb.ada/rec_return.exp: Use standard_ada_testfile.
+	* gdb.ada/ref_param.exp: Use standard_ada_testfile.
+	* gdb.ada/ref_tick_size.exp: Use standard_ada_testfile.
+	* gdb.ada/same_enum.exp: Use standard_ada_testfile.
+	* gdb.ada/set_pckd_arr_elt.exp: Use standard_ada_testfile.
+	* gdb.ada/small_reg_param.exp: Use standard_ada_testfile.
+	* gdb.ada/start.exp: Use standard_ada_testfile.
+	* gdb.ada/str_ref_cmp.exp: Use standard_ada_testfile.
+	* gdb.ada/sym_print_name.exp: Use standard_ada_testfile.
+	* gdb.ada/taft_type.exp: Use standard_ada_testfile.
+	* gdb.ada/tagged.exp: Use standard_ada_testfile.
+	* gdb.ada/tagged_not_init.exp: Use standard_ada_testfile.
+	* gdb.ada/task_bp.exp: Use standard_ada_testfile.
+	* gdb.ada/tasks.exp: Use standard_ada_testfile.
+	* gdb.ada/tick_last_segv.exp: Use standard_ada_testfile.
+	* gdb.ada/type_coercion.exp: Use standard_ada_testfile.
+	* gdb.ada/uninitialized_vars.exp: Use standard_ada_testfile.
+	* gdb.ada/variant_record_packed_array.exp: Use standard_ada_testfile.
+	* gdb.ada/watch_arg.exp: Use standard_ada_testfile.
+	* gdb.ada/whatis_array_val.exp: Use standard_ada_testfile.
+	* gdb.ada/widewide.exp: Use standard_ada_testfile.
+
+2012-07-25  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix testsuite regression after --use-deprecated-index-sections removal.
+	* lib/mi-support.exp (gdbindex_warning_re): Update the expect string.
+
+2012-07-25  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix compatibility with Tcl before 7.5.
+	* lib/future.exp (lreverse): New function if it does not exist.
+
+2012-07-25  Marc Khouzam  <marc.khouzam@ericsson.com>
+
+	* gdb.mi/mi-pending.c: New method to set a second pending
+	breakpoint.
+	* gdb.mi/mi-pending.exp: Set a pending breakpoint with a
+	condition.
+
+2012-07-20  Pedro Alves  <palves@redhat.com>
+
+	PR threads/11692
+	PR gdb/12203
+
+	* gdb.threads/create-fail.c: New file.
+	* gdb.threads/create-fail.exp: New file.
+
+2012-07-19  Pedro Alves  <palves@redhat.com>
+
+	* config/monitor.exp (gdb_load): Remove redundant ';' in for loop.
+	* config/vx.exp (gdb_start): Likewise.
+	* gdb.base/printcmds.exp (test_print_repeats_10): Likewise.
+	* gdb.base/setvar.exp (test_set): Likewise.
+	* gdb.base/sigall.exp: Use foreach+lrange instead of for+continue.
+	* gdb.reverse/sigall-precsave.exp: Likewise.
+	* gdb.reverse/sigall-reverse.exp: Likewise.
+
+2012-07-19  Pedro Alves  <palves@redhat.com>
+
+	* gdb.reverse/sigall-precsave.exp: Set a breakpoint at each signal
+	handler before recording.
+
+2012-07-19  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.cp/casts.exp: Add tests for typeof and decltype.
+	* gdb.cp/casts.cc (decltype): New function.
+	(main): Use it.
+
+2012-07-19  Pedro Alves  <palves@redhat.com>
+
+	* gdb.base/sigall.exp (signals): New list.
+	<top level>: Loop over signals in the $signals list instead of
+	calling a test function once per signal.
+	* gdb.reverse/sigall-precsave.exp (signals): New list.
+	<top level>: Loop over signals in the $signals list instead of
+	calling a test function once per signal.
+	* gdb.reverse/sigall-reverse.exp (signals): New list.
+	<top level>: Loop over signals in the $signals list instead of
+	calling a test function once per signal.
+
+2012-07-19  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.base/setshow.exp: Test 'set args ~'.
+
+2012-07-16  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/store.exp (check_set): Import gdb_prompt.
+	(continue to wack_${t}): Make it to conditional gdb_test_multiple.
+	(${prefix}; next ${t}): Hide its name, handle it conditionally now.
+
+2012-07-16  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	PR 11914
+	* gdb.python/py-prettyprint.c (eval_func, eval_sub): New.
+	(main): Call eval_sub.
+	* gdb.python/py-prettyprint.exp:
+	(python execfile ('py-prettyprint.py')): Move it earlier.
+	New breakpoint for eval-break.
+	(continue to breakpoint: eval-break, info locals): New test.
+	(python execfile ('py-prettyprint.py')): Move it from here.
+	* gdb.python/py-prettyprint.py (class pp_eval_type): New.
+	(register_pretty_printers): Register pp_eval_type.
+
+2012-07-15  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix a testcase regression by me.
+	* gdb.dwarf2/fission-reread.S: Fix two DW_FORM_data8 to be
+	DW_FORM_data4.
+
+2012-07-13  Jan Kratochvil  <jan.kratochvil@redhat.com>
+	    Doug Evans  <dje@google.com>
+
+	* gdb.dwarf2/dw2-minsym-in-cu.S: New file.
+	* gdb.dwarf2/dw2-minsym-in-cu.exp: New file.
+
+2012-07-13  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix gdbserver run regression.
+	* gdb.trace/disconnected-tracing.exp (executabel): Fix typo.
+
+2012-07-12  Tom Tromey  <tromey@redhat.com>
+
+	* lib/gdb.exp (standard_testfile): Don't declare objdir.
+	(clean_restart): Likewise.
+	(core_find): Use standard_output_file.
+
+2012-07-12  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.dwarf2/dup-psym.exp: Use prepare_for_testing_full.
+	* gdb.dwarf2/dw2-anonymous-func.exp: Use
+	prepare_for_testing_full.
+	* gdb.dwarf2/dw2-basic.exp: Use prepare_for_testing_full.
+	* gdb.dwarf2/dw2-compressed.exp: Use prepare_for_testing_full.
+	* gdb.dwarf2/dw2-const.exp: Use prepare_for_testing_full.
+	* gdb.dwarf2/dw2-cu-size.exp: Use prepare_for_testing_full.
+	* gdb.dwarf2/dw2-intercu.exp: Use prepare_for_testing_full.
+	* gdb.dwarf2/dw2-intermix.exp: Use prepare_for_testing_full.
+	* gdb.dwarf2/dw2-linkage-name-trust.exp: Use
+	prepare_for_testing_full.
+	* gdb.dwarf2/dw2-producer.exp: Use prepare_for_testing_full.
+	* gdb.dwarf2/dw2-ref-missing-frame.exp: Use
+	prepare_for_testing_full.
+	* gdb.dwarf2/dw2-restore.exp: Use prepare_for_testing_full.
+	* gdb.dwarf2/dw2-strp.exp: Use prepare_for_testing_full.
+	* gdb.dwarf2/mac-fileno.exp: Use prepare_for_testing_full.
+
+2012-07-12  Tom Tromey  <tromey@redhat.com>
+
+	* lib/gdb.exp (build_executable_from_specs): New proc, from
+	build_executable.
+	(build_executable): Use it.
+	(prepare_for_testing_full): New proc.
+
+2012-07-11  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.reverse/break-precsave.exp: Use standard_output_file.
+	* gdb.reverse/consecutive-precsave.exp: Use standard_output_file.
+	* gdb.reverse/finish-precsave.exp: Use standard_output_file.
+	* gdb.reverse/i386-precsave.exp: Use standard_output_file.
+	* gdb.reverse/machinestate-precsave.exp: Use standard_output_file.
+	* gdb.reverse/sigall-precsave.exp: Use standard_output_file.
+	* gdb.reverse/solib-precsave.exp: Use standard_output_file.
+	* gdb.reverse/step-precsave.exp: Use standard_output_file.
+	* gdb.reverse/until-precsave.exp: Use standard_output_file.
+	* gdb.reverse/watch-precsave.exp: Use standard_output_file.
+
+2012-07-10  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.mi/dw2-ref-missing-frame.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.mi/gdb2549.exp: Use standard_testfile.
+	* gdb.mi/gdb669.exp: Use standard_testfile.
+	* gdb.mi/gdb701.exp: Use standard_testfile.
+	* gdb.mi/gdb792.exp: Use standard_testfile.
+	* gdb.mi/mi-async.exp: Use standard_testfile.
+	* gdb.mi/mi-basics.exp: Use standard_testfile.
+	* gdb.mi/mi-break.exp: Use standard_testfile.
+	* gdb.mi/mi-cli.exp: Use standard_testfile.
+	* gdb.mi/mi-console.exp: Use standard_testfile.
+	* gdb.mi/mi-disassemble.exp: Use standard_testfile.
+	* gdb.mi/mi-eval.exp: Use standard_testfile.
+	* gdb.mi/mi-file-transfer.exp: Use standard_testfile.
+	* gdb.mi/mi-file.exp: Use standard_testfile.
+	* gdb.mi/mi-inheritance-syntax-error.exp: Use standard_testfile.
+	* gdb.mi/mi-logging.exp: Use standard_testfile.
+	* gdb.mi/mi-nonstop-exit.exp: Use standard_testfile.
+	* gdb.mi/mi-nonstop.exp: Use standard_testfile.
+	* gdb.mi/mi-ns-stale-regcache.exp: Use standard_testfile.
+	* gdb.mi/mi-nsintrall.exp: Use standard_testfile.
+	* gdb.mi/mi-nsmoribund.exp: Use standard_testfile.
+	* gdb.mi/mi-nsthrexec.exp: Use standard_testfile.
+	* gdb.mi/mi-pending.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.mi/mi-pthreads.exp: Use standard_testfile.
+	* gdb.mi/mi-read-memory.exp: Use standard_testfile.
+	* gdb.mi/mi-regs.exp: Use standard_testfile.
+	* gdb.mi/mi-return.exp: Use standard_testfile.
+	* gdb.mi/mi-reverse.exp: Use standard_testfile.
+	* gdb.mi/mi-simplerun.exp: Use standard_testfile.
+	* gdb.mi/mi-solib.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.mi/mi-stack.exp: Use standard_testfile.
+	* gdb.mi/mi-stepi.exp: Use standard_testfile.
+	* gdb.mi/mi-stepn.exp: Use standard_testfile.
+	* gdb.mi/mi-syn-frame.exp: Use standard_testfile.
+	* gdb.mi/mi-until.exp: Use standard_testfile.
+	* gdb.mi/mi-var-block.exp: Use standard_testfile.
+	* gdb.mi/mi-var-child-f.exp: Use standard_testfile.
+	* gdb.mi/mi-var-child.exp: Use standard_testfile.
+	* gdb.mi/mi-var-cmd.exp: Use standard_testfile.
+	* gdb.mi/mi-var-cp.exp: Use standard_testfile.
+	* gdb.mi/mi-var-display.exp: Use standard_testfile.
+	* gdb.mi/mi-var-invalidate.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.mi/mi-var-rtti.exp: Use standard_testfile.
+	* gdb.mi/mi-watch-nonstop.exp: Use standard_testfile.
+	* gdb.mi/mi-watch.exp: Use standard_testfile.
+	* gdb.mi/mi2-amd64-entry-value.exp: Use standard_testfile.
+	* gdb.mi/mi2-basics.exp: Use standard_testfile.
+	* gdb.mi/mi2-break.exp: Use standard_testfile.
+	* gdb.mi/mi2-cli.exp: Use standard_testfile.
+	* gdb.mi/mi2-console.exp: Use standard_testfile.
+	* gdb.mi/mi2-disassemble.exp: Use standard_testfile.
+	* gdb.mi/mi2-eval.exp: Use standard_testfile.
+	* gdb.mi/mi2-file.exp: Use standard_testfile.
+	* gdb.mi/mi2-pthreads.exp: Use standard_testfile.
+	* gdb.mi/mi2-read-memory.exp: Use standard_testfile.
+	* gdb.mi/mi2-regs.exp: Use standard_testfile.
+	* gdb.mi/mi2-return.exp: Use standard_testfile.
+	* gdb.mi/mi2-simplerun.exp: Use standard_testfile.
+	* gdb.mi/mi2-stack.exp: Use standard_testfile.
+	* gdb.mi/mi2-stepi.exp: Use standard_testfile.
+	* gdb.mi/mi2-syn-frame.exp: Use standard_testfile.
+	* gdb.mi/mi2-until.exp: Use standard_testfile.
+	* gdb.mi/mi2-var-block.exp: Use standard_testfile.
+	* gdb.mi/mi2-var-child.exp: Use standard_testfile.
+	* gdb.mi/mi2-var-cmd.exp: Use standard_testfile.
+	* gdb.mi/mi2-var-display.exp: Use standard_testfile.
+	* gdb.mi/mi2-watch.exp: Use standard_testfile.
+
+2012-07-10  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.cp/abstract-origin.exp: Use standard_testfile.
+	* gdb.cp/ambiguous.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/annota2.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/annota3.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/anon-ns.exp: Use standard_testfile.
+	* gdb.cp/anon-struct.exp: Use standard_testfile.
+	* gdb.cp/anon-union.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/arg-reference.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/bool.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/breakpoint.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/bs15503.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/call-c.exp: Use standard_testfile, clean_restart,
+	standard_output_file.
+	* gdb.cp/casts.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/class2.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/classes.exp: Use standard_testfile, prepare_for_testing.
+	(test_static_members): Update.
+	* gdb.cp/cmpd-minsyms.exp: Use standard_testfile.
+	* gdb.cp/converts.exp: Use standard_testfile.
+	* gdb.cp/cp-relocate.exp: Use standard_testfile.
+	* gdb.cp/cpcompletion.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/cpexprs.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/cplabel.exp: Use standard_testfile.
+	* gdb.cp/cplusfuncs.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/ctti.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/derivation.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/destrprint.exp: Use standard_testfile.
+	* gdb.cp/dispcxx.exp: Use standard_testfile.
+	* gdb.cp/exception.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/expand-psymtabs-cxx.exp: Use standard_testfile.
+	* gdb.cp/extern-c.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/formatted-ref.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/fpointer.exp: Use standard_testfile.
+	* gdb.cp/gdb1355.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/gdb2384.exp: Use standard_testfile, clean_restart,
+	standard_output_file.
+	* gdb.cp/gdb2495.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/hang.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/infcall-dlopen.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.cp/inherit.exp: Use standard_testfile, prepare_for_testing.
+	(do_tests): Update.
+	* gdb.cp/koenig.exp: Use standard_testfile.
+	* gdb.cp/local.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/m-data.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/m-static.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/mb-ctor.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/mb-inline.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/mb-templates.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/member-ptr.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/meth-typedefs.exp: Use standard_testfile.
+	* gdb.cp/method.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/method2.exp: Use standard_testfile.
+	* gdb.cp/minsym-fallback.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.cp/misc.exp: Use standard_testfile, prepare_for_testing.
+	(do_tests): Update.
+	* gdb.cp/namespace-enum.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/namespace-nested-import.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/namespace.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/nextoverthrow.exp: Use standard_testfile.
+	* gdb.cp/no-dmgl-verbose.exp: Use standard_testfile.
+	* gdb.cp/nsdecl.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/nsimport.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/nsnested.exp: Use standard_testfile.
+	* gdb.cp/nsnoimports.exp: Use standard_testfile.
+	* gdb.cp/nsrecurs.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/nsstress.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/nsusing.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/operator.exp: Use standard_testfile.
+	* gdb.cp/oranking.exp: Use standard_testfile.
+	* gdb.cp/overload-const.exp: Use standard_testfile.
+	* gdb.cp/overload.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/ovldbreak.exp: Use standard_testfile.
+	* gdb.cp/ovsrch.exp: Use standard_testfile.
+	* gdb.cp/paren-type.exp: Use standard_testfile.
+	* gdb.cp/pass-by-ref.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/pr-1023.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/pr-1210.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/pr-574.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/pr10687.exp: Use standard_testfile, clean_restart.
+	* gdb.cp/pr10728.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.cp/pr12028.exp: Use standard_testfile.
+	* gdb.cp/pr9067.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/pr9167.exp: Use standard_testfile.
+	* gdb.cp/pr9631.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/printmethod.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/psmang.exp: Use standard_testfile, clean_restart.
+	* gdb.cp/psymtab-parameter.exp: Use standard_testfile.
+	* gdb.cp/ptype-cv-cp.exp: Use standard_testfile.
+	* gdb.cp/re-set-overloaded.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.cp/readnow-language.exp: Use standard_testfile.
+	* gdb.cp/ref-params.exp: Use standard_testfile, build_executable.
+	(gdb_start_again): Use clean_restart.
+	* gdb.cp/ref-types.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/rtti.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/shadow.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/smartp.exp: Use standard_testfile.
+	* gdb.cp/static-method.exp: Use standard_testfile.
+	* gdb.cp/static-print-quit.exp: Use standard_testfile.
+	* gdb.cp/temargs.exp: Use standard_testfile.
+	* gdb.cp/templates.exp: Use standard_testfile,
+	prepare_for_testing.
+	(do_tests): Update.
+	* gdb.cp/try_catch.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/typedef-operator.exp: Use standard_testfile.
+	* gdb.cp/userdef.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.cp/virtbase.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.cp/virtfunc.exp: Use standard_testfile,
+	prepare_for_testing.
+	(do_tests): Update.
+	* gdb.cp/virtfunc2.exp: Use standard_testfile,
+	prepare_for_testing.
+
+2012-07-10  Tom Tromey  <tromey@redhat.com>
+
+	* lib/gdb.exp (standard_testfile): Unset output variables from
+	earlier invocations.
+
+2012-07-10  Yao Qi  <yao@codesourcery.com>
+
+	* gdb.mi/gdb2549.exp: Remove -DFAKEARGV from compilation flags.
+	* gdb.mi/mi-async.exp, gdb.mi/mi-basics.exp: Likewise.
+	* gdb.mi/mi-break.exp, gdb.mi/mi-cli.exp: Likewise.
+	* gdb.mi/mi-console.exp, gdb.mi/mi-disassemble.exp: Likewise.
+	* gdb.mi/mi-eval.exp, gdb.mi/mi-file.exp: Likewise.
+	* gdb.mi/mi-read-memory.exp, gdb.mi/mi-regs.exp: Likewise.
+	* gdb.mi/mi-return.exp, gdb.mi/mi-reverse.exp: Likewise.
+	* gdb.mi/mi-simplerun.exp, gdb.mi/mi-stack.exp: Likewise.
+	* gdb.mi/mi-stepi.exp, gdb.mi/mi-syn-frame.exp: Likewise.
+	* gdb.mi/mi-until.exp, gdb.mi/mi-var-block.exp: Likewise.
+	* gdb.mi/mi-var-child.exp, gdb.mi/mi-var-cmd.exp: Likewise.
+	* gdb.mi/mi-var-display.exp: Likewise.
+	* gdb.mi/mi-var-invalidate.exp: Likewise.
+	* gdb.mi/mi-watch.exp, gdb.mi/mi2-basics.exp: Likewise.
+	* gdb.mi/mi2-break.exp, gdb.mi/mi2-cli.exp: Likewise.
+	* gdb.mi/mi2-console.exp: Likewise.
+	* gdb.mi/mi2-disassemble.exp: Likewise.
+	* gdb.mi/mi2-eval.exp, gdb.mi/mi2-file.exp: Likewise.
+	* gdb.mi/mi2-read-memory.exp: Likewise.
+	* gdb.mi/mi2-regs.exp, gdb.mi/mi2-return.exp: Likewise.
+	* gdb.mi/mi2-simplerun.exp: Likewise.
+	* gdb.mi/mi2-stack.exp, gdb.mi/mi2-stepi.exp: Likewise.
+	* gdb.mi/mi2-syn-frame.exp: Likewise.
+	* gdb.mi/mi2-until.exp, gdb.mi/mi2-var-block.exp: Likewise.
+	* gdb.mi/mi2-var-child.exp, gdb.mi/mi2-var-cmd.exp: Likewise.
+	* gdb.mi/mi2-var-display.exp, gdb.mi/mi2-watch.exp: Likewise.
+
+2012-07-09  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/whatis.exp: Add error checks for improper 'void' uses.
+	* gdb.base/callfuncs.exp: Add cast-based test.
+	* gdb.base/callfuncs.c (voidfunc): New function.
+
+2012-07-08  Doug Evans  <dje@google.com>
+
+	* gdb.dwarf2/dw4-sig-type-unused.S: Fix typo.
+
+2012-07-07  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix XFAIL compatibility with old i386 systems.
+	* gdb.base/stale-infcall.exp (test system longjmp tracking support):
+	Check also 'Cannot insert breakpoint 0'.
+
+2012-07-06  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	PR 14321
+	* gdb.base/find.exp
+	(find int64_search_buf, +64/8*100, int64_search_buf): New test.
+
+2012-07-06  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/whatis.exp: Add test.
+
+2012-07-06  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/whatis.exp: Add regression test.
+
+2012-07-06  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/whatis.exp: Add tests.
+
+2012-07-04  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	PR 12649
+	* gdb.base/dprintf.exp (Set dprintf style to agent): Add missing
+	gdb_test_multiple $gdb_prompt terminator.
+
+2012-07-04  Pedro Alves  <palves@redhat.com>
+
+	* gdb.mi/mi-reverse.exp: Use supports_reverse and
+	supports_process_record.
+
+2012-07-04  Pedro Alves  <palves@redhat.com>
+
+	* gdb.ada/packed_tagged/comp_bug.adb: Convert to unix text line
+	endings.
+	* gdb.mi/mi-reverse.exp: Convert to unix text line endings.
+
+2012-07-03  Stan Shebs  <stan@codesourcery.com>
+
+	* gdb.base/info-os.c (main): Retry resource acquisition until an
+	available one is found.
+	* gdb.base/info-os.exp: Collect resource keys from the program
+	and use them in matching.
+
+2012-07-02  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.threads/gcore-thread.exp: Remove variable libthread_db_seen.
+	Wrap the test into loop for corefile and core0file.
+
+2012-07-02  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.dwarf2/fission-reread.S: Remove .section attributes.
+	Change CU pointer size to 4 bytes, adjust .8byte to .4byte.  Remove
+	.note.GNU-stack.
+
+	* gdb.dwarf2/fission-reread.S: Change # comments to /* */ comments.
+
+2012-07-02  Sergio Durigan Junior  <sergiodj@redhat.com>
+
+	* gdb.base/help.exp (help b, help br, help bre, help brea, help
+	break): Include help message for the new `-probe' and `-probe-stap'
+	options.
+
+2012-07-02  Stan Shebs  <stan@codesourcery.com>
+
+	* gdb.base/dprintf.exp: Add agent style tests.
+
+2012-07-02  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.base/stale-infcall.c (infcall): New label test-next.
+	(main): New labels test-pass and test-fail.
+	* gdb.base/stale-infcall.exp: Continue to test-next.  Put breakpoint
+	$test_fail_bpnum to test-fail.
+	(test system longjmp tracking support): New test.
+	Delete $test_fail_bpnum.
+	* lib/gdb.exp (gdb_continue_to_breakpoint): Accept also Temporary
+	breakpoint.
+
+2012-06-30  Doug Evans  <dje@google.com>
+
+	* gdb.dwarf2/fission-reread.S: New file.
+	* gdb.dwarf2/fission-reread.exp: New file.
+
+2012-06-28  Stan Shebs  <stan@codesourcery.com>
+
+	* gdb.mi/mi-logging.exp: New file.
+
+2012-06-28  Jan Kratochvil  <jan.kratochvil@redhat.com>
+	    Pedro Alves  <palves@redhat.com>
+
+	* gdb.threads/siginfo-threads.exp: New file.
+	* gdb.threads/siginfo-threads.c: New file.
+	* gdb.threads/sigstep-threads.exp: New file.
+	* gdb.threads/sigstep-threads.c: New file.
+
+2012-06-28  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.go/package.exp: Partially revert earlier patch; use
+	gdb_compile again.  Use standard_output_file.
+
+2012-06-27  Doug Evans  <dje@google.com>
+
+	* gdb.dwarf2/fission-base.c: New file.
+	* gdb.dwarf2/fission-base.S: New file.
+	* gdb.dwarf2/fission-base.exp: New file.
+
+2012-06-27  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdb.dwarf2/callframecfa.exp: Replace $testname by $testfile.
+
+2012-06-27  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.base/macscp1.c (macscp_expr): Add breakpoint comment.
+	* gdb.base/macscp.exp (maybe_kfail): Add test for macro scope.
+
+2012-06-27  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.dwarf2/pr10770.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-var-zero-addr.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-param-error.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-op-call.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-inline-param.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.dwarf2/dw2-inline-break.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-ifort-parameter.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-cp-infcall-ref-static.exp: Use
+	standard_testfile.
+	* gdb.dwarf2/dw2-case-insensitive.exp: Use standard_testfile.
+	* gdb.dwarf2/dw4-sig-types.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-objfile-overlap.exp: Use standard_testfile.
+	* gdb.dwarf2/callframecfa.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.dwarf2/dup-psym.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-ada-ffffffff.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-anonymous-func.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-bad-parameter-type.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-basic.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-compressed.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-const.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-cu-size.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-double-set-die-type.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-empty-namespace.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-empty-pc-range.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-filename.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-icc-opaque.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-inheritance.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-intercu.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-intermix.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-linkage-name-trust.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-modula2-self-type.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-namespaceless-anonymous.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-op-stack-value.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-producer.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-ranges.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.dwarf2/dw2-ref-missing-frame.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.dwarf2/dw2-restore.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-simple-locdesc.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-skip-prologue.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-stack-boundary.exp: Use standard_testfile.
+	* gdb.dwarf2/dw2-strp.exp: Use standard_testfile.
+	* gdb.dwarf2/dw4-sig-type-unused.exp: Use standard_testfile.
+	* gdb.dwarf2/implptr-64bit.exp: Use standard_testfile.
+	* gdb.dwarf2/implptr-optimized-out.exp: Use standard_testfile.
+	* gdb.dwarf2/implptr.exp: Use standard_testfile.
+	* gdb.dwarf2/mac-fileno.exp: Use standard_testfile.
+	* gdb.dwarf2/member-ptr-forwardref.exp: Use standard_testfile.
+	* gdb.dwarf2/pieces.exp: Use standard_testfile.
+	* gdb.dwarf2/pr11465.exp: Use standard_testfile.
+	* gdb.dwarf2/pr13961.exp: Use standard_testfile.
+	* gdb.dwarf2/valop.exp: Use standard_testfile,
+	prepare_for_testing.
+
+2012-06-27  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.python/python.exp: Fix regexps in pagination tests.
+
+2012-06-26  Siva Chandra Reddy  <sivachandra@google.com>
+
+	* gdb.python/py-symtab.exp: Add tests to test the new attribute
+	'last' of gdb.Symtab_and_line.
+	* gdb.python/py-symbol.c: Move break point comment to enable
+	testing of gdb.Symtab_and_line.last.
+
+2012-06-26  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.threads/step.c: Remove.
+	* gdb.threads/step.exp: Remove.
+	* gdb.threads/step2.exp: Remove.
+
+2012-06-26  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.threads/watchpoint-fork.exp (test): Use
+	standard_output_file.  Don't declare objdir.
+	* gdb.threads/attach-into-signal.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.threads/attach-stopped.exp: Use standard_testfile.
+	* gdb.threads/bp_in_thread.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/corethreads.exp: Use standard_testfile.
+	* gdb.threads/execl.exp: Use standard_testfile,
+	standard_output_file, clean_restart.
+	* gdb.threads/fork-child-threads.exp: Use standard_testfile,
+	clean_restart.
+	* gdb.threads/fork-thread-pending.exp: Use standard_testfile,
+	clean_restart.
+	* gdb.threads/gcore-thread.exp: Use standard_testfile.  Remove
+	incdir.
+	* gdb.threads/hand-call-in-threads.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/ia64-sigill.exp: Use standard_testfile.
+	* gdb.threads/interrupted-hand-call.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/killed.exp: Use standard_testfile, clean_restart.
+	Remove incdir.
+	* gdb.threads/leader-exit.exp: Use standard_testfile.
+	* gdb.threads/linux-dp.exp: Use standard_testfile, clean_restart.
+	* gdb.threads/local-watch-wrong-thread.exp: Use standard_testfile,
+	clean_restart.
+	* gdb.threads/manythreads.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/multi-create.exp: Use standard_testfile,
+	clean_restart.
+	* gdb.threads/no-unwaited-for-left.exp: Use standard_testfile.
+	* gdb.threads/non-ldr-exc-1.exp: Use standard_testfile.
+	* gdb.threads/non-ldr-exc-2.exp: Use standard_testfile.
+	* gdb.threads/non-ldr-exc-3.exp: Use standard_testfile.
+	* gdb.threads/non-ldr-exc-4.exp: Use standard_testfile.
+	* gdb.threads/pending-step.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/print-threads.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/pthread_cond_wait.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/pthreads.exp: Use standard_testfile, clean_restart.
+	Remove incdir.
+	* gdb.threads/schedlock.exp: Use standard_testfile.  Remove
+	incdir.
+	* gdb.threads/sigthread.exp: Use standard_testfile,
+	clean_restart.
+	* gdb.threads/staticthreads.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/switch-threads.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/thread-execl.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/thread-find.exp: Use standard_testfile,
+	clean_restart.
+	* gdb.threads/thread-specific.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/thread-unwindonsignal.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/thread_check.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/thread_events.exp: Use standard_testfile.  Remove
+	incdir.
+	* gdb.threads/threadapply.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/threxit-hop-specific.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+	* gdb.threads/tls-nodebug.exp: Use standard_testfile,
+	clean_restart.
+	* gdb.threads/tls-shared.exp: Use standard_testfile,
+	clean_restart, standard_output_file.
+	* gdb.threads/tls-var.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.threads/tls.exp: Use standard_testfile, clean_restart.
+	Remove incdir.
+	* gdb.threads/watchthreads-reorder.exp: Use standard_testfile.
+	* gdb.threads/watchthreads.exp: Use standard_testfile.  Remove
+	incdir.
+	* gdb.threads/watchthreads2.exp: Use standard_testfile,
+	clean_restart.  Remove incdir.
+
+2012-06-26  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.trace/actions.exp: Use standard_testfile.
+	* gdb.trace/ax.exp: Use standard_testfile.
+	* gdb.trace/backtrace.exp: Use standard_testfile.
+	* gdb.trace/change-loc.exp: Use standard_testfile.
+	* gdb.trace/circ.exp: Use standard_testfile, prepare_for_testing.
+	* gdb.trace/collection.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.trace/deltrace.exp: Use standard_testfile.
+	* gdb.trace/disconnected-tracing.exp: Use standard_testfile.
+	* gdb.trace/ftrace.exp: Use standard_testfile.
+	* gdb.trace/infotrace.exp: Use standard_testfile.
+	* gdb.trace/packetlen.exp: Use standard_testfile.
+	* gdb.trace/passc-dyn.exp: Use standard_testfile.
+	* gdb.trace/passcount.exp: Use standard_testfile.
+	* gdb.trace/pending.exp: Use standard_testfile.
+	* gdb.trace/report.exp: Use standard_testfile.
+	* gdb.trace/save-trace.exp: Use standard_testfile.
+	* gdb.trace/stap-trace.exp: Use standard_testfile.
+	* gdb.trace/status-stop.exp: Use standard_testfile.
+	* gdb.trace/strace.exp: Use standard_testfile.
+	* gdb.trace/tfile.exp: Use standard_testfile.
+	* gdb.trace/tfind.exp: Use standard_testfile.
+	* gdb.trace/trace-break.exp: Use standard_testfile.
+	* gdb.trace/trace-mt.exp: Use standard_testfile.
+	* gdb.trace/tracecmd.exp: Use standard_testfile.
+	* gdb.trace/tspeed.exp: Use standard_testfile.
+	* gdb.trace/tstatus.exp: Use standard_testfile.
+	* gdb.trace/tsv.exp: Use standard_testfile.
+	* gdb.trace/unavailable.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.trace/while-dyn.exp: Use standard_testfile.
+	* gdb.trace/while-stepping.exp: Use standard_testfile.
+
+2012-06-26  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.reverse/break-precsave.exp: Use standard_testfile.
+	* gdb.reverse/break-reverse.exp: Use standard_testfile.
+	* gdb.reverse/consecutive-precsave.exp: Use standard_testfile.
+	* gdb.reverse/consecutive-reverse.exp: Use standard_testfile.
+	* gdb.reverse/finish-precsave.exp: Use standard_testfile.
+	* gdb.reverse/finish-reverse-bkpt.exp: Use standard_testfile.
+	* gdb.reverse/finish-reverse.exp: Use standard_testfile.
+	* gdb.reverse/i386-precsave.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.reverse/i386-reverse.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.reverse/i386-sse-reverse.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.reverse/i387-env-reverse.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.reverse/i387-stack-reverse.exp: Use standard_testfile,
+	prepare_for_testing
+	* gdb.reverse/machinestate-precsave.exp: Use standard_testfile.
+	* gdb.reverse/machinestate.exp: Use standard_testfile.
+	* gdb.reverse/next-reverse-bkpt-over-sr.exp: Use standard_testfile.
+	* gdb.reverse/sigall-precsave.exp: Use standard_testfile,
+	build_executable.
+	* gdb.reverse/sigall-reverse.exp: Use standard_testfile,
+	build_executable.
+	* gdb.reverse/solib-precsave.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.reverse/solib-reverse.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.reverse/step-precsave.exp: Use standard_testfile.
+	* gdb.reverse/step-reverse.exp: Use standard_testfile.
+	* gdb.reverse/until-precsave.exp: Use standard_testfile.
+	* gdb.reverse/until-reverse.exp: Use standard_testfile.
+	* gdb.reverse/watch-precsave.exp: Use standard_testfile.
+	* gdb.reverse/watch-reverse.exp: Use standard_testfile.
+
+2012-06-26  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.stabs/weird.exp: Remove directory-checking code.  Use
+	standard_output_file.
+	* gdb.stabs/exclfwd.exp: Use standard_testfile,
+	prepare_for_testing.  Remove directory-checking code.
+
+2012-06-25  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.multi/watchpoint-multi.exp: Use standard_testfile.
+	* gdb.multi/bkpt-multi-exec.exp: Use standard_output_file.  Use
+	build_executable, not prepare_for_testing.
+	* gdb.multi/base.exp: Use standard_output_file.  Use
+	build_executable,  not prepare_for_testing.
+
+2012-06-25  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.fortran/subarray.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.fortran/multi-dim.exp: Use standard_testfile.
+	* gdb.fortran/module.exp: Use standard_testfile.
+	* gdb.fortran/logical.exp: Use standard_testfile.
+	* gdb.fortran/library-module.exp: Use standard_testfile,
+	standard_output_file.
+	* gdb.fortran/derived-type.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.fortran/complex.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.fortran/charset.exp: Use standard_testfile.
+	* gdb.fortran/array-element.exp: Use standard_testfile,
+	prepare_for_testing.
+
+2012-06-25  Keith Seitz  <keiths@redhat.com>
+
+	* gdb.mi/mi-break.exp (test_rbreak_creation_and_listing):
+	Change rbreak-related tests to KFAIL and add bugzilla numbers.
+
+2012-06-25  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.pascal/integers.exp: Use standard_testfile, clean_restart.
+	* gdb.pascal/hello.exp: Use standard_testfile, clean_restart.
+	* gdb.pascal/gdb11492.exp: Use standard_testfile, clean_restart.
+	* gdb.pascal/floats.exp: Use standard_testfile, clean_restart.
+
+2012-06-25  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.linespec/ls-errs.exp: Use standard_testfile.
+	* gdb.linespec/ls-dollar.exp: Use standard_testfile.
+	* gdb.linespec/linespec.exp: Use standard_testfile.
+
+2012-06-25  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.modula2/unbounded-array.exp: Use standard_testfile,
+	prepare_for_testing.
+
+2012-06-25  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.opt/clobbered-registers-O2.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.opt/inline-break.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.opt/inline-bt.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.opt/inline-cmds.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.opt/inline-locals.exp: Use standard_testfile,
+	prepare_for_testing.
+
+2012-06-25  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.asm/asm-source.exp: Use standard_output_file,
+	standard_testfile.  Construct .o files in proper subdir.
+
+2012-06-25  Tom Tromey  <tromey@redhat.com>
+
+	* gdb.server/ext-attach.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.server/ext-run.exp: Use standard_testfile,
+	build_executable.
+	* gdb.server/file-transfer.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.server/server-exec-info.exp: Use standard_testfile.
+	* gdb.server/server-mon.exp: Use standard_testfile,
+	prepare_for_testing.
+	* gdb.server/server-run.exp: Use standard_testfile,
+	build_executable.
+	* gdb.server/solib-list.exp: Use standard_testfile,
+	standard_output_file.
+
+2012-06-25  Tom Tromey  <tromey@redhat.com>
+
+	* lib/gdb.exp (standard_output_file): Use "file join".
+	* gdb.go/chan.exp: Use standard_testfile.
+	* gdb.go/handcall.exp: Use standard_testfile.
+	* gdb.go/hello.exp: Use standard_testfile.
+	* gdb.integers/chan.exp: Use standard_testfile.
+	* gdb.go/methods.exp: Use standard_testfile.
+	* gdb.go/package.exp: Use standard_testfile.
+	* gdb.go/strings.exp: Use standard_testfile.
+	* gdb.go/types.exp: Use standard_testfile.
+	* gdb.go/unsafe.exp: Use standard_testfile.
+
+2012-06-25  Greta Yorsh  <greta.yorsh@arm.com>
+
+	* gdb.arch/arm-disp-step.S: Fix use of .global directives.
+
+2012-06-24  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	Fix regression by the previous commit.
+	* gdb.python/lib-types.exp: Add c++ to the compilation flags.
+
 2012-06-22  Tom Tromey  <tromey@redhat.com>
 
 	* gdb.python/lib-types.exp: Use standard_testfile,

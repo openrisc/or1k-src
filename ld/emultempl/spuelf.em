@@ -165,7 +165,7 @@ spu_place_special_section (asection *s, asection *o, const char *output_name)
 
 	  push_stat_ptr (&os->children);
 	  e_size = exp_intop (params.line_size - s->size);
-	  lang_add_assignment (exp_assign (".", e_size));
+	  lang_add_assignment (exp_assign (".", e_size, FALSE));
 	  pop_stat_ptr ();
 	}
       lang_add_section (&os->children, s, NULL, os);
@@ -535,7 +535,7 @@ embedded_spu_file (lang_input_statement_type *entry, const char *flags)
   cmd[3] = entry->the_bfd->filename;
   cmd[4] = oname;
   cmd[5] = NULL;
-  if (trace_file_tries)
+  if (verbose)
     {
       info_msg (_("running: %s \"%s\" \"%s\" \"%s\" \"%s\"\n"),
 		cmd[0], cmd[1], cmd[2], cmd[3], cmd[4]);

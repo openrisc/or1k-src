@@ -406,8 +406,8 @@ chain_frchains_together_1 (segT section, struct frchain *frchp)
 	  prev_fix = frchp->fix_tail;
 	}
     }
-  gas_assert (prev_frag->fr_type != 0);
-  gas_assert (prev_frag != &dummy);
+  gas_assert (prev_frag != &dummy
+	      && prev_frag->fr_type != 0);
   prev_frag->fr_next = 0;
   return prev_frag;
 }
@@ -1019,6 +1019,10 @@ fixup_segment (fixS *fixP, segT this_segment)
 			      S_GET_NAME (fixP->fx_subsy),
 			      segment_name (sub_symbol_segment));
 	    }
+	  else if (sub_symbol_segment != undefined_section
+		   && ! bfd_is_com_section (sub_symbol_segment)
+		   && MD_APPLY_SYM_VALUE (fixP))
+	    add_number -= S_GET_VALUE (fixP->fx_subsy);
 	}
 
       if (fixP->fx_addsy)

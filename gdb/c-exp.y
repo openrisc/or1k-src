@@ -53,6 +53,8 @@
 #include "dfp.h"
 #include "gdb_assert.h"
 #include "macroscope.h"
+#include "objc-lang.h"
+#include "typeprint.h"
 
 #define parse_type builtin_type (parse_gdbarch)
 
@@ -155,27 +157,33 @@ void yyerror (char *);
     struct internalvar *ivar;
 
     struct stoken_vector svec;
-    struct type **tvec;
+    VEC (type_ptr) *tvec;
     int *ivec;
+
+    struct type_stack *type_stack;
+
+    struct objc_class_str class;
   }
 
 %{
 /* YYSTYPE gets defined by %union */
 static int parse_number (char *, int, int, YYSTYPE *);
 static struct stoken operator_stoken (const char *);
+static void check_parameter_typelist (VEC (type_ptr) *);
 %}
 
 %type <voidval> exp exp1 type_exp start variable qualified_name lcurly
 %type <lval> rcurly
 %type <tval> type typebase
-%type <tvec> nonempty_typelist
+%type <tvec> nonempty_typelist func_mod parameter_typelist
 /* %type <bval> block */
 
 /* Fancy type parsing.  */
-%type <voidval> func_mod direct_abs_decl abs_decl ptr_operator
 %type <tval> ptype
 %type <lval> array_mod
 %type <tval> conversion_type_id
+
+%type <type_stack> ptr_operator_ts abs_decl direct_abs_decl
 
 %token <typed_val_int> INT
 %token <typed_val_float> FLOAT
@@ -190,15 +198,23 @@ static struct stoken operator_stoken (const char *);
    nonterminal "name", which matches either NAME or TYPENAME.  */
 
 %token <tsval> STRING
+%token <sval> NSSTRING		/* ObjC Foundation "NSString" literal */
+%token SELECTOR			/* ObjC "@selector" pseudo-operator   */
 %token <tsval> CHAR
 %token <ssym> NAME /* BLOCKNAME defined below to give it higher precedence. */
 %token <ssym> UNKNOWN_CPP_NAME
 %token <voidval> COMPLETE
 %token <tsym> TYPENAME
+%token <class> CLASSNAME	/* ObjC Class name */
 %type <sval> name
 %type <svec> string_exp
 %type <ssym> name_not_typename
 %type <tsym> typename
+
+ /* This is like a '[' token, but is only generated when parsing
+    Objective C.  This lets us reuse the same parser without
+    erroneously parsing ObjC-specific expressions in C.  */
+%token OBJC_LBRAC
 
 /* A NAME_OR_INT is a symbol which is not known in the symbol table,
    but which would parse as a valid number in the current input radix.
@@ -215,6 +231,8 @@ static struct stoken operator_stoken (const char *);
 %type <sval> operator
 %token REINTERPRET_CAST DYNAMIC_CAST STATIC_CAST CONST_CAST
 %token ENTRY
+%token TYPEOF
+%token DECLTYPE
 
 /* Special type cases, put in to allow the parser to distinguish different
    legal basetypes.  */
@@ -245,11 +263,13 @@ static struct stoken operator_stoken (const char *);
 %left '+' '-'
 %left '*' '/' '%'
 %right UNARY INCREMENT DECREMENT
-%right ARROW ARROW_STAR '.' DOT_STAR '[' '('
+%right ARROW ARROW_STAR '.' DOT_STAR '[' OBJC_LBRAC '('
 %token <ssym> BLOCKNAME 
 %token <bval> FILENAME
 %type <bval> block
 %left COLONCOLON
+
+%token DOTDOTDOT
 
 
 %%
@@ -262,6 +282,20 @@ type_exp:	type
 			{ write_exp_elt_opcode(OP_TYPE);
 			  write_exp_elt_type($1);
 			  write_exp_elt_opcode(OP_TYPE);}
+	|	TYPEOF '(' exp ')'
+			{
+			  write_exp_elt_opcode (OP_TYPEOF);
+			}
+	|	TYPEOF '(' type ')'
+			{
+			  write_exp_elt_opcode (OP_TYPE);
+			  write_exp_elt_type ($3);
+			  write_exp_elt_opcode (OP_TYPE);
+			}
+	|	DECLTYPE '(' exp ')'
+			{
+			  write_exp_elt_opcode (OP_DECLTYPE);
+			}
 	;
 
 /* Expressions, including the comma operator.  */
@@ -389,6 +423,78 @@ exp	:	exp '[' exp1 ']'
 			{ write_exp_elt_opcode (BINOP_SUBSCRIPT); }
 	;
 
+exp	:	exp OBJC_LBRAC exp1 ']'
+			{ write_exp_elt_opcode (BINOP_SUBSCRIPT); }
+	;
+
+/*
+ * The rules below parse ObjC message calls of the form:
+ *	'[' target selector {':' argument}* ']'
+ */
+
+exp	: 	OBJC_LBRAC TYPENAME
+			{
+			  CORE_ADDR class;
+
+			  class = lookup_objc_class (parse_gdbarch,
+						     copy_name ($2.stoken));
+			  if (class == 0)
+			    error (_("%s is not an ObjC Class"),
+				   copy_name ($2.stoken));
+			  write_exp_elt_opcode (OP_LONG);
+			  write_exp_elt_type (parse_type->builtin_int);
+			  write_exp_elt_longcst ((LONGEST) class);
+			  write_exp_elt_opcode (OP_LONG);
+			  start_msglist();
+			}
+		msglist ']'
+			{ write_exp_elt_opcode (OP_OBJC_MSGCALL);
+			  end_msglist();
+			  write_exp_elt_opcode (OP_OBJC_MSGCALL);
+			}
+	;
+
+exp	:	OBJC_LBRAC CLASSNAME
+			{
+			  write_exp_elt_opcode (OP_LONG);
+			  write_exp_elt_type (parse_type->builtin_int);
+			  write_exp_elt_longcst ((LONGEST) $2.class);
+			  write_exp_elt_opcode (OP_LONG);
+			  start_msglist();
+			}
+		msglist ']'
+			{ write_exp_elt_opcode (OP_OBJC_MSGCALL);
+			  end_msglist();
+			  write_exp_elt_opcode (OP_OBJC_MSGCALL);
+			}
+	;
+
+exp	:	OBJC_LBRAC exp
+			{ start_msglist(); }
+		msglist ']'
+			{ write_exp_elt_opcode (OP_OBJC_MSGCALL);
+			  end_msglist();
+			  write_exp_elt_opcode (OP_OBJC_MSGCALL);
+			}
+	;
+
+msglist :	name
+			{ add_msglist(&$1, 0); }
+	|	msgarglist
+	;
+
+msgarglist :	msgarg
+	|	msgarglist msgarg
+	;
+
+msgarg	:	name ':' exp
+			{ add_msglist(&$1, 1); }
+	|	':' exp	/* Unnamed arg.  */
+			{ add_msglist(0, 1);   }
+	|	',' exp	/* Variable number of args.  */
+			{ add_msglist(0, 0);   }
+	;
+
 exp	:	exp '(' 
 			/* This is to save the value of arglist_len
 			   being accumulated by an outer function call.  */
@@ -437,15 +543,21 @@ arglist	:	arglist ',' exp   %prec ABOVE_COMMA
 			{ arglist_len++; }
 	;
 
-exp     :       exp '(' nonempty_typelist ')' const_or_volatile
+exp     :       exp '(' parameter_typelist ')' const_or_volatile
 			{ int i;
+			  VEC (type_ptr) *type_list = $3;
+			  struct type *type_elt;
+			  LONGEST len = VEC_length (type_ptr, type_list);
+
 			  write_exp_elt_opcode (TYPE_INSTANCE);
-			  write_exp_elt_longcst ((LONGEST) $<ivec>3[0]);
-			  for (i = 0; i < $<ivec>3[0]; ++i)
-			    write_exp_elt_type ($<tvec>3[i + 1]);
-			  write_exp_elt_longcst((LONGEST) $<ivec>3[0]);
+			  write_exp_elt_longcst (len);
+			  for (i = 0;
+			       VEC_iterate (type_ptr, type_list, i, type_elt);
+			       ++i)
+			    write_exp_elt_type (type_elt);
+			  write_exp_elt_longcst(len);
 			  write_exp_elt_opcode (TYPE_INSTANCE);
-			  free ($3);
+			  VEC_free (type_ptr, type_list);
 			}
 	;
 
@@ -459,16 +571,12 @@ exp	:	lcurly arglist rcurly	%prec ARROW
 			  write_exp_elt_opcode (OP_ARRAY); }
 	;
 
-exp	:	lcurly type rcurly exp  %prec UNARY
-			{ write_exp_elt_opcode (UNOP_MEMVAL);
-			  write_exp_elt_type ($2);
-			  write_exp_elt_opcode (UNOP_MEMVAL); }
+exp	:	lcurly type_exp rcurly exp  %prec UNARY
+			{ write_exp_elt_opcode (UNOP_MEMVAL_TYPE); }
 	;
 
-exp	:	'(' type ')' exp  %prec UNARY
-			{ write_exp_elt_opcode (UNOP_CAST);
-			  write_exp_elt_type ($2);
-			  write_exp_elt_opcode (UNOP_CAST); }
+exp	:	'(' type_exp ')' exp  %prec UNARY
+			{ write_exp_elt_opcode (UNOP_CAST_TYPE); }
 	;
 
 exp	:	'(' exp1 ')'
@@ -617,6 +725,13 @@ exp	:	VARIABLE
 			}
 	;
 
+exp	:	SELECTOR '(' name ')'
+			{
+			  write_exp_elt_opcode (OP_OBJC_SELECTOR);
+			  write_exp_string ($3);
+			  write_exp_elt_opcode (OP_OBJC_SELECTOR); }
+	;
+
 exp	:	SIZEOF '(' type ')'	%prec UNARY
 			{ write_exp_elt_opcode (OP_LONG);
 			  write_exp_elt_type (lookup_signed_typename
@@ -627,30 +742,22 @@ exp	:	SIZEOF '(' type ')'	%prec UNARY
 			  write_exp_elt_opcode (OP_LONG); }
 	;
 
-exp	:	REINTERPRET_CAST '<' type '>' '(' exp ')' %prec UNARY
-			{ write_exp_elt_opcode (UNOP_REINTERPRET_CAST);
-			  write_exp_elt_type ($3);
-			  write_exp_elt_opcode (UNOP_REINTERPRET_CAST); }
+exp	:	REINTERPRET_CAST '<' type_exp '>' '(' exp ')' %prec UNARY
+			{ write_exp_elt_opcode (UNOP_REINTERPRET_CAST); }
 	;
 
-exp	:	STATIC_CAST '<' type '>' '(' exp ')' %prec UNARY
-			{ write_exp_elt_opcode (UNOP_CAST);
-			  write_exp_elt_type ($3);
-			  write_exp_elt_opcode (UNOP_CAST); }
+exp	:	STATIC_CAST '<' type_exp '>' '(' exp ')' %prec UNARY
+			{ write_exp_elt_opcode (UNOP_CAST_TYPE); }
 	;
 
-exp	:	DYNAMIC_CAST '<' type '>' '(' exp ')' %prec UNARY
-			{ write_exp_elt_opcode (UNOP_DYNAMIC_CAST);
-			  write_exp_elt_type ($3);
-			  write_exp_elt_opcode (UNOP_DYNAMIC_CAST); }
+exp	:	DYNAMIC_CAST '<' type_exp '>' '(' exp ')' %prec UNARY
+			{ write_exp_elt_opcode (UNOP_DYNAMIC_CAST); }
 	;
 
-exp	:	CONST_CAST '<' type '>' '(' exp ')' %prec UNARY
+exp	:	CONST_CAST '<' type_exp '>' '(' exp ')' %prec UNARY
 			{ /* We could do more error checking here, but
 			     it doesn't seem worthwhile.  */
-			  write_exp_elt_opcode (UNOP_CAST);
-			  write_exp_elt_type ($3);
-			  write_exp_elt_opcode (UNOP_CAST); }
+			  write_exp_elt_opcode (UNOP_CAST_TYPE); }
 	;
 
 string_exp:
@@ -720,6 +827,14 @@ exp	:	string_exp
 			    free ($1.tokens[i].ptr);
 			  free ($1.tokens);
 			}
+	;
+
+exp     :	NSSTRING	/* ObjC NextStep NSString constant
+				 * of the form '@' '"' string '"'.
+				 */
+			{ write_exp_elt_opcode (OP_OBJC_NSSTRING);
+			  write_exp_string ($1);
+			  write_exp_elt_opcode (OP_OBJC_NSSTRING); }
 	;
 
 /* C++.  */
@@ -955,19 +1070,27 @@ ptr_operator:
 		ptr_operator '*'
 			{ insert_type (tp_pointer); }
 		const_or_volatile_or_space_identifier
-			{ $$ = 0; }
 	|	'*' 
 			{ insert_type (tp_pointer); }
 		const_or_volatile_or_space_identifier
-			{ $$ = 0; }
 	|	'&'
-			{ insert_type (tp_reference); $$ = 0; }
+			{ insert_type (tp_reference); }
 	|	'&' ptr_operator
-			{ insert_type (tp_reference); $$ = 0; }
+			{ insert_type (tp_reference); }
 	;
 
-abs_decl:	ptr_operator direct_abs_decl
-	|	ptr_operator
+ptr_operator_ts: ptr_operator
+			{
+			  $$ = get_type_stack ();
+			  /* This cleanup is eventually run by
+			     c_parse.  */
+			  make_cleanup (type_stack_cleanup, $$);
+			}
+	;
+
+abs_decl:	ptr_operator_ts direct_abs_decl
+			{ $$ = append_type_stack ($2, $1); }
+	|	ptr_operator_ts 
 	|	direct_abs_decl
 	;
 
@@ -975,32 +1098,45 @@ direct_abs_decl: '(' abs_decl ')'
 			{ $$ = $2; }
 	|	direct_abs_decl array_mod
 			{
+			  push_type_stack ($1);
 			  push_type_int ($2);
 			  push_type (tp_array);
+			  $$ = get_type_stack ();
 			}
 	|	array_mod
 			{
 			  push_type_int ($1);
 			  push_type (tp_array);
-			  $$ = 0;
+			  $$ = get_type_stack ();
 			}
 
 	| 	direct_abs_decl func_mod
-			{ push_type (tp_function); }
+			{
+			  push_type_stack ($1);
+			  push_typelist ($2);
+			  $$ = get_type_stack ();
+			}
 	|	func_mod
-			{ push_type (tp_function); }
+			{
+			  push_typelist ($1);
+			  $$ = get_type_stack ();
+			}
 	;
 
 array_mod:	'[' ']'
 			{ $$ = -1; }
+	|	OBJC_LBRAC ']'
+			{ $$ = -1; }
 	|	'[' INT ']'
+			{ $$ = $2.val; }
+	|	OBJC_LBRAC INT ']'
 			{ $$ = $2.val; }
 	;
 
 func_mod:	'(' ')'
-			{ $$ = 0; }
-	|	'(' nonempty_typelist ')'
-			{ free ($2); $$ = 0; }
+			{ $$ = NULL; }
+	|	'(' parameter_typelist ')'
+			{ $$ = $2; }
 	;
 
 /* We used to try to recognize pointer to member types here, but
@@ -1197,22 +1333,37 @@ typename:	TYPENAME
 		}
 	;
 
+parameter_typelist:
+		nonempty_typelist
+			{ check_parameter_typelist ($1); }
+	|	nonempty_typelist ',' DOTDOTDOT
+			{
+			  VEC_safe_push (type_ptr, $1, NULL);
+			  check_parameter_typelist ($1);
+			  $$ = $1;
+			}
+	;
+
 nonempty_typelist
 	:	type
-		{ $$ = (struct type **) malloc (sizeof (struct type *) * 2);
-		  $<ivec>$[0] = 1;	/* Number of types in vector */
-		  $$[1] = $1;
+		{
+		  VEC (type_ptr) *typelist = NULL;
+		  VEC_safe_push (type_ptr, typelist, $1);
+		  $$ = typelist;
 		}
 	|	nonempty_typelist ',' type
-		{ int len = sizeof (struct type *) * (++($<ivec>1[0]) + 1);
-		  $$ = (struct type **) realloc ((char *) $1, len);
-		  $$[$<ivec>$[0]] = $3;
+		{
+		  VEC_safe_push (type_ptr, $1, $3);
+		  $$ = $1;
 		}
 	;
 
 ptype	:	typebase
 	|	ptype abs_decl
-		{ $$ = follow_types ($1); }
+		{
+		  push_type_stack ($2);
+		  $$ = follow_types ($1);
+		}
 	;
 
 conversion_type_id: typebase conversion_declarator
@@ -1244,6 +1395,10 @@ operator:	OPERATOR NEW
 	|	OPERATOR NEW '[' ']'
 			{ $$ = operator_stoken (" new[]"); }
 	|	OPERATOR DELETE '[' ']'
+			{ $$ = operator_stoken (" delete[]"); }
+	|	OPERATOR NEW OBJC_LBRAC ']'
+			{ $$ = operator_stoken (" new[]"); }
+	|	OPERATOR DELETE OBJC_LBRAC ']'
 			{ $$ = operator_stoken (" delete[]"); }
 	|	OPERATOR '+'
 			{ $$ = operator_stoken ("+"); }
@@ -1341,12 +1496,15 @@ operator:	OPERATOR NEW
 			{ $$ = operator_stoken ("()"); }
 	|	OPERATOR '[' ']'
 			{ $$ = operator_stoken ("[]"); }
+	|	OPERATOR OBJC_LBRAC ']'
+			{ $$ = operator_stoken ("[]"); }
 	|	OPERATOR conversion_type_id
 			{ char *name;
 			  long length;
 			  struct ui_file *buf = mem_fileopen ();
 
-			  c_print_type ($2, NULL, buf, -1, 0);
+			  c_print_type ($2, NULL, buf, -1, 0,
+					&type_print_raw_options);
 			  name = ui_file_xstrdup (buf, &length);
 			  ui_file_delete (buf);
 			  $$ = operator_stoken (name);
@@ -1402,6 +1560,37 @@ operator_stoken (const char *op)
   make_cleanup (free, st.ptr);
   return st;
 };
+
+/* Validate a parameter typelist.  */
+
+static void
+check_parameter_typelist (VEC (type_ptr) *params)
+{
+  struct type *type;
+  int ix;
+
+  for (ix = 0; VEC_iterate (type_ptr, params, ix, type); ++ix)
+    {
+      if (type != NULL && TYPE_CODE (check_typedef (type)) == TYPE_CODE_VOID)
+	{
+	  if (ix == 0)
+	    {
+	      if (VEC_length (type_ptr, params) == 1)
+		{
+		  /* Ok.  */
+		  break;
+		}
+	      VEC_free (type_ptr, params);
+	      error (_("parameter types following 'void'"));
+	    }
+	  else
+	    {
+	      VEC_free (type_ptr, params);
+	      error (_("'void' invalid as parameter type"));
+	    }
+	}
+    }
+}
 
 /* Take care of parsing a number (anything that starts with a digit).
    Set yylval and return the token type; update lexptr.
@@ -1818,6 +2007,7 @@ parse_string_or_char (char *tokptr, char **outptr, struct typed_stoken *value,
 {
   int quote;
   enum c_string_type type;
+  int is_objc = 0;
 
   /* Build the gdb internal form of the input string in tempbuf.  Note
      that the buffer is null byte terminated *only* for the
@@ -1848,6 +2038,13 @@ parse_string_or_char (char *tokptr, char **outptr, struct typed_stoken *value,
   else if (*tokptr == 'U')
     {
       type = C_STRING_32;
+      ++tokptr;
+    }
+  else if (*tokptr == '@')
+    {
+      /* An Objective C string.  */
+      is_objc = 1;
+      type = C_STRING;
       ++tokptr;
     }
   else
@@ -1897,22 +2094,38 @@ parse_string_or_char (char *tokptr, char **outptr, struct typed_stoken *value,
 
   *outptr = tokptr;
 
-  return quote == '"' ? STRING : CHAR;
+  return quote == '"' ? (is_objc ? NSSTRING : STRING) : CHAR;
 }
+
+/* This is used to associate some attributes with a token.  */
+
+enum token_flags
+{
+  /* If this bit is set, the token is C++-only.  */
+
+  FLAG_CXX = 1,
+
+  /* If this bit is set, the token is conditional: if there is a
+     symbol of the same name, then the token is a symbol; otherwise,
+     the token is a keyword.  */
+
+  FLAG_SHADOW = 2
+};
 
 struct token
 {
   char *operator;
   int token;
   enum exp_opcode opcode;
-  int cxx_only;
+  enum token_flags flags;
 };
 
 static const struct token tokentab3[] =
   {
     {">>=", ASSIGN_MODIFY, BINOP_RSH, 0},
     {"<<=", ASSIGN_MODIFY, BINOP_LSH, 0},
-    {"->*", ARROW_STAR, BINOP_END, 1}
+    {"->*", ARROW_STAR, BINOP_END, FLAG_CXX},
+    {"...", DOTDOTDOT, BINOP_END, 0}
   };
 
 static const struct token tokentab2[] =
@@ -1939,48 +2152,54 @@ static const struct token tokentab2[] =
     {"!=", NOTEQUAL, BINOP_END, 0},
     {"<=", LEQ, BINOP_END, 0},
     {">=", GEQ, BINOP_END, 0},
-    {".*", DOT_STAR, BINOP_END, 1}
+    {".*", DOT_STAR, BINOP_END, FLAG_CXX}
   };
 
 /* Identifier-like tokens.  */
 static const struct token ident_tokens[] =
   {
     {"unsigned", UNSIGNED, OP_NULL, 0},
-    {"template", TEMPLATE, OP_NULL, 1},
+    {"template", TEMPLATE, OP_NULL, FLAG_CXX},
     {"volatile", VOLATILE_KEYWORD, OP_NULL, 0},
     {"struct", STRUCT, OP_NULL, 0},
     {"signed", SIGNED_KEYWORD, OP_NULL, 0},
     {"sizeof", SIZEOF, OP_NULL, 0},
     {"double", DOUBLE_KEYWORD, OP_NULL, 0},
-    {"false", FALSEKEYWORD, OP_NULL, 1},
-    {"class", CLASS, OP_NULL, 1},
+    {"false", FALSEKEYWORD, OP_NULL, FLAG_CXX},
+    {"class", CLASS, OP_NULL, FLAG_CXX},
     {"union", UNION, OP_NULL, 0},
     {"short", SHORT, OP_NULL, 0},
     {"const", CONST_KEYWORD, OP_NULL, 0},
     {"enum", ENUM, OP_NULL, 0},
     {"long", LONG, OP_NULL, 0},
-    {"true", TRUEKEYWORD, OP_NULL, 1},
+    {"true", TRUEKEYWORD, OP_NULL, FLAG_CXX},
     {"int", INT_KEYWORD, OP_NULL, 0},
-    {"new", NEW, OP_NULL, 1},
-    {"delete", DELETE, OP_NULL, 1},
-    {"operator", OPERATOR, OP_NULL, 1},
+    {"new", NEW, OP_NULL, FLAG_CXX},
+    {"delete", DELETE, OP_NULL, FLAG_CXX},
+    {"operator", OPERATOR, OP_NULL, FLAG_CXX},
 
-    {"and", ANDAND, BINOP_END, 1},
-    {"and_eq", ASSIGN_MODIFY, BINOP_BITWISE_AND, 1},
-    {"bitand", '&', OP_NULL, 1},
-    {"bitor", '|', OP_NULL, 1},
-    {"compl", '~', OP_NULL, 1},
-    {"not", '!', OP_NULL, 1},
-    {"not_eq", NOTEQUAL, BINOP_END, 1},
-    {"or", OROR, BINOP_END, 1},
-    {"or_eq", ASSIGN_MODIFY, BINOP_BITWISE_IOR, 1},
-    {"xor", '^', OP_NULL, 1},
-    {"xor_eq", ASSIGN_MODIFY, BINOP_BITWISE_XOR, 1},
+    {"and", ANDAND, BINOP_END, FLAG_CXX},
+    {"and_eq", ASSIGN_MODIFY, BINOP_BITWISE_AND, FLAG_CXX},
+    {"bitand", '&', OP_NULL, FLAG_CXX},
+    {"bitor", '|', OP_NULL, FLAG_CXX},
+    {"compl", '~', OP_NULL, FLAG_CXX},
+    {"not", '!', OP_NULL, FLAG_CXX},
+    {"not_eq", NOTEQUAL, BINOP_END, FLAG_CXX},
+    {"or", OROR, BINOP_END, FLAG_CXX},
+    {"or_eq", ASSIGN_MODIFY, BINOP_BITWISE_IOR, FLAG_CXX},
+    {"xor", '^', OP_NULL, FLAG_CXX},
+    {"xor_eq", ASSIGN_MODIFY, BINOP_BITWISE_XOR, FLAG_CXX},
 
-    {"const_cast", CONST_CAST, OP_NULL, 1 },
-    {"dynamic_cast", DYNAMIC_CAST, OP_NULL, 1 },
-    {"static_cast", STATIC_CAST, OP_NULL, 1 },
-    {"reinterpret_cast", REINTERPRET_CAST, OP_NULL, 1 }
+    {"const_cast", CONST_CAST, OP_NULL, FLAG_CXX },
+    {"dynamic_cast", DYNAMIC_CAST, OP_NULL, FLAG_CXX },
+    {"static_cast", STATIC_CAST, OP_NULL, FLAG_CXX },
+    {"reinterpret_cast", REINTERPRET_CAST, OP_NULL, FLAG_CXX },
+
+    {"__typeof__", TYPEOF, OP_TYPEOF, 0 },
+    {"__typeof", TYPEOF, OP_TYPEOF, 0 },
+    {"typeof", TYPEOF, OP_TYPEOF, FLAG_SHADOW },
+    {"__decltype", DECLTYPE, OP_DECLTYPE, FLAG_CXX },
+    {"decltype", DECLTYPE, OP_DECLTYPE, FLAG_CXX | FLAG_SHADOW }
   };
 
 /* When we find that lexptr (the global var defined in parse.c) is
@@ -2116,7 +2335,7 @@ lex_one_token (void)
   for (i = 0; i < sizeof tokentab3 / sizeof tokentab3[0]; i++)
     if (strncmp (tokstart, tokentab3[i].operator, 3) == 0)
       {
-	if (tokentab3[i].cxx_only
+	if ((tokentab3[i].flags & FLAG_CXX) != 0
 	    && parse_language->la_language != language_cplus)
 	  break;
 
@@ -2129,7 +2348,7 @@ lex_one_token (void)
   for (i = 0; i < sizeof tokentab2 / sizeof tokentab2[0]; i++)
     if (strncmp (tokstart, tokentab2[i].operator, 2) == 0)
       {
-	if (tokentab2[i].cxx_only
+	if ((tokentab2[i].flags & FLAG_CXX) != 0
 	    && parse_language->la_language != language_cplus)
 	  break;
 
@@ -2174,6 +2393,8 @@ lex_one_token (void)
     case '(':
       paren_depth++;
       lexptr++;
+      if (parse_language->la_language == language_objc && c == '[')
+	return OBJC_LBRAC;
       return c;
 
     case ']':
@@ -2270,6 +2491,20 @@ lex_one_token (void)
 	char *p = &tokstart[1];
 	size_t len = strlen ("entry");
 
+	if (parse_language->la_language == language_objc)
+	  {
+	    size_t len = strlen ("selector");
+
+	    if (strncmp (p, "selector", len) == 0
+		&& (p[len] == '\0' || isspace (p[len])))
+	      {
+		lexptr = p + len;
+		return SELECTOR;
+	      }
+	    else if (*p == '"')
+	      goto parse_string;
+	  }
+
 	while (isspace (*p))
 	  p++;
 	if (strncmp (p, "entry", len) == 0 && !isalnum (p[len])
@@ -2309,6 +2544,8 @@ lex_one_token (void)
       /* Fall through.  */
     case '\'':
     case '"':
+
+    parse_string:
       {
 	int host_len;
 	int result = parse_string_or_char (tokstart, &lexptr, &yylval.tsval,
@@ -2403,9 +2640,25 @@ lex_one_token (void)
   for (i = 0; i < sizeof ident_tokens / sizeof ident_tokens[0]; i++)
     if (strcmp (copy, ident_tokens[i].operator) == 0)
       {
-	if (ident_tokens[i].cxx_only
+	if ((ident_tokens[i].flags & FLAG_CXX) != 0
 	    && parse_language->la_language != language_cplus)
 	  break;
+
+	if ((ident_tokens[i].flags & FLAG_SHADOW) != 0)
+	  {
+	    int is_a_field_of_this = 0;
+
+	    if (lookup_symbol (copy, expression_context_block,
+			       VAR_DOMAIN,
+			       (parse_language->la_language == language_cplus
+				? &is_a_field_of_this
+				: NULL))
+		!= NULL)
+	      {
+		/* The keyword is shadowed.  */
+		break;
+	      }
+	  }
 
 	/* It is ok to always set this, even though we don't always
 	   strictly need to.  */
@@ -2455,7 +2708,7 @@ classify_name (struct block *block)
   copy = copy_name (yylval.sval);
 
   sym = lookup_symbol (copy, block, VAR_DOMAIN, 
-		       parse_language->la_language == language_cplus
+		       parse_language->la_name_of_this
 		       ? &is_a_field_of_this : (int *) NULL);
 
   if (sym && SYMBOL_CLASS (sym) == LOC_BLOCK)
@@ -2488,6 +2741,20 @@ classify_name (struct block *block)
 					      parse_gdbarch, copy);
   if (yylval.tsym.type != NULL)
     return TYPENAME;
+
+  /* See if it's an ObjC classname.  */
+  if (parse_language->la_language == language_objc && !sym)
+    {
+      CORE_ADDR Class = lookup_objc_class (parse_gdbarch, copy);
+      if (Class)
+	{
+	  yylval.class.class = Class;
+	  sym = lookup_struct_typedef (copy, expression_context_block, 1);
+	  if (sym)
+	    yylval.class.type = SYMBOL_TYPE (sym);
+	  return CLASSNAME;
+	}
+    }
 
   /* Input names that aren't symbols but ARE valid hex numbers, when
      the input radix permits them, can be names or numbers depending

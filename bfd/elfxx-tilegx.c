@@ -490,21 +490,21 @@ static reloc_howto_type tilegx_elf_howto_table [] =
 
   TILEGX_IMM16_HOWTO (R_TILEGX_IMM16_X0_HW0_GOT, 0),
   TILEGX_IMM16_HOWTO (R_TILEGX_IMM16_X1_HW0_GOT, 0),
-  /* These relocs are currently not defined.  */
-  EMPTY_HOWTO (66),
-  EMPTY_HOWTO (67),
-  EMPTY_HOWTO (68),
-  EMPTY_HOWTO (69),
-  EMPTY_HOWTO (70),
-  EMPTY_HOWTO (71),
+
+  TILEGX_IMM16_HOWTO_PCREL (R_TILEGX_IMM16_X0_HW0_PLT_PCREL, 0),
+  TILEGX_IMM16_HOWTO_PCREL (R_TILEGX_IMM16_X1_HW0_PLT_PCREL, 0),
+  TILEGX_IMM16_HOWTO_PCREL (R_TILEGX_IMM16_X0_HW1_PLT_PCREL, 16),
+  TILEGX_IMM16_HOWTO_PCREL (R_TILEGX_IMM16_X1_HW1_PLT_PCREL, 16),
+  TILEGX_IMM16_HOWTO_PCREL (R_TILEGX_IMM16_X0_HW2_PLT_PCREL, 32),
+  TILEGX_IMM16_HOWTO_PCREL (R_TILEGX_IMM16_X1_HW2_PLT_PCREL, 32),
 
   TILEGX_IMM16_HOWTO_LAST (R_TILEGX_IMM16_X0_HW0_LAST_GOT, 0),
   TILEGX_IMM16_HOWTO_LAST (R_TILEGX_IMM16_X1_HW0_LAST_GOT, 0),
   TILEGX_IMM16_HOWTO_LAST (R_TILEGX_IMM16_X0_HW1_LAST_GOT, 16),
   TILEGX_IMM16_HOWTO_LAST (R_TILEGX_IMM16_X1_HW1_LAST_GOT, 16),
-  /* These relocs are currently not defined.  */
-  EMPTY_HOWTO (76),
-  EMPTY_HOWTO (77),
+
+  TILEGX_IMM16_HOWTO_PCREL (R_TILEGX_IMM16_X0_HW3_PLT_PCREL, 48),
+  TILEGX_IMM16_HOWTO_PCREL (R_TILEGX_IMM16_X1_HW3_PLT_PCREL, 48),
 
   TILEGX_IMM16_HOWTO (R_TILEGX_IMM16_X0_HW0_TLS_GD, 0),
   TILEGX_IMM16_HOWTO (R_TILEGX_IMM16_X1_HW0_TLS_GD, 0),
@@ -530,12 +530,13 @@ static reloc_howto_type tilegx_elf_howto_table [] =
 
   TILEGX_IMM16_HOWTO_TLS_IE (R_TILEGX_IMM16_X0_HW0_TLS_IE, 0),
   TILEGX_IMM16_HOWTO_TLS_IE (R_TILEGX_IMM16_X1_HW0_TLS_IE, 0),
-  EMPTY_HOWTO (94),
-  EMPTY_HOWTO (95),
-  EMPTY_HOWTO (96),
-  EMPTY_HOWTO (97),
-  EMPTY_HOWTO (98),
-  EMPTY_HOWTO (99),
+
+  TILEGX_IMM16_HOWTO_LAST_PCREL (R_TILEGX_IMM16_X0_HW0_LAST_PLT_PCREL,  0),
+  TILEGX_IMM16_HOWTO_LAST_PCREL (R_TILEGX_IMM16_X1_HW0_LAST_PLT_PCREL,  0),
+  TILEGX_IMM16_HOWTO_LAST_PCREL (R_TILEGX_IMM16_X0_HW1_LAST_PLT_PCREL, 16),
+  TILEGX_IMM16_HOWTO_LAST_PCREL (R_TILEGX_IMM16_X1_HW1_LAST_PLT_PCREL, 16),
+  TILEGX_IMM16_HOWTO_LAST_PCREL (R_TILEGX_IMM16_X0_HW2_LAST_PLT_PCREL, 32),
+  TILEGX_IMM16_HOWTO_LAST_PCREL (R_TILEGX_IMM16_X1_HW2_LAST_PLT_PCREL, 32),
 
 #define TILEGX_IMM16_HOWTO_LAST_TLS_IE(name, rshift) \
   HOWTO (name, rshift, 1, 16, FALSE, 0, \
@@ -713,10 +714,18 @@ static const reloc_map tilegx_reloc_map [] =
   SIMPLE_REMAP (TILEGX_IMM16_X1_HW2_LAST_PCREL)
   SIMPLE_REMAP (TILEGX_IMM16_X0_HW0_GOT)
   SIMPLE_REMAP (TILEGX_IMM16_X1_HW0_GOT)
+  SIMPLE_REMAP (TILEGX_IMM16_X0_HW0_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X1_HW0_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X0_HW1_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X1_HW1_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X0_HW2_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X1_HW2_PLT_PCREL)
   SIMPLE_REMAP (TILEGX_IMM16_X0_HW0_LAST_GOT)
   SIMPLE_REMAP (TILEGX_IMM16_X1_HW0_LAST_GOT)
   SIMPLE_REMAP (TILEGX_IMM16_X0_HW1_LAST_GOT)
   SIMPLE_REMAP (TILEGX_IMM16_X1_HW1_LAST_GOT)
+  SIMPLE_REMAP (TILEGX_IMM16_X0_HW3_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X1_HW3_PLT_PCREL)
   SIMPLE_REMAP (TILEGX_IMM16_X0_HW0_TLS_GD)
   SIMPLE_REMAP (TILEGX_IMM16_X1_HW0_TLS_GD)
   SIMPLE_REMAP (TILEGX_IMM16_X0_HW0_TLS_LE)
@@ -731,6 +740,12 @@ static const reloc_map tilegx_reloc_map [] =
   SIMPLE_REMAP (TILEGX_IMM16_X1_HW1_LAST_TLS_GD)
   SIMPLE_REMAP (TILEGX_IMM16_X0_HW0_TLS_IE)
   SIMPLE_REMAP (TILEGX_IMM16_X1_HW0_TLS_IE)
+  SIMPLE_REMAP (TILEGX_IMM16_X0_HW0_LAST_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X1_HW0_LAST_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X0_HW1_LAST_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X1_HW1_LAST_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X0_HW2_LAST_PLT_PCREL)
+  SIMPLE_REMAP (TILEGX_IMM16_X1_HW2_LAST_PLT_PCREL)
   SIMPLE_REMAP (TILEGX_IMM16_X0_HW0_LAST_TLS_IE)
   SIMPLE_REMAP (TILEGX_IMM16_X1_HW0_LAST_TLS_IE)
   SIMPLE_REMAP (TILEGX_IMM16_X0_HW1_LAST_TLS_IE)
@@ -1027,18 +1042,6 @@ static const tilegx_create_func reloc_to_create_func[] =
   create_Imm16_X1,
   create_Imm16_X0,
   create_Imm16_X1,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  create_Imm16_X0,
-  create_Imm16_X1,
-  create_Imm16_X0,
-  create_Imm16_X1,
-  NULL,
-  NULL,
   create_Imm16_X0,
   create_Imm16_X1,
   create_Imm16_X0,
@@ -1051,16 +1054,28 @@ static const tilegx_create_func reloc_to_create_func[] =
   create_Imm16_X1,
   create_Imm16_X0,
   create_Imm16_X1,
-  NULL,
-  NULL,
+  create_Imm16_X0,
+  create_Imm16_X1,
+  create_Imm16_X0,
+  create_Imm16_X1,
+  create_Imm16_X0,
+  create_Imm16_X1,
+  create_Imm16_X0,
+  create_Imm16_X1,
+  create_Imm16_X0,
+  create_Imm16_X1,
   create_Imm16_X0,
   create_Imm16_X1,
   NULL,
   NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
+  create_Imm16_X0,
+  create_Imm16_X1,
+  create_Imm16_X0,
+  create_Imm16_X1,
+  create_Imm16_X0,
+  create_Imm16_X1,
+  create_Imm16_X0,
+  create_Imm16_X1,
   create_Imm16_X0,
   create_Imm16_X1,
   create_Imm16_X0,
@@ -1424,23 +1439,23 @@ tilegx_elf_create_got_section (bfd *abfd, struct bfd_link_info *info)
   struct elf_link_hash_table *htab = elf_hash_table (info);
 
   /* This function may be called more than once.  */
-  s = bfd_get_section_by_name (abfd, ".got");
-  if (s != NULL && (s->flags & SEC_LINKER_CREATED) != 0)
+  s = bfd_get_linker_section (abfd, ".got");
+  if (s != NULL)
     return TRUE;
 
   flags = bed->dynamic_sec_flags;
 
-  s = bfd_make_section_with_flags (abfd,
-				   (bed->rela_plts_and_copies_p
-				    ? ".rela.got" : ".rel.got"),
-				   (bed->dynamic_sec_flags
-				    | SEC_READONLY));
+  s = bfd_make_section_anyway_with_flags (abfd,
+					  (bed->rela_plts_and_copies_p
+					   ? ".rela.got" : ".rel.got"),
+					  (bed->dynamic_sec_flags
+					   | SEC_READONLY));
   if (s == NULL
       || ! bfd_set_section_alignment (abfd, s, bed->s->log_file_align))
     return FALSE;
   htab->srelgot = s;
 
-  s = s_got = bfd_make_section_with_flags (abfd, ".got", flags);
+  s = s_got = bfd_make_section_anyway_with_flags (abfd, ".got", flags);
   if (s == NULL
       || !bfd_set_section_alignment (abfd, s, bed->s->log_file_align))
     return FALSE;
@@ -1451,7 +1466,7 @@ tilegx_elf_create_got_section (bfd *abfd, struct bfd_link_info *info)
 
   if (bed->want_got_plt)
     {
-      s = bfd_make_section_with_flags (abfd, ".got.plt", flags);
+      s = bfd_make_section_anyway_with_flags (abfd, ".got.plt", flags);
       if (s == NULL
 	  || !bfd_set_section_alignment (abfd, s,
 					 bed->s->log_file_align))
@@ -1497,9 +1512,9 @@ tilegx_elf_create_dynamic_sections (bfd *dynobj,
   if (!_bfd_elf_create_dynamic_sections (dynobj, info))
     return FALSE;
 
-  htab->sdynbss = bfd_get_section_by_name (dynobj, ".dynbss");
+  htab->sdynbss = bfd_get_linker_section (dynobj, ".dynbss");
   if (!info->shared)
-    htab->srelbss = bfd_get_section_by_name (dynobj, ".rela.bss");
+    htab->srelbss = bfd_get_linker_section (dynobj, ".rela.bss");
 
   if (!htab->elf.splt || !htab->elf.srelplt || !htab->sdynbss
       || (!info->shared && !htab->srelbss))
@@ -1855,6 +1870,20 @@ tilegx_elf_check_relocs (bfd *abfd, struct bfd_link_info *info,
 	  /* Fall through */
 
         case R_TILEGX_JUMPOFF_X1_PLT:
+	case R_TILEGX_IMM16_X0_HW0_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW0_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW1_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW1_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW2_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW2_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW3_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW3_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW0_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW0_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW1_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW1_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW2_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW2_LAST_PLT_PCREL:
 	  /* This symbol requires a procedure linkage table entry.  We
 	     actually build the entry in adjust_dynamic_symbol,
 	     because this might be a case of linking PIC code without
@@ -2248,6 +2277,20 @@ tilegx_elf_gc_sweep_hook (bfd *abfd, struct bfd_link_info *info,
 	  /* Fall through.  */
 
         case R_TILEGX_JUMPOFF_X1_PLT:
+	case R_TILEGX_IMM16_X0_HW0_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW0_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW1_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW1_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW2_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW2_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW3_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW3_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW0_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW0_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW1_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW1_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW2_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW2_LAST_PLT_PCREL:
 	  if (h != NULL)
 	    {
 	      if (h->plt.refcount > 0)
@@ -2427,10 +2470,10 @@ allocate_dynrelocs (struct elf_link_hash_entry *h, void *inf)
 	  /* Allocate room for the header and tail.  */
 	  if (s->size == 0)
 	    {
-	      s->size = PLT_HEADER_SIZE + PLT_TAIL_SIZE;
+	      s->size = PLT_ENTRY_SIZE;
 	    }
 
-          h->plt.offset = s->size - PLT_TAIL_SIZE;
+          h->plt.offset = s->size - PLT_ENTRY_SIZE + PLT_HEADER_SIZE;
 
 	  /* If this symbol is not defined in a regular file, and we are
 	     not generating a shared library, then set the symbol to this
@@ -2655,7 +2698,7 @@ tilegx_elf_size_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
       /* Set the contents of the .interp section to the interpreter.  */
       if (info->executable)
 	{
-	  s = bfd_get_section_by_name (dynobj, ".interp");
+	  s = bfd_get_linker_section (dynobj, ".interp");
 	  BFD_ASSERT (s != NULL);
 	  s->size = strlen (htab->dynamic_interpreter) + 1;
 	  s->contents = (unsigned char *) htab->dynamic_interpreter;
@@ -3436,10 +3479,24 @@ tilegx_elf_relocate_section (bfd *output_bfd, struct bfd_link_info *info,
 		  local_got_offsets[r_symndx] |= 1;
 		}
 	    }
-	  relocation = htab->elf.sgot->output_offset + off - got_base;
+	  relocation = off - got_base;
 	  break;
 
         case R_TILEGX_JUMPOFF_X1_PLT:
+	case R_TILEGX_IMM16_X0_HW0_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW0_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW1_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW1_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW2_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW2_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW3_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW3_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW0_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW0_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW1_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW1_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X0_HW2_LAST_PLT_PCREL:
+	case R_TILEGX_IMM16_X1_HW2_LAST_PLT_PCREL:
 	  /* Relocation is to the entry for this symbol in the
 	     procedure linkage table.  */
           BFD_ASSERT (h != NULL);
@@ -3869,7 +3926,7 @@ tilegx_elf_relocate_section (bfd *output_bfd, struct bfd_link_info *info,
 	  if (off >= (bfd_vma) -2)
 	    abort ();
 
-	  relocation = htab->elf.sgot->output_offset + off - got_base;
+	  relocation = off - got_base;
 	  unresolved_reloc = FALSE;
 	  howto = tilegx_elf_howto_table + r_type;
 	  break;
@@ -4116,8 +4173,7 @@ tilegx_elf_finish_dynamic_symbol (bfd *output_bfd,
       /* This symbols needs a copy reloc.  Set it up.  */
       BFD_ASSERT (h->dynindx != -1);
 
-      s = bfd_get_section_by_name (h->root.u.def.section->owner,
-				   ".rela.bss");
+      s = htab->srelbss;
       BFD_ASSERT (s != NULL);
 
       rela.r_offset = (h->root.u.def.value
@@ -4129,7 +4185,7 @@ tilegx_elf_finish_dynamic_symbol (bfd *output_bfd,
     }
 
   /* Mark some specially defined symbols as absolute. */
-  if (strcmp (h->root.root.string, "_DYNAMIC") == 0
+  if (h == htab->elf.hdynamic
       || (h == htab->elf.hgot || h == htab->elf.hplt))
     sym->st_shndx = SHN_ABS;
 
@@ -4191,19 +4247,20 @@ tilegx_elf_finish_dynamic_sections (bfd *output_bfd,
   bfd *dynobj;
   asection *sdyn;
   struct tilegx_elf_link_hash_table *htab;
+  size_t pad_size;
 
   htab = tilegx_elf_hash_table (info);
   BFD_ASSERT (htab != NULL);
   dynobj = htab->elf.dynobj;
 
-  sdyn = bfd_get_section_by_name (dynobj, ".dynamic");
+  sdyn = bfd_get_linker_section (dynobj, ".dynamic");
 
   if (elf_hash_table (info)->dynamic_sections_created)
     {
       asection *splt;
       bfd_boolean ret;
 
-      splt = bfd_get_section_by_name (dynobj, ".plt");
+      splt = htab->elf.splt;
       BFD_ASSERT (splt != NULL && sdyn != NULL);
 
       ret = tilegx_finish_dyn (output_bfd, info, dynobj, sdyn, splt);
@@ -4219,10 +4276,15 @@ tilegx_elf_finish_dynamic_sections (bfd *output_bfd,
 		    tilegx64_plt0_entry : tilegx32_plt0_entry,
 		  PLT_HEADER_SIZE);
 
-	  memcpy (splt->contents + splt->size - PLT_TAIL_SIZE,
+	  memcpy (splt->contents + splt->size
+		  - PLT_ENTRY_SIZE + PLT_HEADER_SIZE,
 		  ABI_64_P (output_bfd) ?
 		    tilegx64_plt_tail_entry : tilegx32_plt_tail_entry,
 		  PLT_TAIL_SIZE);
+	  /* Add padding so that the plt section is a multiple of its
+	     entry size.  */
+	  pad_size = PLT_ENTRY_SIZE - PLT_HEADER_SIZE - PLT_TAIL_SIZE;
+	  memset (splt->contents + splt->size - pad_size, 0, pad_size);
 	}
 
       elf_section_data (splt->output_section)->this_hdr.sh_entsize

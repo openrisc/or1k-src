@@ -408,12 +408,14 @@ Layout::Layout(int number_of_input_files, Script_options* script_options)
     resized_signatures_(false),
     have_stabstr_section_(false),
     section_ordering_specified_(false),
+    unique_segment_for_sections_specified_(false),
     incremental_inputs_(NULL),
     record_output_section_data_from_script_(false),
     script_output_section_data_list_(),
     segment_states_(NULL),
     relaxation_debug_check_(NULL),
     section_order_map_(),
+    section_segment_map_(),
     input_section_position_(),
     input_section_glob_(),
     incremental_base_(NULL),
@@ -580,7 +582,8 @@ bool
 Layout::include_section(Sized_relobj_file<size, big_endian>*, const char* name,
 			const elfcpp::Shdr<size, big_endian>& shdr)
 {
-  if (shdr.get_sh_flags() & elfcpp::SHF_EXCLUDE)
+  if (!parameters->options().relocatable()
+      && (shdr.get_sh_flags() & elfcpp::SHF_EXCLUDE))
     return false;
 
   switch (shdr.get_sh_type())
@@ -606,8 +609,7 @@ Layout::include_section(Sized_relobj_file<size, big_endian>*, const char* name,
     case elfcpp::SHT_GROUP:
       // If we are emitting relocations these should be handled
       // elsewhere.
-      gold_assert(!parameters->options().relocatable()
-		  && !parameters->options().emit_relocs());
+      gold_assert(!parameters->options().relocatable());
       return false;
 
     case elfcpp::SHT_PROGBITS:
@@ -805,6 +807,47 @@ Layout::get_output_section(const char* name, Stringpool::Key name_key,
     }
 }
 
+// Returns TRUE iff NAME (an input section from RELOBJ) will
+// be mapped to an output section that should be KEPT.
+
+bool
+Layout::keep_input_section(const Relobj* relobj, const char* name)
+{
+  if (! this->script_options_->saw_sections_clause())
+    return false;
+
+  Script_sections* ss = this->script_options_->script_sections();
+  const char* file_name = relobj == NULL ? NULL : relobj->name().c_str();
+  Output_section** output_section_slot;
+  Script_sections::Section_type script_section_type;
+  bool keep;
+
+  name = ss->output_section_name(file_name, name, &output_section_slot,
+				 &script_section_type, &keep);
+  return name != NULL && keep;
+}
+
+// Clear the input section flags that should not be copied to the
+// output section.
+
+elfcpp::Elf_Xword
+Layout::get_output_section_flags(elfcpp::Elf_Xword input_section_flags)
+{
+  // Some flags in the input section should not be automatically
+  // copied to the output section.
+  input_section_flags &= ~ (elfcpp::SHF_INFO_LINK
+			    | elfcpp::SHF_GROUP
+			    | elfcpp::SHF_MERGE
+			    | elfcpp::SHF_STRINGS);
+
+  // We only clear the SHF_LINK_ORDER flag in for
+  // a non-relocatable link.
+  if (!parameters->options().relocatable())
+    input_section_flags &= ~elfcpp::SHF_LINK_ORDER;
+
+  return input_section_flags;
+}
+
 // Pick the output section to use for section NAME, in input file
 // RELOBJ, with type TYPE and flags FLAGS.  RELOBJ may be NULL for a
 // linker created section.  IS_INPUT_SECTION is true if we are
@@ -823,17 +866,7 @@ Layout::choose_output_section(const Relobj* relobj, const char* name,
   // sections to segments.
   gold_assert(!is_input_section || !this->sections_are_attached_);
 
-  // Some flags in the input section should not be automatically
-  // copied to the output section.
-  flags &= ~ (elfcpp::SHF_INFO_LINK
-	      | elfcpp::SHF_GROUP
-	      | elfcpp::SHF_MERGE
-	      | elfcpp::SHF_STRINGS);
-
-  // We only clear the SHF_LINK_ORDER flag in for
-  // a non-relocatable link.
-  if (!parameters->options().relocatable())
-    flags &= ~elfcpp::SHF_LINK_ORDER;
+  flags = this->get_output_section_flags(flags);
 
   if (this->script_options_->saw_sections_clause())
     {
@@ -845,8 +878,10 @@ Layout::choose_output_section(const Relobj* relobj, const char* name,
       Output_section** output_section_slot;
       Script_sections::Section_type script_section_type;
       const char* orig_name = name;
+      bool keep;
       name = ss->output_section_name(file_name, name, &output_section_slot,
-				     &script_section_type);
+				     &script_section_type, &keep);
+
       if (name == NULL)
 	{
 	  gold_debug(DEBUG_SCRIPT, _("Unable to create output section '%s' "
@@ -939,7 +974,12 @@ Layout::choose_output_section(const Relobj* relobj, const char* name,
   if (is_input_section
       && !this->script_options_->saw_sections_clause()
       && !parameters->options().relocatable())
-    name = Layout::output_section_name(relobj, name, &len);
+    {
+      const char *orig_name = name;
+      name = parameters->target().output_section_name(relobj, name, &len);
+      if (name == NULL)
+	name = Layout::output_section_name(relobj, orig_name, &len);
+    }
 
   Stringpool::Key name_key;
   name = this->namepool_.add_with_length(name, len, true, &name_key);
@@ -1028,9 +1068,37 @@ Layout::layout(Sized_relobj_file<size, big_endian>* object, unsigned int shndx,
     }
   else
     {
-      os = this->choose_output_section(object, name, sh_type,
-				       shdr.get_sh_flags(), true,
-				       ORDER_INVALID, false);
+      // Plugins can choose to place one or more subsets of sections in
+      // unique segments and this is done by mapping these section subsets
+      // to unique output sections.  Check if this section needs to be
+      // remapped to a unique output section.
+      Section_segment_map::iterator it
+	  = this->section_segment_map_.find(Const_section_id(object, shndx));
+      if (it == this->section_segment_map_.end())
+	{
+          os = this->choose_output_section(object, name, sh_type,
+					   shdr.get_sh_flags(), true,
+					   ORDER_INVALID, false);
+	}
+      else
+	{
+	  // We know the name of the output section, directly call
+	  // get_output_section here by-passing choose_output_section.
+	  elfcpp::Elf_Xword flags
+	    = this->get_output_section_flags(shdr.get_sh_flags());
+
+	  const char* os_name = it->second->name;
+	  Stringpool::Key name_key;
+	  os_name = this->namepool_.add(os_name, true, &name_key);
+	  os = this->get_output_section(os_name, name_key, sh_type, flags,
+					ORDER_INVALID, false);
+	  if (!os->is_unique_segment())
+	    {
+	      os->set_is_unique_segment();
+	      os->set_extra_segment_flags(it->second->flags);
+	      os->set_segment_alignment(it->second->align);
+	    }
+	}
       if (os == NULL)
 	return NULL;
     }
@@ -1088,6 +1156,15 @@ Layout::layout(Sized_relobj_file<size, big_endian>* object, unsigned int shndx,
   this->have_added_input_section_ = true;
 
   return os;
+}
+
+// Maps section SECN to SEGMENT s.
+void
+Layout::insert_section_segment_map(Const_section_id secn,
+				   Unique_segment_info *s)
+{
+  gold_assert(this->unique_segment_for_sections_specified_); 
+  this->section_segment_map_[secn] = s;
 }
 
 // Handle a relocation section when doing a relocatable link.
@@ -1692,6 +1769,10 @@ Layout::attach_allocated_section_to_segment(const Target* target,
 
   elfcpp::Elf_Word seg_flags = Layout::section_flags_to_segment(flags);
 
+  // If this output section's segment has extra flags that need to be set,
+  // coming from a linker plugin, do that.
+  seg_flags |= os->extra_segment_flags();
+
   // Check for --section-start.
   uint64_t addr;
   bool is_address_set = parameters->options().section_start(os->name(), &addr);
@@ -1704,45 +1785,51 @@ Layout::attach_allocated_section_to_segment(const Target* target,
   // have to use a linker script.
 
   Segment_list::const_iterator p;
-  for (p = this->segment_list_.begin();
-       p != this->segment_list_.end();
-       ++p)
+  if (!os->is_unique_segment())
     {
-      if ((*p)->type() != elfcpp::PT_LOAD)
-	continue;
-      if (!parameters->options().omagic()
-	  && ((*p)->flags() & elfcpp::PF_W) != (seg_flags & elfcpp::PF_W))
-	continue;
-      if ((target->isolate_execinstr() || parameters->options().rosegment())
-	  && ((*p)->flags() & elfcpp::PF_X) != (seg_flags & elfcpp::PF_X))
-	continue;
-      // If -Tbss was specified, we need to separate the data and BSS
-      // segments.
-      if (parameters->options().user_set_Tbss())
+      for (p = this->segment_list_.begin();
+ 	   p != this->segment_list_.end();
+	   ++p)
 	{
-	  if ((os->type() == elfcpp::SHT_NOBITS)
-	      == (*p)->has_any_data_sections())
-	    continue;
-	}
-      if (os->is_large_data_section() && !(*p)->is_large_data_segment())
-	continue;
-
-      if (is_address_set)
-	{
-	  if ((*p)->are_addresses_set())
-	    continue;
-
-	  (*p)->add_initial_output_data(os);
-	  (*p)->update_flags_for_output_section(seg_flags);
-	  (*p)->set_addresses(addr, addr);
-	  break;
-	}
-
-      (*p)->add_output_section_to_load(this, os, seg_flags);
-      break;
+	  if ((*p)->type() != elfcpp::PT_LOAD)                        
+	    continue;                        
+	  if ((*p)->is_unique_segment())                        
+	    continue;                        
+	  if (!parameters->options().omagic()                        
+	      && ((*p)->flags() & elfcpp::PF_W) != (seg_flags & elfcpp::PF_W))                        
+	    continue;                        
+	  if ((target->isolate_execinstr() || parameters->options().rosegment())                        
+	      && ((*p)->flags() & elfcpp::PF_X) != (seg_flags & elfcpp::PF_X))                        
+	    continue;                        
+	  // If -Tbss was specified, we need to separate the data and BSS                        
+	  // segments.                        
+	  if (parameters->options().user_set_Tbss())                        
+	    {                        
+	      if ((os->type() == elfcpp::SHT_NOBITS)                        
+	          == (*p)->has_any_data_sections())                        
+	        continue;                        
+	    }                        
+	  if (os->is_large_data_section() && !(*p)->is_large_data_segment())                        
+	    continue;                        
+	                    
+	  if (is_address_set)                        
+	    {                        
+	      if ((*p)->are_addresses_set())                        
+	        continue;                        
+	                    
+	      (*p)->add_initial_output_data(os);                        
+	      (*p)->update_flags_for_output_section(seg_flags);                        
+	      (*p)->set_addresses(addr, addr);                        
+	      break;                        
+	    }                        
+	                    
+	  (*p)->add_output_section_to_load(this, os, seg_flags);                        
+	  break;                        
+	}                        
     }
 
-  if (p == this->segment_list_.end())
+  if (p == this->segment_list_.end()
+      || os->is_unique_segment())
     {
       Output_segment* oseg = this->make_output_segment(elfcpp::PT_LOAD,
 						       seg_flags);
@@ -1751,6 +1838,14 @@ Layout::attach_allocated_section_to_segment(const Target* target,
       oseg->add_output_section_to_load(this, os, seg_flags);
       if (is_address_set)
 	oseg->set_addresses(addr, addr);
+      // Check if segment should be marked unique.  For segments marked
+      // unique by linker plugins, set the new alignment if specified.
+      if (os->is_unique_segment())
+	{
+	  oseg->set_is_unique_segment();
+	  if (os->segment_alignment() != 0)
+	    oseg->set_minimum_p_align(os->segment_alignment());
+	}
     }
 
   // If we see a loadable SHT_NOTE section, we create a PT_NOTE
@@ -2224,7 +2319,7 @@ Layout::relaxation_loop_body(
   // compatible with putting the segment headers and file headers into
   // that segment.
   if (parameters->options().user_set_Ttext()
-      && parameters->options().Ttext() % target->common_pagesize() != 0)
+      && parameters->options().Ttext() % target->abi_pagesize() != 0)
     {
       load_seg = NULL;
       phdr_seg = NULL;
@@ -3095,9 +3190,11 @@ Layout::segment_precedes(const Output_segment* seg1,
 
   // We shouldn't get here--we shouldn't create segments which we
   // can't distinguish.  Unless of course we are using a weird linker
-  // script or overlapping --section-start options.
+  // script or overlapping --section-start options.  We could also get
+  // here if plugins want unique segments for subsets of sections.
   gold_assert(this->script_options_->saw_phdrs_clause()
-	      || parameters->options().any_section_start());
+	      || parameters->options().any_section_start()
+	      || this->is_unique_segment_for_sections_specified());
   return false;
 }
 
@@ -3234,7 +3331,7 @@ Layout::set_segment_offsets(const Target* target, Output_segment* load_seg,
 
 	  if (!parameters->options().nmagic()
 	      && !parameters->options().omagic())
-	    (*p)->set_minimum_p_align(common_pagesize);
+	    (*p)->set_minimum_p_align(abi_pagesize);
 
 	  if (!are_addresses_set)
 	    {
@@ -3324,6 +3421,8 @@ Layout::set_segment_offsets(const Target* target, Output_segment* load_seg,
 		  *pshndx = shndx_hold;
 		  addr = align_address(aligned_addr, common_pagesize);
 		  addr = align_address(addr, (*p)->maximum_alignment());
+		  if ((addr & (abi_pagesize - 1)) != 0)
+		    addr = addr + abi_pagesize;
 		  off = orig_off + ((addr - orig_addr) & (abi_pagesize - 1));
 		  off = align_file_offset(off, addr, abi_pagesize);
 
@@ -4341,19 +4440,26 @@ Layout::add_target_dynamic_tags(bool use_rel, const Output_data* plt_got,
 			 use_rel ? elfcpp::DT_REL : elfcpp::DT_RELA);
     }
 
-  if (dyn_rel != NULL && dyn_rel->output_section() != NULL)
+  if ((dyn_rel != NULL && dyn_rel->output_section() != NULL)
+      || (dynrel_includes_plt
+	  && plt_rel != NULL
+	  && plt_rel->output_section() != NULL))
     {
+      bool have_dyn_rel = dyn_rel != NULL && dyn_rel->output_section() != NULL;
+      bool have_plt_rel = plt_rel != NULL && plt_rel->output_section() != NULL;
       odyn->add_section_address(use_rel ? elfcpp::DT_REL : elfcpp::DT_RELA,
-				dyn_rel->output_section());
-      if (plt_rel != NULL
-	  && plt_rel->output_section() != NULL
-	  && dynrel_includes_plt)
-	odyn->add_section_size(use_rel ? elfcpp::DT_RELSZ : elfcpp::DT_RELASZ,
+				(have_dyn_rel
+				 ? dyn_rel->output_section()
+				 : plt_rel->output_section()));
+      elfcpp::DT size_tag = use_rel ? elfcpp::DT_RELSZ : elfcpp::DT_RELASZ;
+      if (have_dyn_rel && have_plt_rel && dynrel_includes_plt)
+	odyn->add_section_size(size_tag,
 			       dyn_rel->output_section(),
 			       plt_rel->output_section());
+      else if (have_dyn_rel)
+	odyn->add_section_size(size_tag, dyn_rel->output_section());
       else
-	odyn->add_section_size(use_rel ? elfcpp::DT_RELSZ : elfcpp::DT_RELASZ,
-			       dyn_rel->output_section());
+	odyn->add_section_size(size_tag, plt_rel->output_section());
       const int size = parameters->target().get_size();
       elfcpp::DT rel_tag;
       int rel_size;
@@ -4379,7 +4485,7 @@ Layout::add_target_dynamic_tags(bool use_rel, const Output_data* plt_got,
 	}
       odyn->add_constant(rel_tag, rel_size);
 
-      if (parameters->options().combreloc())
+      if (parameters->options().combreloc() && have_dyn_rel)
 	{
 	  size_t c = dyn_rel->relative_reloc_count();
 	  if (c > 0)

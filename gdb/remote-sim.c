@@ -273,28 +273,26 @@ sim_inferior_data_cleanup (struct inferior *inf, void *data)
 static void
 dump_mem (char *buf, int len)
 {
-  if (len <= 8)
+  printf_filtered ("\t");
+
+  if (len == 8 || len == 4)
     {
-      if (len == 8 || len == 4)
-	{
-	  long l[2];
+      uint32_t l[2];
 
-	  memcpy (l, buf, len);
-	  printf_filtered ("\t0x%lx", l[0]);
-	  if (len == 8)
-	    printf_filtered (" 0x%lx", l[1]);
-	  printf_filtered ("\n");
-	}
-      else
-	{
-	  int i;
-
-	  printf_filtered ("\t");
-	  for (i = 0; i < len; i++)
-	    printf_filtered ("0x%x ", buf[i]);
-	  printf_filtered ("\n");
-	}
+      memcpy (l, buf, len);
+      printf_filtered ("0x%08x", l[0]);
+      if (len == 8)
+	printf_filtered (" 0x%08x", l[1]);
     }
+  else
+    {
+      int i;
+
+      for (i = 0; i < len; i++)
+	printf_filtered ("0x%02x ", buf[i]);
+    }
+
+  printf_filtered ("\n");
 }
 
 /* Initialize gdb_callback.  */
@@ -642,6 +640,9 @@ gdbsim_create_inferior (struct target_ops *target, char *exec_file, char *args,
   else
     argv = NULL;
 
+  if (!have_inferiors ())
+    init_thread_list ();
+
   if (sim_create_inferior (sim_data->gdbsim_desc, exec_bfd, argv, env)
       != SIM_RC_OK)
     error (_("Unable to create sim inferior."));
@@ -950,13 +951,9 @@ gdb_os_poll_quit (host_callback *p)
   if (deprecated_ui_loop_hook != NULL)
     deprecated_ui_loop_hook (0);
 
-  if (quit_flag)		/* gdb's idea of quit */
+  if (check_quit_flag ())	/* gdb's idea of quit */
     {
-      quit_flag = 0;		/* we've stolen it */
-      return 1;
-    }
-  else if (immediate_quit)
-    {
+      clear_quit_flag ();	/* we've stolen it */
       return 1;
     }
   return 0;
@@ -1101,7 +1098,7 @@ gdbsim_xfer_inferior_memory (CORE_ADDR memaddr, gdb_byte *myaddr, int len,
       printf_filtered ("gdbsim_xfer_inferior_memory: myaddr 0x");
       gdb_print_host_address (myaddr, gdb_stdout);
       printf_filtered (", memaddr %s, len %d, write %d\n",
-		       paddress (target_gdbarch, memaddr), len, write);
+		       paddress (target_gdbarch (), memaddr), len, write);
       if (remote_debug && write)
 	dump_mem (myaddr, len);
     }
@@ -1326,5 +1323,5 @@ _initialize_remote_sim (void)
   set_cmd_completer (c, sim_command_completer);
 
   sim_inferior_data_key
-    = register_inferior_data_with_cleanup (sim_inferior_data_cleanup);
+    = register_inferior_data_with_cleanup (NULL, sim_inferior_data_cleanup);
 }

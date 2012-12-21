@@ -27,11 +27,8 @@ D/m32r////
 D/m68hc11////
 D/m68k////
 D/m68k-coff////
-D/m88k////
 D/mach-o////
 D/macros////
-D/maxq10////
-D/maxq20////
 D/mcore////
 D/mep////
 D/mips////
@@ -39,7 +36,6 @@ D/mmix////
 D/mn10200////
 D/mn10300////
 D/mri////
-D/ms1////
 D/msp430////
 D/mt////
 D/openrisc////
@@ -58,15 +54,22 @@ D/symver////
 D/tic4x////
 D/tic54x////
 D/tic6x////
-D/tic80////
 D/tilegx////
 D/tilepro////
 D/v850////
 D/vax////
-D/vtable////
 D/xc16x////
 D/xstormy16////
 D/xtensa////
 D/z80////
 D/z8k////
-/template/1.1.1.1/Mon May  7 21:35:06 2012//
+D/xgate////
+/template/1.1.1.1/Sat Oct 27 22:59:27 2012//
+D/aarch64////
+D/m88k////
+D/maxq10////
+D/maxq20////
+D/microblaze////
+D/ms1////
+D/tic80////
+D/vtable////

@@ -52,7 +52,7 @@ void f_type_print_base (struct type *, struct ui_file *, int, int);
 
 void
 f_print_type (struct type *type, const char *varstring, struct ui_file *stream,
-	      int show, int level)
+	      int show, int level, const struct type_print_options *flags)
 {
   enum type_code code;
   int demangled_args;
@@ -131,7 +131,6 @@ f_type_print_varspec_prefix (struct type *type, struct ui_file *stream,
     case TYPE_CODE_SET:
     case TYPE_CODE_RANGE:
     case TYPE_CODE_STRING:
-    case TYPE_CODE_BITSTRING:
     case TYPE_CODE_METHOD:
     case TYPE_CODE_REF:
     case TYPE_CODE_COMPLEX:
@@ -230,7 +229,6 @@ f_type_print_varspec_suffix (struct type *type, struct ui_file *stream,
     case TYPE_CODE_SET:
     case TYPE_CODE_RANGE:
     case TYPE_CODE_STRING:
-    case TYPE_CODE_BITSTRING:
     case TYPE_CODE_METHOD:
     case TYPE_CODE_COMPLEX:
     case TYPE_CODE_TYPEDEF:

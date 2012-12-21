@@ -1,3 +1,188 @@
+2012-11-28  Markus Metzger <markus.t.metzger@intel.com>
+
+	* configure.ac: Check for linux/perf_event.h.
+	* config.in: Regenerated.
+	* configure: Regenerated.
+
+2012-11-26  Maxime Villard  <rustyBSD@gmx.fr>
+
+	* hostio.c (handle_readlink): Decrease buffer size
+	parameter passed to readlink by one byte.
+
+2012-11-26  Yao Qi  <yao@codesourcery.com>
+
+	* configure.ac (build_warnings): Append '-Wempty-body'.
+	* configure: Regenerated.
+	* linux-low.c (linux_create_inferior): Use braces for empty 'if'
+	body.
+
+2012-11-15  Pierre Muller  <muller@sourceware.org>
+
+	* configure.ac (AC_CHECK_HEADERS): Add wait.h header.
+	* config.in: Regenerate.
+	* configure: Regenerate.
+	* linux-low.c: Use "gdb_stat.h" header instead of <sys/stat.h> header.
+	Use "gdb_wait.h" header instead of <sys/wait.h> header.
+	* lynx-low.c: Use "gdb_wait.h" header instead of <sys/wait.h> header.
+	* remote-utils.c: Use "gdb_stat.h" header instead of <sys/stat.h>
+	header.
+	* server.c: Remove HAVE_WAIT_H conditional.  Use "gdb_wait.h" header
+	instead of <sys/wait.h> header.
+	* spu-low.c: Use "gdb_wait.h" header instead of <sys/wait.h> header.
+
+2012-11-13 Markus Metzger <markus.t.metzger@intel.com>
+
+	* Makefile.in: (INTERNAL_CFLAGS): Add -DGDBSERVER
+	(various make rules): Remove -DGDBSERVER
+
+2012-11-09  Yao Qi  <yao@codesourcery.com>
+
+	* spu-low.c (current_ptid): Move it to ..
+	* gdbthread.h: ... here.  New.
+	* remote-utils.c (read_ptid): Use macro 'current_ptid'.
+	* server.c (myresume, process_serial_event): Likewise.
+	* thread-db.c (thread_db_find_new_threads): Likewise.
+	* tracepoint.c (run_inferior_command): Likewise.
+
+2012-10-01  Andrew Burgess  <aburgess@broadcom.com>
+
+	* server.c (handle_search_memory_1): Include access length in
+	warning message.
+
+2012-09-05  Michael Brandt  <michael.brandt@axis.com>
+
+	* linux-crisv32-low.c: Fix compile errors.
+
+2012-09-04  Yao Qi  <yao@codesourcery.com>
+
+	* tracepoint.c (cmd_qtsv): Adjust debug message.
+	Don't check CUR_TPOINT.
+
+2012-08-28  Yao Qi  <yao@codesourcery.com>
+
+	* ax.c, tracepoint.c: Replace ATTR_FORMAT with ATTRIBUTE_PRINTF.
+	* server.h: Include 'libiberty.h' and 'ansidecl.h'.
+	(ATTR_NORETURN, ATTR_FORMAT, ATTR_MALLOC): Remove.
+	Remove declarations of xmalloc, xreallloc, xstrdup and
+	freeargv.
+	* Makefile.in (libiberty_h): New.
+	(server_h): Append dependencies 'libiberty.h' and 'ansidecl.h'.
+	(linux-bfin-low.o): Append dependency 'libiberty.h'.
+
+2012-08-23  Yao Qi  <yao@codesourcery.com>
+
+	* server.h: Remove declaration of 'xsnprintf'.
+
+2012-08-22  Keith Seitz  <keiths@redhat.com>
+
+	* server.h: Include build-gnulib-gbserver/config.h.
+	* gdbreplay.c: Likewise.
+
+2012-08-08  Doug Evans  <dje@google.com>
+
+	* Makefile.in (SFILES): Add gdb_vecs.c.
+	(OBS): Add gdb_vecs.o.
+	(gdb_vecs_h, host_defs_h): New variables.
+	(thread-db.o): Add $(gdb_vecs_h) dependency.
+	(gdb_vecs.o): New rule.
+	* thread-db.c: #include "gdb_vecs.h".
+	(thread_db_load_search): Use a vector to iterate over path elements.
+	Handle text appearing after "$pdir".
+
+	* configure.ac: Add check for strstr.
+	* config.in: Regenerate.
+	* configure: Regenerate.
+
+2012-08-02  Ulrich Weigand  <ulrich.weigand@linaro.org>
+
+	* hostio.c (handle_pread): If pread fails, fall back to attempting
+	lseek/read.
+	(handle_pwrite): Likewise for pwrite.
+
+2012-08-01  Ulrich Weigand  <ulrich.weigand@linaro.org>
+
+	* linux-arm-low.c (arm_linux_hw_point_initialize): Distinguish
+	between unsupported TYPE and unimplementable ADDR/LEN combination.
+	(arm_insert_point): Act on new return value.
+
+2012-07-31  Pedro Alves  <palves@redhat.com>
+
+	* server.c (process_point_options): Only skip tokens if we find
+	one that is unrecognized.  Don't treat 'X' specially while
+	skipping unrecognized tokens.
+
+2012-07-30  Ulrich Weigand  <ulrich.weigand@linaro.org>
+
+	* linux-arm-low.c (arm_linux_hw_point_initialize): Do not attempt
+	to 4-byte-align HW breakpoint addresses for Thumb.
+
+2012-07-27  Yao Qi  <yao@codesourcery.com>
+
+	PR remote/14161.
+
+	* server.h: Declare gdb_agent_about_to_close.
+	* target.c (kill_inferior): Include "agent.h".
+	New.  Send command 'kill'.
+	* target.h (kill_inferior): Removed macro.
+	* tracepoint.c (gdb_agent_about_to_close): New.
+	(gdb_agent_helper_thread): Handle command 'close'.
+	Wait endlessly until the inferior stops.
+	Install gdb_agent_remove_socket to atexit hook.
+	(agent_socket_name): New static variable.
+	(gdb_agent_socket_init): Replace local variable 'name' with
+	'agent_socket_name'.
+	(gdb_agent_remove_socket): New.
+
+2012-07-27  Yao Qi  <yao@codesourcery.com>
+
+	* server.c (process_point_options): Stop at 'X' when parsing.
+
+2012-07-19  Michael Eager  <eager@eagercon.com>
+
+	* i386-low.c (Z_packet_to_hw_type): Add Z_PACKET_HW_BP, translate 
+	to hw_execute.
+	* linux-x86-low.c (x86_insert_point, x86_remove_point):
+	Call i386_low_insert_watchpoint, i386_low_remove_watchpoint to add/del
+	hardware breakpoint.
+
+2012-07-07  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* gdbserver/linux-low.c (initialize_low): Call
+	linux_ptrace_init_warnings.
+
+2012-07-02  Doug Evans  <dje@google.com>
+
+	* mem-break.c (gdb_no_commands_at_breakpoint): Fix cast from
+	pointer to int.
+
+2012-07-02  Stan Shebs  <stan@codesourcery.com>
+
+	* Makefile.in (WARN_CFLAGS_NO_FORMAT): Define.
+	(ax.o): Add it to build rule.
+	(ax-ipa.o): Ditto.
+	(OBS): Add format.o.
+	(IPA_OBS): Add format.o.
+	* server.c (handle_query): Claim support for breakpoint commands.
+	(process_point_options): Add command case.
+	(process_serial_event): Leave running if there are printfs in
+	effect.
+	* mem-break.h (any_persistent_commands): Declare.
+	(add_breakpoint_commands): Declare.
+	(gdb_no_commands_at_breakpoint): Declare.
+	(run_breakpoint_commands): Declare.
+	* mem-break.c (struct point_command_list): New struct.
+	(struct breakpoint): New field command_list.
+	(any_persistent_commands): New function.
+	(add_commands_to_breakpoint): New function.
+	(add_breakpoint_commands): New function.
+	(gdb_no_commands_at_breakpoint): New function.
+	(run_breakpoint_commands): New function.
+	* linux-low.c (linux_wait_1): Test for and run breakpoint commands
+	locally.
+	* ax.c: Include format.h.
+	(ax_printf): New function.
+	(gdb_eval_agent_expr): Add printf opcode.
+
 2012-06-13  Yao Qi  <yao@codesourcery.com>
 
 	* server.c (start_inferior): Remove duplicated writes to fields

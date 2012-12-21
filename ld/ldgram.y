@@ -129,7 +129,7 @@ static int error_index;
 %token <token> ALIGN_K BLOCK BIND QUAD SQUAD LONG SHORT BYTE
 %token SECTIONS PHDRS INSERT_K AFTER BEFORE
 %token DATA_SEGMENT_ALIGN DATA_SEGMENT_RELRO_END DATA_SEGMENT_END
-%token SORT_BY_NAME SORT_BY_ALIGNMENT
+%token SORT_BY_NAME SORT_BY_ALIGNMENT SORT_NONE
 %token SORT_BY_INIT_PRIORITY
 %token '{' '}'
 %token SIZEOF_HEADERS OUTPUT_FORMAT FORCE_COMMON_ALLOCATION OUTPUT_ARCH
@@ -146,7 +146,7 @@ static int error_index;
 %token STARTUP HLL SYSLIB FLOAT NOFLOAT NOCROSSREFS
 %token ORIGIN FILL
 %token LENGTH CREATE_OBJECT_SYMBOLS INPUT GROUP OUTPUT CONSTRUCTORS
-%token ALIGNMOD AT SUBALIGN PROVIDE PROVIDE_HIDDEN AS_NEEDED
+%token ALIGNMOD AT SUBALIGN HIDDEN PROVIDE PROVIDE_HIDDEN AS_NEEDED
 %type <token> assign_op atype attributes_opt sect_constraint
 %type <name>  filename
 %token CHIP LIST SECT ABSOLUTE  LOAD NEWLINE ENDWORD ORDER NAMEWORD ASSERT_K
@@ -467,6 +467,13 @@ wildcard_spec:
 			  $$.exclude_name_list = NULL;
 			  $$.section_flag_list = NULL;
 			}
+	|	SORT_NONE '(' wildcard_name ')'
+			{
+			  $$.name = $3;
+			  $$.sorted = by_none;
+			  $$.exclude_name_list = NULL;
+			  $$.section_flag_list = NULL;
+			}
 	|	SORT_BY_NAME '(' SORT_BY_ALIGNMENT '(' wildcard_name ')' ')'
 			{
 			  $$.name = $5;
@@ -752,7 +759,7 @@ end:	';' | ','
 assignment:
 		NAME '=' mustbe_exp
 		{
-		  lang_add_assignment (exp_assign ($1, $3));
+		  lang_add_assignment (exp_assign ($1, $3, FALSE));
 		}
 	|	NAME assign_op mustbe_exp
 		{
@@ -760,7 +767,11 @@ assignment:
 						   exp_binop ($2,
 							      exp_nameop (NAME,
 									  $1),
-							      $3)));
+							      $3), FALSE));
+		}
+	|	HIDDEN '(' NAME '=' mustbe_exp ')'
+		{
+		  lang_add_assignment (exp_assign ($3, $5, TRUE));
 		}
 	|	PROVIDE '(' NAME '=' mustbe_exp ')'
 		{
@@ -1078,7 +1089,7 @@ section:	NAME 		{ ldlex_expression(); }
 		opt_exp_with_type
 		{
 		  ldlex_popstate ();
-		  lang_add_assignment (exp_assign (".", $3));
+		  lang_add_assignment (exp_assign (".", $3, FALSE));
 		}
 		'{' sec_or_group_p1 '}'
 	|	INCLUDE filename

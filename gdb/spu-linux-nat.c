@@ -29,6 +29,7 @@
 #include "symfile.h"
 #include "gdb_wait.h"
 #include "gdbthread.h"
+#include "gdb_bfd.h"
 
 #include <sys/ptrace.h>
 #include <asm/ptrace.h>
@@ -205,7 +206,7 @@ store_ppc_memory (ULONGEST memaddr, const gdb_byte *myaddr, int len)
 static int 
 parse_spufs_run (int *fd, ULONGEST *addr)
 {
-  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch);
+  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch ());
   gdb_byte buf[4];
   ULONGEST pc = fetch_ppc_register (32);  /* nip */
 
@@ -315,16 +316,16 @@ spu_bfd_open (ULONGEST addr)
   ULONGEST *open_closure = xmalloc (sizeof (ULONGEST));
   *open_closure = addr;
 
-  nbfd = bfd_openr_iovec (xstrdup ("<in-memory>"), "elf32-spu",
-			  spu_bfd_iovec_open, open_closure,
-			  spu_bfd_iovec_pread, spu_bfd_iovec_close,
-			  spu_bfd_iovec_stat);
+  nbfd = gdb_bfd_openr_iovec ("<in-memory>", "elf32-spu",
+			      spu_bfd_iovec_open, open_closure,
+			      spu_bfd_iovec_pread, spu_bfd_iovec_close,
+			      spu_bfd_iovec_stat);
   if (!nbfd)
     return NULL;
 
   if (!bfd_check_format (nbfd, bfd_object))
     {
-      bfd_close (nbfd);
+      gdb_bfd_unref (nbfd);
       return NULL;
     }
 
@@ -374,8 +375,13 @@ spu_symbol_file_add_from_memory (int inferior_fd)
   /* Open BFD representing SPE executable and read its symbols.  */
   nbfd = spu_bfd_open (addr);
   if (nbfd)
-    symbol_file_add_from_bfd (nbfd, SYMFILE_VERBOSE | SYMFILE_MAINLINE,
-                              NULL, 0, NULL);
+    {
+      struct cleanup *cleanup = make_cleanup_bfd_unref (nbfd);
+
+      symbol_file_add_from_bfd (nbfd, SYMFILE_VERBOSE | SYMFILE_MAINLINE,
+				NULL, 0, NULL);
+      do_cleanups (cleanup);
+    }
 }
 
 

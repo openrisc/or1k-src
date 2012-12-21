@@ -49,6 +49,7 @@
 #include "filenames.h"
 #include "symfile.h"
 #include "objfiles.h"
+#include "gdb_bfd.h"
 #include "gdb_obstack.h"
 #include "gdb_string.h"
 #include "gdbthread.h"
@@ -752,7 +753,7 @@ windows_make_so (const char *name, LPVOID load_addr)
       asection *text = NULL;
       CORE_ADDR text_vma;
 
-      abfd = bfd_openr (so->so_name, "pei-i386");
+      abfd = gdb_bfd_open (so->so_name, "pei-i386", -1);
 
       if (!abfd)
 	return so;
@@ -762,7 +763,7 @@ windows_make_so (const char *name, LPVOID load_addr)
 
       if (!text)
 	{
-	  bfd_close (abfd);
+	  gdb_bfd_unref (abfd);
 	  return so;
 	}
 
@@ -773,7 +774,7 @@ windows_make_so (const char *name, LPVOID load_addr)
 						   load_addr + 0x1000);
       cygwin_load_end = cygwin_load_start + bfd_section_size (abfd, text);
 
-      bfd_close (abfd);
+      gdb_bfd_unref (abfd);
     }
 #endif
 
@@ -1894,7 +1895,8 @@ windows_pid_to_exec_file (int pid)
   /* Try to find exe name as symlink target of /proc/<pid>/exe.  */
   int nchars;
   char procexe[sizeof ("/proc/4294967295/exe")];
-  sprintf (procexe, "/proc/%u/exe", pid);
+
+  xsnprintf (procexe, sizeof (procexe), "/proc/%u/exe", pid);
   nchars = readlink (procexe, path, sizeof(path));
   if (nchars > 0 && nchars < sizeof (path))
     {
@@ -2035,6 +2037,7 @@ windows_create_inferior (struct target_ops *ops, char *exec_file,
   char shell[__PMAX]; /* Path to shell */
   char *toexec;
   char *args;
+  size_t args_len;
   HANDLE tty;
   char *w32env;
   char *temp;
@@ -2091,10 +2094,10 @@ windows_create_inferior (struct target_ops *ops, char *exec_file,
       cygallargs = (wchar_t *) alloca (len * sizeof (wchar_t));
       swprintf (cygallargs, len, L" -c 'exec %s %s'", exec_file, allargs);
 #else
-      cygallargs = (char *)
-	alloca (sizeof (" -c 'exec  '") + strlen (exec_file)
-				    + strlen (allargs) + 2);
-      sprintf (cygallargs, " -c 'exec %s %s'", exec_file, allargs);
+      len = (sizeof (" -c 'exec  '") + strlen (exec_file)
+	     + strlen (allargs) + 2);
+      cygallargs = (char *) alloca (len);
+      xsnprintf (cygallargs, len, " -c 'exec %s %s'", exec_file, allargs);
 #endif
       toexec = shell;
       flags |= DEBUG_PROCESS;
@@ -2187,10 +2190,13 @@ windows_create_inferior (struct target_ops *ops, char *exec_file,
     }
 #else
   toexec = exec_file;
-  args = alloca (strlen (toexec) + strlen (allargs) + 2);
-  strcpy (args, toexec);
-  strcat (args, " ");
-  strcat (args, allargs);
+  /* Build the command line, a space-separated list of tokens where
+     the first token is the name of the module to be executed.
+     To avoid ambiguities introduced by spaces in the module name,
+     we quote it.  */
+  args_len = strlen (toexec) + 2 /* quotes */ + strlen (allargs) + 2;
+  args = alloca (args_len);
+  xsnprintf (args, args_len, "\"%s\" %s", toexec, allargs);
 
   flags |= DEBUG_ONLY_THIS_PROCESS;
 
@@ -2399,7 +2405,7 @@ windows_xfer_shared_libraries (struct target_ops *ops,
   for (so = solib_start.next; so; so = so->next)
     windows_xfer_shared_library (so->so_name, (CORE_ADDR)
 				 (uintptr_t) so->lm_info->load_addr,
-				 target_gdbarch, &obstack);
+				 target_gdbarch (), &obstack);
   obstack_grow_str0 (&obstack, "</library-list>\n");
 
   buf = obstack_finish (&obstack);
@@ -2719,8 +2725,9 @@ _initialize_check_for_gdb_ini (void)
 	{
 	  int len = strlen (oldini);
 	  char *newini = alloca (len + 1);
-	  sprintf (newini, "%.*s.gdbinit",
-	    (int) (len - (sizeof ("gdb.ini") - 1)), oldini);
+
+	  xsnprintf (newini, len + 1, "%.*s.gdbinit",
+		     (int) (len - (sizeof ("gdb.ini") - 1)), oldini);
 	  warning (_("obsolete '%s' found. Rename to '%s'."), oldini, newini);
 	}
     }

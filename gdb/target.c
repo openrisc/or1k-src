@@ -205,7 +205,7 @@ int may_stop = 1;
 
 /* Non-zero if we want to see trace of target level stuff.  */
 
-static int targetdebug = 0;
+static unsigned int targetdebug = 0;
 static void
 show_targetdebug (struct ui_file *file, int from_tty,
 		  struct cmd_list_element *c, const char *value)
@@ -703,6 +703,7 @@ update_current_target (void)
       INHERIT (to_can_use_agent, t);
       INHERIT (to_magic, t);
       INHERIT (to_supports_evaluation_of_breakpoint_conditions, t);
+      INHERIT (to_can_run_breakpoint_commands, t);
       /* Do not inherit to_memory_map.  */
       /* Do not inherit to_flash_erase.  */
       /* Do not inherit to_flash_done.  */
@@ -932,6 +933,9 @@ update_current_target (void)
   de_fault (to_supports_evaluation_of_breakpoint_conditions,
 	    (int (*) (void))
 	    return_zero);
+  de_fault (to_can_run_breakpoint_commands,
+	    (int (*) (void))
+	    return_zero);
   de_fault (to_use_agent,
 	    (int (*) (int))
 	    tcomplain);
@@ -1124,7 +1128,7 @@ target_translate_tls_address (struct objfile *objfile, CORE_ADDR offset)
     }
 
   if (target != NULL
-      && gdbarch_fetch_tls_load_module_address_p (target_gdbarch))
+      && gdbarch_fetch_tls_load_module_address_p (target_gdbarch ()))
     {
       ptid_t ptid = inferior_ptid;
       volatile struct gdb_exception ex;
@@ -1134,7 +1138,7 @@ target_translate_tls_address (struct objfile *objfile, CORE_ADDR offset)
 	  CORE_ADDR lm_addr;
 	  
 	  /* Fetch the load module address for this objfile.  */
-	  lm_addr = gdbarch_fetch_tls_load_module_address (target_gdbarch,
+	  lm_addr = gdbarch_fetch_tls_load_module_address (target_gdbarch (),
 	                                                   objfile);
 	  /* If it's 0, throw the appropriate exception.  */
 	  if (lm_addr == 0)
@@ -2493,7 +2497,7 @@ target_pre_inferior (int from_tty)
   /* In some OSs, the shared library list is the same/global/shared
      across inferiors.  If code is shared between processes, so are
      memory regions and features.  */
-  if (!gdbarch_has_global_solist (target_gdbarch))
+  if (!gdbarch_has_global_solist (target_gdbarch ()))
     {
       no_shared_libraries (NULL, from_tty);
 
@@ -2562,7 +2566,7 @@ target_detach (char *args, int from_tty)
 {
   struct target_ops* t;
   
-  if (gdbarch_has_global_breakpoints (target_gdbarch))
+  if (gdbarch_has_global_breakpoints (target_gdbarch ()))
     /* Don't remove global breakpoints here.  They're removed on
        disconnection from the target.  */
     ;
@@ -2625,13 +2629,17 @@ target_wait (ptid_t ptid, struct target_waitstatus *status, int options)
 	  if (targetdebug)
 	    {
 	      char *status_string;
+	      char *options_string;
 
 	      status_string = target_waitstatus_to_string (status);
+	      options_string = target_options_to_string (options);
 	      fprintf_unfiltered (gdb_stdlog,
-				  "target_wait (%d, status) = %d,   %s\n",
-				  PIDGET (ptid), PIDGET (retval),
-				  status_string);
+				  "target_wait (%d, status, options={%s})"
+				  " = %d,   %s\n",
+				  PIDGET (ptid), options_string,
+				  PIDGET (retval), status_string);
 	      xfree (status_string);
+	      xfree (options_string);
 	    }
 
 	  return retval;
@@ -2866,8 +2874,9 @@ simple_search_memory (struct target_ops *ops,
   if (target_read (ops, TARGET_OBJECT_MEMORY, NULL,
 		   search_buf, start_addr, search_buf_size) != search_buf_size)
     {
-      warning (_("Unable to access target memory at %s, halting search."),
-	       hex_string (start_addr));
+      warning (_("Unable to access %s bytes of target "
+		 "memory at %s, halting search."),
+	       pulongest (search_buf_size), hex_string (start_addr));
       do_cleanups (old_cleanups);
       return -1;
     }
@@ -2920,8 +2929,9 @@ simple_search_memory (struct target_ops *ops,
 			   search_buf + keep_len, read_addr,
 			   nr_to_read) != nr_to_read)
 	    {
-	      warning (_("Unable to access target "
+	      warning (_("Unable to access %s bytes of target "
 			 "memory at %s, halting search."),
+		       plongest (nr_to_read),
 		       hex_string (read_addr));
 	      do_cleanups (old_cleanups);
 	      return -1;
@@ -3544,7 +3554,7 @@ target_fileio_read_stralloc (const char *filename)
 static int
 default_region_ok_for_hw_watchpoint (CORE_ADDR addr, int len)
 {
-  return (len <= gdbarch_ptr_bit (target_gdbarch) / TARGET_CHAR_BIT);
+  return (len <= gdbarch_ptr_bit (target_gdbarch ()) / TARGET_CHAR_BIT);
 }
 
 static int
@@ -3558,7 +3568,7 @@ default_watchpoint_addr_within_range (struct target_ops *target,
 static struct gdbarch *
 default_thread_architecture (struct target_ops *ops, ptid_t ptid)
 {
-  return target_gdbarch;
+  return target_gdbarch ();
 }
 
 static int
@@ -3864,6 +3874,8 @@ target_waitstatus_to_string (const struct target_waitstatus *ws)
       return xstrprintf ("%svforked", kind_str);
     case TARGET_WAITKIND_EXECD:
       return xstrprintf ("%sexecd", kind_str);
+    case TARGET_WAITKIND_VFORK_DONE:
+      return xstrprintf ("%svfork-done", kind_str);
     case TARGET_WAITKIND_SYSCALL_ENTRY:
       return xstrprintf ("%sentered syscall", kind_str);
     case TARGET_WAITKIND_SYSCALL_RETURN:
@@ -3879,6 +3891,54 @@ target_waitstatus_to_string (const struct target_waitstatus *ws)
     default:
       return xstrprintf ("%sunknown???", kind_str);
     }
+}
+
+/* Concatenate ELEM to LIST, a comma separate list, and return the
+   result.  The LIST incoming argument is released.  */
+
+static char *
+str_comma_list_concat_elem (char *list, const char *elem)
+{
+  if (list == NULL)
+    return xstrdup (elem);
+  else
+    return reconcat (list, list, ", ", elem, (char *) NULL);
+}
+
+/* Helper for target_options_to_string.  If OPT is present in
+   TARGET_OPTIONS, append the OPT_STR (string version of OPT) in RET.
+   Returns the new resulting string.  OPT is removed from
+   TARGET_OPTIONS.  */
+
+static char *
+do_option (int *target_options, char *ret,
+	   int opt, char *opt_str)
+{
+  if ((*target_options & opt) != 0)
+    {
+      ret = str_comma_list_concat_elem (ret, opt_str);
+      *target_options &= ~opt;
+    }
+
+  return ret;
+}
+
+char *
+target_options_to_string (int target_options)
+{
+  char *ret = NULL;
+
+#define DO_TARG_OPTION(OPT) \
+  ret = do_option (&target_options, ret, OPT, #OPT)
+
+  DO_TARG_OPTION (TARGET_WNOHANG);
+
+  if (target_options != 0)
+    ret = str_comma_list_concat_elem (ret, "unknown???");
+
+  if (ret == NULL)
+    ret = xstrdup ("");
+  return ret;
 }
 
 static void
@@ -3995,7 +4055,7 @@ target_verify_memory (const gdb_byte *data, CORE_ADDR memaddr, ULONGEST size)
 	  if (targetdebug)
 	    fprintf_unfiltered (gdb_stdlog,
 				"target_verify_memory (%s, %s) = %d\n",
-				paddress (target_gdbarch, memaddr),
+				paddress (target_gdbarch (), memaddr),
 				pulongest (size),
 				retval);
 	  return retval;
@@ -4109,7 +4169,7 @@ deprecated_debug_xfer_memory (CORE_ADDR memaddr, bfd_byte *myaddr, int len,
 
   fprintf_unfiltered (gdb_stdlog,
 		      "target_xfer_memory (%s, xxx, %d, %s, xxx) = %d",
-		      paddress (target_gdbarch, memaddr), len,
+		      paddress (target_gdbarch (), memaddr), len,
 		      write ? "write" : "read", retval);
 
   if (retval > 0)
@@ -4718,15 +4778,15 @@ initialize_targets (void)
   add_info ("target", target_info, targ_desc);
   add_info ("files", target_info, targ_desc);
 
-  add_setshow_zinteger_cmd ("target", class_maintenance, &targetdebug, _("\
+  add_setshow_zuinteger_cmd ("target", class_maintenance, &targetdebug, _("\
 Set target debugging."), _("\
 Show target debugging."), _("\
 When non-zero, target debugging is enabled.  Higher numbers are more\n\
 verbose.  Changes do not take effect until the next \"run\" or \"target\"\n\
 command."),
-			    NULL,
-			    show_targetdebug,
-			    &setdebuglist, &showdebuglist);
+			     NULL,
+			     show_targetdebug,
+			     &setdebuglist, &showdebuglist);
 
   add_setshow_boolean_cmd ("trust-readonly-sections", class_support,
 			   &trust_readonly, _("\

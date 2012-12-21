@@ -30,6 +30,10 @@
    don't. */
 #undef HAVE_DECL_STRERROR
 
+/* Define to 1 if you have the declaration of `strstr', and to 0 if you don't.
+   */
+#undef HAVE_DECL_STRSTR
+
 /* Define to 1 if you have the declaration of `vasprintf', and to 0 if you
    don't. */
 #undef HAVE_DECL_VASPRINTF
@@ -71,6 +75,9 @@
 
 /* Define to 1 if you have the <linux/elf.h> header file. */
 #undef HAVE_LINUX_ELF_H
+
+/* Define to 1 if you have the <linux/perf_event.h> header file. */
+#undef HAVE_LINUX_PERF_EVENT_H
 
 /* Define if the target supports register sets. */
 #undef HAVE_LINUX_REGSETS
@@ -212,6 +219,9 @@
 
 /* Define to 1 if you have the `vsnprintf' function. */
 #undef HAVE_VSNPRINTF
+
+/* Define to 1 if you have the <wait.h> header file. */
+#undef HAVE_WAIT_H
 
 /* Checking if errno must be defined */
 #undef MUST_DEFINE_ERRNO

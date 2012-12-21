@@ -1,7 +1,7 @@
 /* Startup code for Insight.
 
    Copyright (C) 1994, 1995, 1996, 1997, 1998, 2000, 200, 2002, 2003, 2004,
-   2008, 2010, 2011 Free Software Foundation, Inc.
+   2008, 2010, 2011, 2012 Free Software Foundation, Inc.
 
    Written by Stu Grossman <grossman@cygnus.com> of Cygnus Support.
 
@@ -71,9 +71,6 @@ int gdbtk_force_detach = 0;
 extern void gdbtk_create_breakpoint (struct breakpoint *);
 extern void gdbtk_delete_breakpoint (struct breakpoint *);
 extern void gdbtk_modify_breakpoint (struct breakpoint *);
-extern void gdbtk_create_tracepoint (int);
-extern void gdbtk_delete_tracepoint (int);
-extern void gdbtk_modify_tracepoint (int);
 
 static void gdbtk_architecture_changed (struct gdbarch *);
 static void gdbtk_trace_find (char *arg, int from_tty);
@@ -94,8 +91,8 @@ static void gdbtk_pre_add_symbol (const char *);
 static void gdbtk_print_frame_info (struct symtab *, int, int, int);
 static void gdbtk_post_add_symbol (void);
 static void gdbtk_register_changed (int regno);
-static void gdbtk_memory_changed (CORE_ADDR addr, int len,
-				  const bfd_byte *data);
+static void gdbtk_memory_changed (struct inferior *inferior, CORE_ADDR addr,
+				  ssize_t len, const bfd_byte *data);
 static void gdbtk_selected_frame_changed (int);
 static void gdbtk_context_change (int);
 static void gdbtk_error_begin (void);
@@ -126,9 +123,6 @@ gdbtk_add_hooks (void)
   observer_attach_breakpoint_created (gdbtk_create_breakpoint);
   observer_attach_breakpoint_modified (gdbtk_modify_breakpoint);
   observer_attach_breakpoint_deleted (gdbtk_delete_breakpoint);
-  observer_attach_tracepoint_created (gdbtk_create_tracepoint);
-  observer_attach_tracepoint_modified (gdbtk_modify_tracepoint);
-  observer_attach_tracepoint_deleted (gdbtk_delete_tracepoint);
   observer_attach_architecture_changed (gdbtk_architecture_changed);
   observer_attach_memory_changed (gdbtk_memory_changed);
 
@@ -399,7 +393,8 @@ gdbtk_register_changed (int regno)
 }
 
 static void
-gdbtk_memory_changed (CORE_ADDR addr, int len, const bfd_byte *data)
+gdbtk_memory_changed (struct inferior *inferior, CORE_ADDR addr,
+		      ssize_t len, const bfd_byte *data)
 {
   if (Tcl_Eval (gdbtk_interp, "gdbtk_memory_changed") != TCL_OK)
     report_error ();
@@ -472,7 +467,7 @@ x_event (int signo)
 	}
       if ((Tcl_GetIntFromObj (gdbtk_interp, varname, &val) == TCL_OK) && val)
 	{
-	  quit_flag = 1;
+	  set_quit_flag ();
 #ifdef REQUEST_QUIT
 	  REQUEST_QUIT;
 #else

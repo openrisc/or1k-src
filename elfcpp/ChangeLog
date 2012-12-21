@@ -1,3 +1,17 @@
+2012-10-30  Steve McIntyre  <steve.mcintyre@linaro.org>
+
+	* arm.h: New enum for EABI soft- and hard-float flags.
+
+2012-09-15  Jiong Wang  <jiwang@tilera.com>
+
+	* tilegx.h: New file.
+	* elfcpp.h: add EM_TILEGX.
+
+2012-08-14  Alan Modra  <amodra@gmail.com>
+
+	* powerpc.h: Add more relocs.
+	(R_PPC_REL16*): Rename to R_POWERPC_REL16*.
+
 2012-05-11  H.J. Lu  <hongjiu.lu@intel.com>
 
 	PR gold/14091

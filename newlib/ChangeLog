@@ -1,3 +1,358 @@
+2012-11-26  Sebastian Huber <sebastian.huber@embedded-brains.de>
+
+	* libc/include/inttypes.h: Add and use __INTTYPES_EXP().
+
+2012-11-23  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
+
+	* libm/machine/aarch64/configure.in: Change comment to say libm
+	instead of libc.
+
+2012-11-12  Steve Ellcey  <sellcey@mips.com>
+
+	* libc/machine/mips/machine/asm.h: New.
+	* libc/machine/mips/machine/regdef.h: Update register definitions
+	for different ABI's.
+
+2012-11-11  Christopher Faylor  <me.cygwin2012@cgf.cx>
+
+	* libc/include/sys/time.h: Avoid guarding other than timeval
+	declaration with _TIMEVAL_DEFINED.  Move timeval related macros under
+	_TIMEVAL_DEFINED control.
+
+2012-11-01  Corinna Vinschen  <vinschen@redhat.com>
+
+	* libc/include/locale.h (NULL): Fetch definition via stddef.h.
+	* libc/include/stdio.h (NULL): Ditto.
+	* libc/include/stdlib.h (NULL): Ditto.
+	* libc/include/string.h (NULL): Ditto.
+	* libc/include/wchar.h (NULL): Ditto.
+	* libc/include/rpc/types.h (NULL): Ditto.
+	* libc/include/time.h (NULL): Ditto.  Include stddef.h earlier.
+
+2012-10-27  Anthony Green  <green@moxielogic.com>
+
+	* libc/machine/moxie/setjmp.S (setjmp): Minor optimization.
+
+2012-10-26  Corinna Vinschen  <vinschen@redhat.com>
+
+	* libc/include/sys/signal.h (sigset_t): Don't define when building
+	for Cygwin.
+
+2012-10-24  Jeff Johnston  <jjohnstn@redhat.com>
+
+	* configure.in: Comment out the --enable-newlib-fp-hw option
+	as the mathfp library is inaccurate and should not be used.
+	* Makefile.am: Add comment regarding the mathfp directory.
+	* configure: Regenerated.
+	* Makefile.in: Ditto.
+	* libm/mathfp/README: New file that details why the mathfp
+	directory is not used.
+
+2012-10-22  Jon TURNEY  <jon.turney@dronecode.org.uk>
+
+	* libc/include/string.h (strdup, strndup): Declare if not
+	__STRICT_ANSI__ or _XOPEN_SOURCE is defined appropriately.
+
+2012-10-22  Jon TURNEY  <jon.turney@dronecode.org.uk>
+
+	* libc/include/stdlib.h (strtof, strtoll, strtoull, strtold):Prototype
+	if not __STRICT_ANSI__ or stdc version C99 or greater.
+
+2012-10-21  Hans-Peter Nilsson  <hp@bitrange.com>
+
+	* libc/sys/mmixware/sbrk.c (_sbrk): Drop unused extern declaration
+	of "end".  Mark allocated memory by applying PRELD.
+
+2012-10-16  Gregory Pietsch  <gpietsch@comcast.net>
+
+	* libc/stdlib/getopt.c (getopt_internal): Align handling of colon to
+	SUSv4 requirements.
+	(__getopt_long_r): Fix formatting.
+
+2012-10-16  Corinna Vinschen  <vinschen@redhat.com>
+
+	* libc/stdio/vfprintf.c (__sbprintf): Fix comment.
+
+2012-10-16  Aurelien Jacobs  <aurel@gnuage.org>
+
+	* libc/include/assert.h (static_assert): Define.
+
+2012-10-16  Corinna Vinschen  <vinschen@redhat.com>
+
+	* libc/include/sys/features.h (__GNUC_PREREQ): Define.  Use
+	throughout in place of explicit GNUC version checks.
+	* libc/include/_ansi.h (_NOINLINE): Define.
+	(_NOINLINE_STATIC): Define.
+	* libc/stdio/vfprintf.c (__sbprintf): Define _NOINLINE_STATIC.
+
+2012-10-09  Peter Rosin  <peda@lysator.liu.se>
+
+	* libc/posix/wordfree.c (wordfree): The wrong words are freed
+	when WRDE_DOOFFS is in use. Restructure the code so that the memory
+	needed to be freed is instead kept in an internal linked list...
+	* libc/posix/wordexp2.h: ...as defined here...
+	* libc/posix/wordexp.c (wordexp): ...and build this internal
+	linked list here, avoiding wasteful strdup calls in the process.
+
+2012-10-09  Peter Rosin  <peda@lysator.liu.se>
+
+	* libc/posix/wordexp.c (wordexp): Return WRDE_NOSPACE on resource
+	allocation failure. Cleanup leftover resources when failing.
+
+2012-10-09  Peter Rosin  <peda@lysator.liu.se>
+
+	* libc/posix/wordexp.c (wordexp): Handle expanded words longer
+	than 500 bytes.
+
+2012-10-09  Peter Rosin  <peda@lysator.liu.se>
+
+	* libc/posix/wordexp.c (wordexp): Don't leak file streams.
+
+2012-10-03  DJ Delorie  <dj@redhat.com>
+
+	* libc/machine/rl78/setjmp.S: Convert from CPP macros to GAS
+	macros, to avoid dependence on the line separation character.
+
+2012-10-01  DJ Delorie  <dj@redhat.com>
+
+	* libc/sys/sysnecv850/sbrk.c (_sbrk): Change heap_start to be an
+	array of undefined size, to avoid problems when compiled with
+	-msda=4.
+
+2012-10-01  Jeff Johnston  <jjohnstn@redhat.com>
+
+	* README: replace sources.redhat.com with sourceware.org.
+	* HOWTO: Ditto.
+
+2012-09-26  Ian Bolton  <ian.bolton@arm.com>
+        Jim MacArthur  <jim.macarthur@arm.com>
+        Marcus Shawcroft  <marcus.shawcroft@arm.com>
+        Nigel Stephens  <nigel.stephens@arm.com>
+        Ramana Radhakrishnan  <ramana.radhakrishnan@arm.com>
+        Richard Earnshaw  <rearnsha@arm.com>
+        Sofiane Naci  <sofiane.naci@arm.com>
+        Tejas Belagod  <tejas.belagod@arm.com>
+        Yufeng Zhang  <yufeng.zhang@arm.com>
+
+	* configure.host: Add AArch64.
+	* libc/include/machine/ieeefp.h: Add AArch64.
+	* libc/include/machine/setjmp.h: Add AArch64.
+	* libc/include/machine/time.h: Add AArch64.
+	* libc/include/sys/config.h: Add AArch64.
+	* libc/machine/aarch64/Makefile.am: New file.
+	* libc/machine/aarch64/Makefile.in: Generated.
+	* libc/machine/aarch64/aclocal.m4: Generated.
+	* libc/machine/aarch64/configure: Generated.
+	* libc/machine/aarch64/configure.in: New file.
+	* libc/machine/aarch64/setjmp.S: New file.
+	* libc/machine/configure.in: Add AArch64.
+	* libc/machine/configure: Re-generated.
+	* libm/machine/aarch64/Makefile.am: New file.
+	* libm/machine/aarch64/Makefile.in: Generated.
+	* libm/machine/aarch64/aclocal.m4: Generated.
+	* libm/machine/aarch64/configure: Generated.
+	* libm/machine/aarch64/configure.in: New file.
+	* libm/machine/aarch64/s_ceil.c: New file.
+	* libm/machine/aarch64/s_floor.c: New file.
+	* libm/machine/aarch64/s_fma.c: New file.
+	* libm/machine/aarch64/s_fmax.c: New file.
+	* libm/machine/aarch64/s_fmin.c: New file.
+	* libm/machine/aarch64/s_llrint.c: New file.
+	* libm/machine/aarch64/s_llround.c: New file.
+	* libm/machine/aarch64/s_lrint.c: New file.
+	* libm/machine/aarch64/s_lround.c: New file.
+	* libm/machine/aarch64/s_nearbyint.c: New file.
+	* libm/machine/aarch64/s_rint.c: New file.
+	* libm/machine/aarch64/s_round.c: New file.
+	* libm/machine/aarch64/s_trunc.c: New file.
+	* libm/machine/aarch64/sf_ceil.c: New file.
+	* libm/machine/aarch64/sf_floor.c: New file.
+	* libm/machine/aarch64/sf_fma.c: New file.
+	* libm/machine/aarch64/sf_fmax.c: New file.
+	* libm/machine/aarch64/sf_fmin.c: New file.
+	* libm/machine/aarch64/sf_llrint.c: New file.
+	* libm/machine/aarch64/sf_llround.c: New file.
+	* libm/machine/aarch64/sf_lrint.c: New file.
+	* libm/machine/aarch64/sf_lround.c: New file.
+	* libm/machine/aarch64/sf_nearbyint.c: New file.
+	* libm/machine/aarch64/sf_rint.c: New file.
+	* libm/machine/aarch64/sf_round.c: New file.
+	* libm/machine/aarch64/sf_trunc.c: New file.
+	* libm/machine/configure.in: Add AArch64.
+	* libm/machine/configure: Re-generated.
+
+2012-09-26  Michael Hope  <michael.hope@linaro.org>
+
+	* doc/makedoc.c (dup_): Rename to avoid colliding with dup(2). 
+
+2012-09-13  Anthony Green  <green@moxielogic.com>
+
+	* libc/include/machine/ieeefp.h (__IEEE_BIG_ENDIAN): Add bi-endian
+	support for moxie.
+
+2012-08-23  Christopher Faylor  <me.cygwin2012@cgf.cx>
+
+	* libc/stdio/flags.c (__sflags): Guard against using O_BINARY on
+	systems which do not provide it.
+
+2012-08-21  Christopher Faylor  <me.cygwin2012@cgf.cx>
+
+	* libc/stdio/flags.c (__sflags): Rewrite recognition of extended mode
+	flags to just loop over more allowed flags.  Support glibc 'e' flag on
+	systems defining _GLIBC_EXTENSION.  Support C11 'x' flag.
+
+2012-08-10  Corinna Vinschen  <vinschen@redhat.com>
+
+	* libc/stdlib/btowc.c (btowc): Cast to avoid compiler warning.
+	* libc/search/hash_buf.c (__get_buf): Initialize local vars to avoid
+	compiler warning.
+	* libc/stdio/fgets.c (_fgets_r): Ditto.
+	* libc/time/strftime.c (strftime): Ditto.
+
+2012-08-10  Corinna Vinschen  <vinschen@redhat.com>
+
+	* libc/stdio/vfwprintf.c (_VFWPRINTF_R): Fix guard around state to
+	allow usage in !FLOATING_POINT && _WANT_IO_C99_FORMATS case.
+
+2012-08-08  Eric Blake  <eblake@redhat.com>
+
+	* libc/posix/engine.c(dissect): Guard diagnostic pragma for right
+	versions of GCC only.
+	* libc/string/strcasestr.c: Ditto.
+
+2012-08-08  Corinna Vinschen  <vinschen@redhat.com>
+
+	Throughout, run newlib with -Wall -Werror option and fix bugs and
+	compiler warnings found this way.
+
+	* libc/stdio/freopen.c (_freopen_r): Fix bug setting _flags.
+
+	* libc/include/stdio.h (_rename): Define when building newlib.
+	* libc/include/sys/signal.h (_kill): Ditto.
+	* libc/include/sys/stat.h (_mkdir): Ditto.
+	* libc/include/sys/time.h (_gettimeofday): Ditto.
+	* libc/include/sys/times.h (_times): Ditto.
+	* libc/include/sys/wait.h (_wait): Ditto.
+	* libc/locale/lmessages.c (empty): Don't define for Cygwin.
+	* libc/locale/lmonetary.c (cnv): Ditto.
+	* libc/locale/nl_langinfo.c (nl_langinfo): Ditto for variable s.
+	* libc/posix/collate.c: Throughout cast to avoid compiler warning.
+	* libc/posix/engine.c (matcher): Initialize dp to avoid compiler
+	warning.
+	(dissect): Deliberately silence gcc compiler warning.  Add comment to
+	explain why.
+	* libc/posix/glob.c: Disable on Cygwin.  Explain why.
+	* libc/posix/regcomp.c: Fix "uninitialized" compiler warnings.
+	* libc/posix/wordexp.c (wordexp): Remove num_bytes variable since result
+	is never used.
+	* libc/posix/popen.c (popen): Ditto for variable last.
+	* libc/reent/mkdirr.c: Include sys/stat.h.
+	* libc/reent/renamer.c: Include stdio.h.
+	* libc/search/hash.c:  Throughout use underscored variants of the stat
+	function family.
+	(init_hash): Add missing definition for the __USE_INTERNAL_STAT64 case.
+	* libc/search/hash_bigkey.c (__big_insert): Add parenthesis to avoid
+	compiler warning.
+	* libc/search/hash_page.c (overflow_page): Initalize freep to NULL to
+	avoid compiler warning.
+	* libc/stdio/asiprintf.c (_asiprintf_r): Cast unsigned char * to char *
+	to avoid compiler warning.
+	(asiprintf): Ditto.
+	* libc/stdio/asprintf.c (_asprintf_r): Ditto.
+	(asprintf): Ditto.
+	* libc/stdio/vasiprintf.c (_vasiprintf_r): Ditto.
+	* libc/stdio/vasprintf.c (_vasprintf_r): Ditto.
+	* libc/stdio/mktemp.c (_gettemp): Cast to unsigned char in call to
+	isdigit to avoid compiler warning.
+	* libc/stdio/vfprintf.c (_VFPRINTF_R): Initialize variables used for
+	grouping to avoid compiler warning.  Only define and set nseps and
+	nrepeats if they are really used.
+	* libc/stdio/vfwprintf.c (_VFWPRINTF_R): Ditto.  Only define state if
+	it is really used.
+	* libc/stdio/vfscanf.c (u_char): Revert to be defined as unsigned char.
+	(__SVFSCANF_R): Cast fmt in call to __mbtowc.
+	* libc/stdlib/mbtowc_r.c (JIS_state_table): Disable when building
+	Cygwin.
+	(JIS_action_table): Ditto.
+	* libc/stdlib/wctomb_r.c (__utf8_wctomb): Add parenthesis to avoid
+	compiler warning.
+	* libc/string/strcasestr.c: Deliberately silence gcc compiler warning.
+	Add comment to explain why.
+	* libc/time/strptime.c (strptime): Cast to unsigned char in calls to
+	isspace to avoid compiler warning.
+	* libm/math/e_atan2.c (__ieee754_atan2): Add parenthesis to avoid
+	compiler warning.
+	* libm/math/e_exp.c (__ieee754_exp): Initialize k to 0 to avoid
+	compiler warning.  Drop setting it to 0 later.
+	* libm/math/ef_exp.c (__ieee754_expf): Ditto.
+	* libm/math/e_pow.c (__ieee754_pow): Add braces to avoid compiler
+	warning.
+	* libm/math/ef_pow.c (__ieee754_powf): Ditto.
+	* libm/math/er_lgamma.c (__ieee754_lgamma_r): Initialize nadj to 0 to
+	avoid compiler warning.
+	* libm/math/erf_lgamma.c (__ieee754_lgammaf_r): Ditto.
+	* libm/math/e_rem_pio2.c (__ieee754_rem_pio2): Ditto for variable z.
+	* libm/common/sf_round.c (roundf): Remove signbit variable since result
+	is never used.
+
+2012-08-07  Corinna Vinschen  <vinschen@redhat.com>
+
+	* libc/stdlib/mprec.h (Storeinc): Add parenthesis to avoid compiler
+	warning.
+
+2012-07-30  Kevin Buettner  <kevinb@redhat.com>
+
+	* libc/sys/sysnecv850/crt0.S (_start): Use v850e-specific
+	start up code for v850e2 and v850e2v3 too.
+
+2012-07-20  Eric Blake  <eblake@redhat.com>
+
+	* libc/posix/readdir.c (readdir): Drop bogus attempt to catch
+	bogus pointers.
+
+2012-07-18  Ralf Corsépius  <ralf.corsepius@rtems.org>
+
+	* libc/sys/rtems/machine/_types.h (_ssize_t): Use signed int for
+	__v850__, __851__.
+
+2012-07-17  Ralf Corsépius  <ralf.corsepius@rtems.org>
+
+	* libc/search/hcreate_r.c (hdestroy_r): #ifdef 0 unused vars ie, idx.
+
+2012-07-16  Ralf Corsépius  <ralf.corsepius@rtems.org>
+
+	* libc/posix/telldir.c: Conditionally build dd_hash_lock.
+
+2012-07-13  Ralf Corsépius  <ralf.corsepius@rtems.org>
+
+	* libc/sys/rtems/machine/_types.h (_ssize_t): Add __ARM_EABI__,
+	__v850__, __851__.
+
+2012-07-09  Corinna Vinschen  <vinschen@redhat.com>
+
+	* libc/stdio/fileno.c (fileno): Check if f is a valid stream.  If not,
+	return -1 and set errno to EBADF per POSIX.
+
+2012-07-06  Corinna Vinschen  <vinschen@redhat.com>
+
+	Allow building of Cygwin using Mingw64 SDK headers:
+	* libc/include/sys/time.h: Drop _WINSOCK_H guard.  Just use
+	_TIMEVAL_DEFINED instead.
+	* libc/include/sys/types.h: Check for _WINSOCKAPI_ along with
+	_WINSOCK_H.
+	* libc/include/sys/unistd.h: Ditto.
+
+2012-06-28  Matthew Gretton-Dann  <matthew.gretton-dann@arm.com>
+
+	* doc/Makefile.am (makedoc): Use LDFLAGS_FOR_BUILD not LDFLAGS.
+	* doc/Makefile.in: Regenerate.
+
+2012-06-26  Christopher Faylor  <me.newlib2012@cgf.cx>
+
+	* libc/include/sys/types.h: Don't use the same preprocessor guard for
+	time_t, timespec, and itimerspec.  Add a separate guard specifically
+	for timespec and always unconditionally define itimerspec.
+
 2012-06-05  Corinna Vinschen  <vinschen@redhat.com>
 
 	* libc/stdio/findfp.c (__sinit): Avoid infinite recursion on

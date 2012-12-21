@@ -38,6 +38,7 @@
 #include "gdb-dlfcn.h"
 #include "gdb_stat.h"
 #include "exceptions.h"
+#include "gdb_bfd.h"
 
 static const char *jit_reader_dir = NULL;
 
@@ -59,7 +60,7 @@ static struct gdbarch_data *jit_gdbarch_data;
 
 /* Non-zero if we want to see trace of jit level stuff.  */
 
-static int jit_debug = 0;
+static unsigned int jit_debug = 0;
 
 static void
 show_jit_debug (struct ui_file *file, int from_tty,
@@ -132,17 +133,16 @@ mem_bfd_iovec_stat (struct bfd *abfd, void *stream, struct stat *sb)
 static struct bfd *
 bfd_open_from_target_memory (CORE_ADDR addr, ULONGEST size, char *target)
 {
-  const char *filename = xstrdup ("<in-memory>");
   struct target_buffer *buffer = xmalloc (sizeof (struct target_buffer));
 
   buffer->base = addr;
   buffer->size = size;
-  return bfd_openr_iovec (filename, target,
-                          mem_bfd_iovec_open,
-                          buffer,
-                          mem_bfd_iovec_pread,
-                          mem_bfd_iovec_close,
-                          mem_bfd_iovec_stat);
+  return gdb_bfd_openr_iovec ("<in-memory>", target,
+			      mem_bfd_iovec_open,
+			      buffer,
+			      mem_bfd_iovec_pread,
+			      mem_bfd_iovec_close,
+			      mem_bfd_iovec_stat);
 }
 
 /* One reader that has been loaded successfully, and can potentially be used to
@@ -757,12 +757,11 @@ jit_object_close_impl (struct gdb_symbol_callbacks *cb,
   priv_data = cb->priv_data;
 
   objfile = allocate_objfile (NULL, 0);
-  objfile->gdbarch = target_gdbarch;
+  objfile->gdbarch = target_gdbarch ();
 
   terminate_minimal_symbol_table (objfile);
 
-  xfree (objfile->name);
-  objfile->name = xstrdup ("<< JIT compiled code >>");
+  objfile->name = "<< JIT compiled code >>";
 
   j = NULL;
   for (i = obj->symtabs; i; i = j)
@@ -868,7 +867,7 @@ jit_bfd_try_read_symtab (struct jit_code_entry *code_entry,
     {
       printf_unfiltered (_("\
 JITed symbol file is not an object file, ignoring it.\n"));
-      bfd_close (nbfd);
+      gdb_bfd_unref (nbfd);
       return;
     }
 
@@ -896,7 +895,8 @@ JITed symbol file is not an object file, ignoring it.\n"));
         ++i;
       }
 
-  /* This call takes ownership of NBFD.  It does not take ownership of SAI.  */
+  /* This call does not take ownership of SAI.  */
+  make_cleanup_bfd_unref (nbfd);
   objfile = symbol_file_add_from_bfd (nbfd, 0, sai, OBJF_SHARED, NULL);
 
   do_cleanups (old_cleanups);
@@ -1061,8 +1061,8 @@ jit_unwind_reg_get_impl (struct gdb_unwind_callbacks *cb, int regnum)
   gdb_reg = gdbarch_dwarf2_reg_to_regnum (frame_arch, regnum);
   size = register_size (frame_arch, gdb_reg);
   value = xmalloc (sizeof (struct gdb_reg_value) + size - 1);
-  value->defined = frame_register_read (priv->this_frame, gdb_reg,
-                                        value->value);
+  value->defined = deprecated_frame_register_read (priv->this_frame, gdb_reg,
+						   value->value);
   value->size = size;
   value->free = reg_value_free_impl;
   return value;
@@ -1290,7 +1290,7 @@ jit_inferior_init (struct gdbarch *gdbarch)
 void
 jit_inferior_created_hook (void)
 {
-  jit_inferior_init (target_gdbarch);
+  jit_inferior_init (target_gdbarch ());
 }
 
 /* Exported routine to call to re-set the jit breakpoints,
@@ -1299,7 +1299,7 @@ jit_inferior_created_hook (void)
 void
 jit_breakpoint_re_set (void)
 {
-  jit_breakpoint_re_set_internal (target_gdbarch,
+  jit_breakpoint_re_set_internal (target_gdbarch (),
 				  get_jit_inferior_data ());
 }
 
@@ -1401,19 +1401,19 @@ _initialize_jit (void)
 {
   jit_reader_dir = relocate_gdb_directory (JIT_READER_DIR,
                                            JIT_READER_DIR_RELOCATABLE);
-  add_setshow_zinteger_cmd ("jit", class_maintenance, &jit_debug,
-			    _("Set JIT debugging."),
-			    _("Show JIT debugging."),
-			    _("When non-zero, JIT debugging is enabled."),
-			    NULL,
-			    show_jit_debug,
-			    &setdebuglist, &showdebuglist);
+  add_setshow_zuinteger_cmd ("jit", class_maintenance, &jit_debug,
+			     _("Set JIT debugging."),
+			     _("Show JIT debugging."),
+			     _("When non-zero, JIT debugging is enabled."),
+			     NULL,
+			     show_jit_debug,
+			     &setdebuglist, &showdebuglist);
 
   observer_attach_inferior_exit (jit_inferior_exit_hook);
   jit_objfile_data =
     register_objfile_data_with_cleanup (NULL, free_objfile_data);
   jit_inferior_data =
-    register_inferior_data_with_cleanup (jit_inferior_data_cleanup);
+    register_inferior_data_with_cleanup (NULL, jit_inferior_data_cleanup);
   jit_gdbarch_data = gdbarch_data_register_pre_init (jit_gdbarch_data_init);
   if (is_dl_available ())
     {

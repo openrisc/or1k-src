@@ -1,14 +1,14 @@
-D/config////
-D/doc////
 D/itcl////
 D/itk////
 D/iwidgets////
+/ChangeLog/1.32/Sat Oct 27 22:59:28 2012/-ko/
+/Makefile.am/1.1/Sat Oct 27 22:59:28 2012//
+/Makefile.in/1.9/Sat Oct 27 22:59:28 2012/-ko/
+/README/1.4/Sat Oct 27 22:59:28 2012//
+/aclocal.m4/1.6/Sat Oct 27 22:59:28 2012/-ko/
+/configure/1.10/Sat Oct 27 22:59:28 2012/-ko/
+/configure.ac/1.1/Sat Oct 27 22:59:28 2012//
+D/config////
+D/doc////
 D/iwidgets3.0.0////
 D/testsuite////
-/ChangeLog/1.32/Mon May  7 21:35:07 2012/-ko/
-/Makefile.am/1.1/Mon May  7 21:35:07 2012//
-/Makefile.in/1.9/Mon May  7 21:35:07 2012/-ko/
-/README/1.4/Mon May  7 21:35:07 2012//
-/aclocal.m4/1.6/Mon May  7 21:35:07 2012/-ko/
-/configure/1.10/Mon May  7 21:35:07 2012/-ko/
-/configure.ac/1.1/Mon May  7 21:35:07 2012//

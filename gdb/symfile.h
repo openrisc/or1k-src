@@ -22,7 +22,7 @@
 
 /* This file requires that you first include "bfd.h".  */
 #include "symtab.h"
-#include "gdb_vecs.h"
+#include "probe.h"
 
 /* Opaque declarations.  */
 struct target_section;
@@ -320,8 +320,7 @@ struct sym_probe_fns
      have come from a call to this objfile's sym_get_probes method.
      If you provide an implementation of sym_get_probes, you must
      implement this method as well.  */
-  unsigned (*sym_get_probe_argument_count) (struct objfile *objfile,
-					    struct probe *probe);
+  unsigned (*sym_get_probe_argument_count) (struct probe *probe);
 
   /* Evaluate the Nth argument available to PROBE.  PROBE will have
      come from a call to this objfile's sym_get_probes method.  N will
@@ -330,8 +329,7 @@ struct sym_probe_fns
      PC will match the address of the probe.  If you provide an
      implementation of sym_get_probes, you must implement this method
      as well.  */
-  struct value *(*sym_evaluate_probe_argument) (struct objfile *objfile,
-						struct probe *probe,
+  struct value *(*sym_evaluate_probe_argument) (struct probe *probe,
 						unsigned n);
 
   /* Compile the Nth probe argument to an agent expression.  PROBE
@@ -339,8 +337,7 @@ struct sym_probe_fns
      method.  N will be between 0 and the number of arguments
      available to this probe.  EXPR and VALUE are the agent expression
      that is being updated.  */
-  void (*sym_compile_to_ax) (struct objfile *objfile,
-			     struct probe *probe,
+  void (*sym_compile_to_ax) (struct probe *probe,
 			     struct agent_expr *expr,
 			     struct axs_value *value,
 			     unsigned n);
@@ -553,7 +550,7 @@ extern void find_lowest_section (bfd *, asection *, void *);
 
 extern bfd *symfile_bfd_open (char *);
 
-extern bfd *bfd_open_maybe_remote (const char *);
+extern bfd *gdb_bfd_open_maybe_remote (const char *);
 
 extern int get_section_index (struct objfile *, char *);
 
@@ -676,9 +673,6 @@ extern void dwarf2_build_frame_info (struct objfile *);
 
 void dwarf2_free_objfile (struct objfile *);
 
-/* Whether to use deprecated .gdb_index sections.  */
-extern int use_deprecated_index_sections;
-
 /* From mdebugread.c */
 
 /* Hack to force structures to exist before use in parameter list.  */
@@ -695,5 +689,9 @@ extern void mdebug_build_psymtabs (struct objfile *,
 extern void elfmdebug_build_psymtabs (struct objfile *,
 				      const struct ecoff_debug_swap *,
 				      asection *);
+
+/* From minidebug.c.  */
+
+extern bfd *find_separate_debug_file_in_section (struct objfile *);
 
 #endif /* !defined(SYMFILE_H) */

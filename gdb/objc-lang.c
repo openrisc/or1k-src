@@ -509,13 +509,12 @@ const struct language_defn objc_language_defn = {
   "objective-c",		/* Language name */
   language_objc,
   range_check_off,
-  type_check_off,
   case_sensitive_on,
   array_row_major,
   macro_expansion_c,
   &exp_descriptor_standard,
-  objc_parse,
-  objc_error,
+  c_parse,
+  c_error,
   null_post_parser,
   objc_printchar,		/* Print a character constant */
   objc_printstr,		/* Function to print string constant */

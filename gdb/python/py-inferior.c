@@ -101,7 +101,7 @@ python_on_resume (ptid_t ptid)
 {
   struct cleanup *cleanup;
 
-  cleanup = ensure_python_env (target_gdbarch, current_language);
+  cleanup = ensure_python_env (target_gdbarch (), current_language);
 
   if (emit_continue_event (ptid) < 0)
     gdbpy_print_stack ();
@@ -115,7 +115,7 @@ python_inferior_exit (struct inferior *inf)
   struct cleanup *cleanup;
   const LONGEST *exit_code = NULL;
 
-  cleanup = ensure_python_env (target_gdbarch, current_language);
+  cleanup = ensure_python_env (target_gdbarch (), current_language);
 
   if (inf->has_exit_code)
     exit_code = &inf->exit_code;
@@ -300,8 +300,13 @@ infpy_threads (PyObject *self, PyObject *args)
   struct threadlist_entry *entry;
   inferior_object *inf_obj = (inferior_object *) self;
   PyObject *tuple;
+  volatile struct gdb_exception except;
 
   INFPY_REQUIRE_VALID (inf_obj);
+
+  TRY_CATCH (except, RETURN_MASK_ALL)
+    update_thread_list ();
+  GDB_PY_HANDLE_EXCEPTION (except);
 
   tuple = PyTuple_New (inf_obj->nthreads);
   if (!tuple)
@@ -493,7 +498,7 @@ infpy_write_memory (PyObject *self, PyObject *args, PyObject *kw)
 	  error = 1;
 	  break;
 	}
-      write_memory (addr, buffer, length);
+      write_memory_with_notification (addr, buffer, length);
     }
   GDB_PY_HANDLE_EXCEPTION (except);
 
@@ -720,7 +725,7 @@ gdbpy_initialize_inferior (void)
 		      (PyObject *) &inferior_object_type);
 
   infpy_inf_data_key =
-    register_inferior_data_with_cleanup (py_free_inferior);
+    register_inferior_data_with_cleanup (NULL, py_free_inferior);
 
   observer_attach_new_thread (add_thread_object);
   observer_attach_thread_exit (delete_thread_object);

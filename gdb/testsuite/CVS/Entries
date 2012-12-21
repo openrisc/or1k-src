@@ -4,15 +4,12 @@ D/gdb.ada////
 D/gdb.arch////
 D/gdb.asm////
 D/gdb.base////
-D/gdb.c++////
 D/gdb.cell////
-D/gdb.chill////
 D/gdb.cp////
 D/gdb.disasm////
 D/gdb.dwarf2////
 D/gdb.fortran////
 D/gdb.gdb////
-D/gdb.gdbserver////
 D/gdb.gdbtk////
 D/gdb.go////
 D/gdb.hp////
@@ -31,13 +28,16 @@ D/gdb.server////
 D/gdb.stabs////
 D/gdb.threads////
 D/gdb.trace////
-D/gdb.twreverse////
 D/gdb.xml////
 D/lib////
-/ChangeLog/1.3238/Sat Jun 23 00:21:42 2012/-ko/
-/Makefile.in/1.43/Sat Jun 23 00:21:42 2012/-ko/
-/TODO/1.1.1.1/Mon May  7 21:35:07 2012/-ko/
-/aclocal.m4/1.4/Mon May  7 21:35:07 2012/-ko/
-/configure/1.39/Sat Jun 23 00:21:42 2012/-ko/
-/configure.ac/1.23/Sat Jun 23 00:21:42 2012//
-/dg-extract-results.sh/1.5/Tue May  8 13:53:31 2012//
+/ChangeLog/1.3466/Thu Nov 29 07:46:19 2012/-ko/
+/Makefile.in/1.43/Sat Oct 27 22:59:28 2012/-ko/
+/TODO/1.1.1.1/Sat Oct 27 22:59:28 2012/-ko/
+/aclocal.m4/1.4/Sat Oct 27 22:59:28 2012/-ko/
+/configure/1.39/Sat Oct 27 22:59:28 2012/-ko/
+/configure.ac/1.23/Sat Oct 27 22:59:28 2012//
+/dg-extract-results.sh/1.5/Sat Oct 27 22:59:28 2012//
+D/gdb.c++////
+D/gdb.chill////
+D/gdb.gdbserver////
+D/gdb.twreverse////

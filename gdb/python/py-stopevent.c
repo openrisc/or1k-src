@@ -17,6 +17,7 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+#include "defs.h"
 #include "py-stopevent.h"
 
 PyObject *
@@ -81,6 +82,7 @@ emit_stop_event (struct bpstats *bs, enum gdb_signal stop_signal)
       stop_event_obj = create_breakpoint_event_object (list, first_bp);
       if (!stop_event_obj)
         goto fail;
+      Py_DECREF (list);
     }
 
   /* Check if the signal is "Signal 0" or "Trace/breakpoint trap".  */

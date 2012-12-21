@@ -304,7 +304,7 @@ Skiplist entry should have either a filename or a function name."));
 	   if (sym)
 	     ui_out_field_fmt (current_uiout, "what", "%s at %s:%d",
 			       sym->ginfo.name,
-			       sym->symtab->filename,
+			       SYMBOL_SYMTAB (sym)->filename,
 			       sym->line);
 	   else
 	     ui_out_field_string (current_uiout, "what", "?");
@@ -545,6 +545,7 @@ extern initialize_file_ftype _initialize_step_skip;
 void
 _initialize_step_skip (void)
 {
+  static struct cmd_list_element *skiplist = NULL;
   struct cmd_list_element *c;
 
   skiplist_entry_chain = 0;

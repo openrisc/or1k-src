@@ -402,7 +402,8 @@ struct eh_frame_hdr_info
    one line.  */
 enum elf_target_id
 {
-  ALPHA_ELF_DATA = 1,
+  AARCH64_ELF_DATA = 1,
+  ALPHA_ELF_DATA,
   ARM_ELF_DATA,
   AVR_ELF_DATA,
   BFIN_ELF_DATA,
@@ -497,6 +498,9 @@ struct elf_link_hash_table
 
   /* The _PROCEDURE_LINKAGE_TABLE_ symbol.  */
   struct elf_link_hash_entry *hplt;
+
+  /* The _DYNAMIC symbol.  */
+  struct elf_link_hash_entry *hdynamic;
 
   /* A pointer to information used to merge SEC_MERGE sections.  */
   void *merge_info;
@@ -1282,6 +1286,9 @@ struct elf_backend_data
   /* This is non-zero if static TLS segments require a special alignment.  */
   unsigned static_tls_alignment;
 
+  /* Alignment for the PT_GNU_STACK segment. */
+  unsigned stack_align;
+
   /* This is TRUE if the linker should act like collect and gather
      global constructors and destructors by name.  This is TRUE for
      MIPS ELF because the Irix 5 tools can not handle the .init
@@ -1877,9 +1884,16 @@ extern bfd_boolean _bfd_elf_set_arch_mach
 extern bfd_boolean _bfd_elf_find_nearest_line
   (bfd *, asection *, asymbol **, bfd_vma, const char **, const char **,
    unsigned int *);
+extern bfd_boolean _bfd_elf_find_nearest_line_discriminator
+  (bfd *, asection *, asymbol **, bfd_vma, const char **, const char **,
+   unsigned int *, unsigned int *);
 extern bfd_boolean _bfd_elf_find_line
   (bfd *, asymbol **, asymbol *, const char **, unsigned int *);
+extern bfd_boolean _bfd_elf_find_line_discriminator
+  (bfd *, asymbol **, asymbol *, const char **, unsigned int *, unsigned int *);
 #define _bfd_generic_find_line _bfd_elf_find_line
+#define _bfd_generic_find_nearest_line_discriminator \
+        _bfd_elf_find_nearest_line_discriminator
 extern bfd_boolean _bfd_elf_find_inliner_info
   (bfd *, const char **, const char **, unsigned int *);
 #define _bfd_elf_read_minisymbols _bfd_generic_read_minisymbols
@@ -1960,7 +1974,7 @@ extern bfd_boolean _bfd_elf_maybe_strip_eh_frame_hdr
 
 extern bfd_boolean _bfd_elf_merge_symbol
   (bfd *, struct bfd_link_info *, const char *, Elf_Internal_Sym *,
-   asection **, bfd_vma *, unsigned int *,
+   asection **, bfd_vma *, bfd_boolean *, unsigned int *,
    struct elf_link_hash_entry **, bfd_boolean *,
    bfd_boolean *, bfd_boolean *, bfd_boolean *);
 
@@ -2458,7 +2472,7 @@ extern asection _bfd_elf_large_com_section;
     continue;								\
   }
 
-/* Will a symbol be bound to the the definition within the shared
+/* Will a symbol be bound to the definition within the shared
    library, if any.  A unique symbol can never be bound locally.  */
 #define SYMBOLIC_BIND(INFO, H) \
     (!(H)->unique_global \

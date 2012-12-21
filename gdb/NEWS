@@ -1,7 +1,114 @@
 		What has changed in GDB?
 	     (Organized release by release)
 
-*** Changes since GDB 7.4
+*** Changes since GDB 7.5
+
+* If the configured location of system.gdbinit file (as given by the
+  --with-system-gdbinit option at configure time) is in the
+  data-directory (as specified by --with-gdb-datadir at configure
+  time) or in one of its subdirectories, then GDB will look for the
+  system-wide init file in the directory specified by the
+  --data-directory command-line option.
+
+* New command line options:
+
+-nh   Disables auto-loading of ~/.gdbinit, but still executes all the
+      other initialization files, unlike -nx which disables all of them.
+
+* The 'ptype' and 'whatis' commands now accept an argument to control
+  type formatting.
+
+* Python scripting
+
+  ** Vectors can be created with gdb.Type.vector.
+
+  ** Python's atexit.register now works in GDB.
+
+  ** Types can be pretty-printed via a Python API.
+
+* New Python-based convenience functions:
+
+  ** $_memeq(buf1, buf2, length)
+  ** $_streq(str1, str2)
+  ** $_strlen(str)
+  ** $_regex(str, regex)
+
+* The 'cd' command now defaults to using '~' (the home directory) if not
+  given an argument.
+
+* The command 'forward-search' can now be abbreviated as 'fo'.
+
+* New configure options
+
+--enable-libmcheck/--disable-libmcheck
+  By default, development versions are built with -lmcheck on hosts
+  that support it, in order to help track memory corruption issues.
+  Release versions, on the other hand, are built without -lmcheck
+  by default.  The --enable-libmcheck/--disable-libmcheck configure
+  options allow the user to override that default.
+
+* New commands (for set/show, see "New options" below)
+
+maint info bfds
+  List the BFDs known to GDB.
+
+python-interactive [command]
+pi [command]
+  Start a Python interactive prompt, or evaluate the optional command
+  and print the result of expressions.
+
+py [command]
+  "py" is a new alias for "python".
+
+enable type-printer [name]...
+disable type-printer [name]...
+  Enable or disable type printers.
+
+* Removed commands
+
+  ** For the Renesas Super-H architecture, the "regs" command has been removed
+     (has been deprecated in GDB 7.5), and "info all-registers" should be used
+     instead.
+
+* New options
+
+set print type methods (on|off)
+show print type methods
+  Control whether method declarations are displayed by "ptype".
+  The default is to show them.
+
+set print type typedefs (on|off)
+show print type typedefs
+  Control whether typedef definitions are displayed by "ptype".
+  The default is to show them.
+
+* MI changes
+
+  ** Command parameter changes are now notified using new async record
+     "=cmd-param-changed".
+  ** Trace frame changes caused by command "tfind" are now notified using
+     new async record "=traceframe-changed".
+  ** The creation and deletion of trace state variables are now notified
+     using new async records "=tsv-created" and "=tsv-deleted".
+  ** The start and stop of process record are now notified using new
+     async record "=record-started" and "=record-stopped".
+  ** Memory changes are now notified using new async record
+     "=memory-changed".
+  ** The data-disassemble command response will include a "fullname" field
+     containing the absolute file name when GDB can determine it and source
+     has been requested.
+  ** New optional parameter COUNT added to the "-data-write-memory-bytes" 
+     command, to allow pattern filling of memory areas.
+
+* GDB now supports the "mini debuginfo" section, .gnu_debugdata.
+  You must have the LZMA library available when configuring GDB for this
+  feature to be enabled.  For more information, see:
+      http://fedoraproject.org/wiki/Features/MiniDebugInfo
+
+*** Changes in GDB 7.5
+
+* GDB now supports x32 ABI.  Visit <http://sites.google.com/site/x32abi/>
+  for more x32 ABI info.
 
 * GDB now supports access to MIPS DSP registers on Linux targets.
 
@@ -60,6 +167,9 @@
   ** New function gdb.find_pc_line which returns the gdb.Symtab_and_line
      object associated with a PC value.
 
+  ** gdb.Symtab_and_line has new attribute 'last' which holds the end
+     of the address range occupied by code for the current source line.
+
 * Go language support.
   GDB now supports debugging programs written in the Go programming
   language.
@@ -106,11 +216,17 @@
 * The .gdb_index section has been updated to include symbols for
   inlined functions.  GDB will ignore older .gdb_index sections by
   default, which could cause symbol files to be loaded more slowly
-  until their .gdb_index sections can be recreated.  The new option
-  --use-deprecated-index-sections will cause GDB to use any older
-  .gdb_index sections it finds.  This will restore performance, but
-  the ability to set breakpoints on inlined functions will be lost
-  in symbol files with older .gdb_index sections.
+  until their .gdb_index sections can be recreated.  The new command
+  "set use-deprecated-index-sections on" will cause GDB to use any older
+  .gdb_index sections it finds.  This will restore performance, but the
+  ability to set breakpoints on inlined functions will be lost in symbol
+  files with older .gdb_index sections.
+
+  The .gdb_index section has also been updated to record more information
+  about each symbol.  This speeds up the "info variables", "info functions"
+  and "info types" commands when used with programs having the .gdb_index
+  section, as well as speeding up debugging with shared libraries using
+  the .gdb_index section.
 
 * Ada support for GDB/MI Variable Objects has been added.
 
@@ -121,7 +237,13 @@
 
   ** New command -info-os is the MI equivalent of "info os".
 
+  ** Output logs ("set logging" and related) now include MI output.
+
 * New commands
+
+  ** "set use-deprecated-index-sections on|off"
+     "show use-deprecated-index-sections on|off"
+     Controls the use of deprecated .gdb_index sections.
 
   ** "catch load" and "catch unload" can be used to stop when a shared
      library is loaded or unloaded, respectively.
@@ -233,11 +355,12 @@ set debug auto-load on|off
 show debug auto-load
   Control display of debugging info for auto-loading the files above.
 
-set dprintf-style gdb|call
+set dprintf-style gdb|call|agent
 show dprintf-style
-  Control the way in which a dynamic printf is performed; "gdb" requests
-  a GDB printf command, while "call" causes dprintf to call a function
-  in the inferior.
+  Control the way in which a dynamic printf is performed; "gdb"
+  requests a GDB printf command, while "call" causes dprintf to call a
+  function in the inferior.  "agent" requests that the target agent
+  (such as GDBserver) do the printing.
 
 set dprintf-function <expr>
 show dprintf-function
@@ -245,6 +368,11 @@ set dprintf-channel <expr>
 show dprintf-channel
   Set the function and optional first argument to the call when using
   the "call" style of dynamic printf.
+
+set disconnected-dprintf on|off
+show disconnected-dprintf
+  Control whether agent-style dynamic printfs continue to be in effect
+  after GDB disconnects.
 
 * New configure options
 
@@ -461,6 +589,16 @@ tstop [NOTES]
   limited to locations with instructions of 5 bytes or longer.
 
 * New options
+
+set debug dwarf2-read
+show debug dwarf2-read
+  Turns on or off display of debugging messages related to reading
+  DWARF debug info.  The default is off.
+
+set debug symtab-create
+show debug symtab-create
+  Turns on or off display of debugging messages related to symbol table
+  creation.  The default is off.
 
 set extended-prompt
 show extended-prompt

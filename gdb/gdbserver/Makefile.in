@@ -100,6 +100,9 @@ GLOBAL_CFLAGS = ${MT_CFLAGS} ${MH_CFLAGS}
 WARN_CFLAGS = @WARN_CFLAGS@
 WERROR_CFLAGS = @WERROR_CFLAGS@
 
+WARN_CFLAGS_NO_FORMAT = `echo " $(WARN_CFLAGS) " \
+		   | sed "s/ -Wformat-nonliteral / -Wno-format-nonliteral /g"`
+
 # CFLAGS is specifically reserved for setting from the command line
 # when running make.  I.E.  "make CFLAGS=-Wmissing-prototypes".
 CFLAGS = @CFLAGS@
@@ -108,7 +111,7 @@ CFLAGS = @CFLAGS@
 INTERNAL_CFLAGS_BASE =  ${CFLAGS} ${GLOBAL_CFLAGS} \
 	${PROFILE_CFLAGS} ${INCLUDE_CFLAGS}
 INTERNAL_WARN_CFLAGS =  ${INTERNAL_CFLAGS_BASE} $(WARN_CFLAGS)
-INTERNAL_CFLAGS =  ${INTERNAL_WARN_CFLAGS} $(WERROR_CFLAGS)
+INTERNAL_CFLAGS =  ${INTERNAL_WARN_CFLAGS} $(WERROR_CFLAGS) -DGDBSERVER
 
 # LDFLAGS is specifically reserved for setting from the command line
 # when running make.
@@ -137,7 +140,7 @@ SFILES=	$(srcdir)/gdbreplay.c $(srcdir)/inferiors.c $(srcdir)/dll.c \
 	$(srcdir)/win32-arm-low.c $(srcdir)/win32-i386-low.c \
 	$(srcdir)/win32-low.c $(srcdir)/wincecompat.c \
 	$(srcdir)/hostio.c $(srcdir)/hostio-errno.c \
-	$(srcdir)/common/vec.c \
+	$(srcdir)/common/vec.c $(srcdir)/common/gdb_vecs.c \
 	$(srcdir)/common/common-utils.c $(srcdir)/common/xml-utils.c \
 	$(srcdir)/common/linux-osdata.c $(srcdir)/common/ptid.c \
 	$(srcdir)/common/buffer.c
@@ -150,9 +153,9 @@ SOURCES = $(SFILES)
 TAGFILES = $(SOURCES) ${HFILES} ${ALLPARAM} ${POSSLIBS}
 
 OBS = agent.o ax.o inferiors.o regcache.o remote-utils.o server.o signals.o target.o \
-	utils.o version.o vec.o \
+	utils.o version.o vec.o gdb_vecs.o \
 	mem-break.o hostio.o event-loop.o tracepoint.o \
-	xml-utils.o common-utils.o ptid.o buffer.o \
+	xml-utils.o common-utils.o ptid.o buffer.o format.o \
 	dll.o \
 	$(XML_BUILTIN) \
 	$(DEPFILES) $(LIBOBJS)
@@ -273,7 +276,7 @@ gdbreplay$(EXEEXT): $(GDBREPLAY_OBS)
 	${CC-LD} $(INTERNAL_CFLAGS) $(INTERNAL_LDFLAGS) -o gdbreplay$(EXEEXT) $(GDBREPLAY_OBS) \
 	  $(XM_CLIBS)
 
-IPA_OBJS=ax-ipa.o tracepoint-ipa.o utils-ipa.o regcache-ipa.o remote-utils-ipa.o common-utils-ipa.o ${IPA_DEPFILES}
+IPA_OBJS=ax-ipa.o tracepoint-ipa.o format-ipa.o utils-ipa.o regcache-ipa.o remote-utils-ipa.o common-utils-ipa.o ${IPA_DEPFILES}
 
 IPA_LIB=libinproctrace.so
 
@@ -411,6 +414,9 @@ ax_h = $(srcdir)/ax.h
 agent_h = $(srcdir)/../common/agent.h
 linux_osdata_h = $(srcdir)/../common/linux-osdata.h
 vec_h = $(srcdir)/../common/vec.h
+gdb_vecs_h = $(srcdir)/../common/gdb_vecs.h
+host_defs_h = $(srcdir)/../common/host-defs.h
+libiberty_h = $(srcdir)/../../include/libiberty.h
 # Since everything must include server.h, we make that depend on
 # generated files.
 server_h = $(srcdir)/server.h $(regcache_h) $(srcdir)/target.h \
@@ -422,6 +428,8 @@ server_h = $(srcdir)/server.h $(regcache_h) $(srcdir)/target.h \
 		$(srcdir)/../common/gdb_locale.h \
 		$(ptid_h) \
 		$(signals_h) \
+		$(libiberty_h) \
+		$(srcdir)/../../include/ansidecl.h \
 		$(generated_files)
 
 gdbthread_h = $(srcdir)/gdbthread.h $(target_h) $(srcdir)/server.h
@@ -442,16 +450,18 @@ UST_CFLAGS = $(ustinc) -DCONFIG_UST_GDB_INTEGRATION
 # Note, we only build the IPA if -fvisibility=hidden is supported in
 # the first place.
 IPAGENT_CFLAGS = $(CPPFLAGS) $(INTERNAL_CFLAGS) $(UST_CFLAGS) \
-	-fPIC -DGDBSERVER -DIN_PROCESS_AGENT \
+	-fPIC -DIN_PROCESS_AGENT \
 	-fvisibility=hidden
 
 # In-process agent object rules
 ax-ipa.o: ax.c $(server_h) $(ax_h) $(srcdir)/../common/ax.def
-	$(CC) -c $(IPAGENT_CFLAGS) $< -o ax-ipa.o
+	$(CC) -c $(IPAGENT_CFLAGS) $(WARN_CFLAGS_NO_FORMAT) $< -o ax-ipa.o
 tracepoint-ipa.o: tracepoint.c $(server_h) ${ax_h}
 	$(CC) -c $(IPAGENT_CFLAGS) $< -o tracepoint-ipa.o
 utils-ipa.o: utils.c $(server_h)
 	$(CC) -c $(IPAGENT_CFLAGS) $< -o utils-ipa.o
+format-ipa.o: ../common/format.c $(server_h) ${ax_h}
+	$(CC) -c $(IPAGENT_CFLAGS) $< -o format-ipa.o
 common-utils-ipa.o: ../common/common-utils.c $(server_h)
 	$(CC) -c $(IPAGENT_CFLAGS) $< -o common-utils-ipa.o
 remote-utils-ipa.o: remote-utils.c $(server_h)
@@ -468,6 +478,7 @@ amd64-linux-ipa.o : amd64-linux.c $(regdef_h)
 	$(CC) -c $(IPAGENT_CFLAGS) $< -o amd64-linux-ipa.o
 
 ax.o: ax.c $(server_h) $(ax_h) $(srcdir)/../common/ax.def
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $(WARN_CFLAGS_NO_FORMAT) $<
 event-loop.o: event-loop.c $(server_h)
 hostio.o: hostio.c $(server_h)
 hostio-errno.o: hostio-errno.c $(server_h)
@@ -479,41 +490,47 @@ remote-utils.o: remote-utils.c terminal.h $(server_h) $(gdbthread_h)
 server.o: server.c $(server_h) $(agent_h) $(gdbthread_h)
 target.o: target.c $(server_h) 
 thread-db.o: thread-db.c $(server_h) $(linux_low_h) $(gdb_proc_service_h) \
-	$(gdb_thread_db_h)
+	$(gdb_thread_db_h) $(gdb_vecs_h)
 tracepoint.o: tracepoint.c $(server_h) $(ax_h) $(agent_h) $(gdbthread_h)
 utils.o: utils.c $(server_h)
 gdbreplay.o: gdbreplay.c config.h
 dll.o: dll.c $(server_h)
 
 signals.o: ../common/signals.c $(server_h) $(signals_def)
-	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $< -DGDBSERVER
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
 
 linux-procfs.o: ../common/linux-procfs.c $(server_h)
-	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $< -DGDBSERVER
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
 
 linux-ptrace.o: ../common/linux-ptrace.c $(server_h)
-	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $< -DGDBSERVER
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
 
 common-utils.o: ../common/common-utils.c $(server_h)
-	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $< -DGDBSERVER
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
 
 vec.o: ../common/vec.c $(vec_h)
-	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $< -DGDBSERVER
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
+
+gdb_vecs.o: ../common/gdb_vecs.c $(vec_h) $(gdb_vecs_h) $(host_defs_h)
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
 
 xml-utils.o: ../common/xml-utils.c $(server_h)
-	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $< -DGDBSERVER
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
 
 linux-osdata.o: ../common/linux-osdata.c $(server_h) $(linux_osdata_h) ../common/gdb_dirent.h
-	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $< -DGDBSERVER
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
 
 ptid.o: ../common/ptid.c $(ptid_h)
-	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $< -DGDBSERVER
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
 
 buffer.o: ../common/buffer.c $(server_h)
-	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $< -DGDBSERVER
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
+
+format.o: ../common/format.c $(server_h)
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
 
 agent.o: ../common/agent.c $(server_h) $(agent_h)
-	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $< -DGDBSERVER
+	$(CC) -c $(CPPFLAGS) $(INTERNAL_CFLAGS) $<
 
 # We build vasprintf with -DHAVE_CONFIG_H because we want that unit to
 # include our config.h file.  Otherwise, some system headers do not get
@@ -536,7 +553,7 @@ linux-low.o: linux-low.c $(linux_low_h) $(linux_ptrace_h) $(linux_procfs_h) \
 
 linux-arm-low.o: linux-arm-low.c $(linux_low_h) $(server_h) \
 	$(gdb_proc_service_h)
-linux-bfin-low.o: linux-bfin-low.c $(linux_low_h) $(server_h)
+linux-bfin-low.o: linux-bfin-low.c $(linux_low_h) $(server_h) $(libiberty_h)
 linux-cris-low.o: linux-cris-low.c $(linux_low_h) $(server_h)
 linux-crisv32-low.o: linux-crisv32-low.c $(linux_low_h) $(server_h)
 linux-ia64-low.o: linux-ia64-low.c $(linux_low_h) $(server_h)

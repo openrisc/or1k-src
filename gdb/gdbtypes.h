@@ -23,13 +23,27 @@
 #define GDBTYPES_H 1
 
 #include "hashtab.h"
-#include "dwarf2expr.h"
 
 /* Forward declarations for prototypes.  */
 struct field;
 struct block;
 struct value_print_options;
 struct language_defn;
+
+/* These declarations are DWARF-specific as some of the gdbtypes.h data types
+   are already DWARF-specific.  */
+
+/* Offset relative to the start of its containing CU (compilation unit).  */
+typedef struct
+{
+  unsigned int cu_off;
+} cu_offset;
+
+/* Offset relative to the start of its .debug_info or .debug_types section.  */
+typedef struct
+{
+  unsigned int sect_off;
+} sect_offset;
 
 /* Some macros for char-based bitfields.  */
 
@@ -44,7 +58,8 @@ struct language_defn;
 
 enum type_code
   {
-    TYPE_CODE_UNDEF,		/* Not used; catches errors */
+    TYPE_CODE_BITSTRING = -1,	/* Deprecated  */
+    TYPE_CODE_UNDEF = 0,	/* Not used; catches errors */
     TYPE_CODE_PTR,		/* Pointer type */
 
     /* Array type with lower & upper bounds.
@@ -94,10 +109,6 @@ enum type_code
        anyway) do; if we want to deal with such strings, we should use
        a new type code.  */
     TYPE_CODE_STRING,
-
-    /* String of bits; like TYPE_CODE_SET but prints differently (at
-       least for (the deleted) CHILL).  */
-    TYPE_CODE_BITSTRING,
 
     /* Unknown type.  The length field is valid if we were able to
        deduce that much about the type, or 0 if we don't even know that.  */
@@ -842,15 +853,6 @@ struct cplus_struct_type
       }
      *fn_fieldlists;
 
-    /* Pointer to information about enclosing scope, if this is a
-       local type.  If it is not a local type, this is NULL. */
-    struct local_type_info
-      {
-	char *file;
-	int line;
-      }
-     *localtype_ptr;
-
     /* typedefs defined inside this class.  TYPEDEF_FIELD points to an array of
        TYPEDEF_FIELD_COUNT elements.  */
     struct typedef_field
@@ -1215,10 +1217,6 @@ extern void allocate_gnat_aux_type (struct type *);
 #define TYPE_FN_FIELD_VIRTUAL_P(thisfn, n) ((thisfn)[n].voffset > 1)
 #define TYPE_FN_FIELD_STATIC_P(thisfn, n) ((thisfn)[n].voffset == VOFFSET_STATIC)
 
-#define TYPE_LOCALTYPE_PTR(thistype) (TYPE_CPLUS_SPECIFIC(thistype)->localtype_ptr)
-#define TYPE_LOCALTYPE_FILE(thistype) (TYPE_CPLUS_SPECIFIC(thistype)->localtype_ptr->file)
-#define TYPE_LOCALTYPE_LINE(thistype) (TYPE_CPLUS_SPECIFIC(thistype)->localtype_ptr->line)
-
 #define TYPE_TYPEDEF_FIELD_ARRAY(thistype) \
   TYPE_CPLUS_SPECIFIC (thistype)->typedef_field
 #define TYPE_TYPEDEF_FIELD(thistype, n) \
@@ -1506,16 +1504,20 @@ extern struct type *make_function_type (struct type *, struct type **);
 
 extern struct type *lookup_function_type (struct type *);
 
+extern struct type *lookup_function_type_with_arguments (struct type *,
+							 int,
+							 struct type **);
+
 extern struct type *create_range_type (struct type *, struct type *, LONGEST,
 				       LONGEST);
 
 extern struct type *create_array_type (struct type *, struct type *,
 				       struct type *);
-extern struct type *lookup_array_range_type (struct type *, int, int);
+extern struct type *lookup_array_range_type (struct type *, LONGEST, LONGEST);
 
 extern struct type *create_string_type (struct type *, struct type *,
 					struct type *);
-extern struct type *lookup_string_range_type (struct type *, int, int);
+extern struct type *lookup_string_range_type (struct type *, LONGEST, LONGEST);
 
 extern struct type *create_set_type (struct type *, struct type *);
 
@@ -1588,8 +1590,8 @@ extern const struct rank FLOAT_CONVERSION_BADNESS;
 extern const struct rank INT_FLOAT_CONVERSION_BADNESS;
 /* Badness of conversion of pointer to void pointer.  */
 extern const struct rank VOID_PTR_CONVERSION_BADNESS;
-/* Badness of conversion of pointer to boolean.  */
-extern const struct rank BOOL_PTR_CONVERSION_BADNESS;
+/* Badness of conversion to boolean.  */
+extern const struct rank BOOL_CONVERSION_BADNESS;
 /* Badness of converting derived to base class.  */
 extern const struct rank BASE_CONVERSION_BADNESS;
 /* Badness of converting from non-reference to reference.  */
@@ -1601,6 +1603,9 @@ extern const struct rank NULL_POINTER_CONVERSION;
 /* Converting a pointer to an int is usually OK.  */
 extern const struct rank NS_POINTER_CONVERSION_BADNESS;
 
+/* Badness of converting a (non-zero) integer constant
+   to a pointer.  */
+extern const struct rank NS_INTEGER_POINTER_CONVERSION_BADNESS;
 
 extern struct rank sum_ranks (struct rank a, struct rank b);
 extern int compare_ranks (struct rank a, struct rank b);
@@ -1638,5 +1643,7 @@ extern struct type *copy_type_recursive (struct objfile *objfile,
 					 htab_t copied_types);
 
 extern struct type *copy_type (const struct type *type);
+
+extern int types_equal (struct type *, struct type *);
 
 #endif /* GDBTYPES_H */

@@ -1,3 +1,147 @@
+2012-11-27  Christopher Faylor  <me.cygwin2012@cgf.cx>
+
+	* Makefile.in: Move CFLAGS and CXXFLAGS so that they can be manipulated
+	by Makefile.common.  Add -static-libstdc++ to *LDFLAGS.  Add
+	dependencies for loadlib.h.
+	* loadlib.h: Update copyright.
+	(_load_sys_library): Properly define set_dll_library as WINAPI to avoid
+	stack corruption.
+
+2012-11-27  Christopher Faylor  <me.cygwin2012@cgf.cx>
+
+	* Makefile.in (ZLIBS): Common define to force static load.
+	(MINGW_LDFLAGS): Use static libgcc.
+
+2012-11-27  Christopher Faylor  <me.cygwin2012@cgf.cx>
+
+	* Makefile.in: Make sure that libz is always loaded staticly.
+
+2012-11-26  Christopher Faylor  <me.cygwin2012@cgf.cx>
+
+	* configure.ac: Rename from configure.in.
+	* configure.in: Delete.
+	* configure: Regenerate.
+
+2012-11-26  Corinna Vinschen <corinna@vinschen.de>
+
+	* bloda.cc: Drop Mingw.org considerations.
+	* dump_setup.cc: Ditto.
+	* strace.cc: Ditto.
+
+2012-11-12  Christopher Faylor  <me.cygwin2012@cgf.cx>
+
+	* aclocal.m4: Regenerate.
+	* configure: Ditto.
+	* autogen.sh: New script.
+	* configure.in: Revamp for new configury.
+	* Makefile.in: Revamp for new configury.  Rename ALL_* to just *.
+	Always use "VERBOSE" setting.
+	(MINGW_CXX): Don't include CFLAGS in definition.
+	(all): Define target first, before everything else so that it is the
+	default.
+	(ps.exe): Don't add useless -lcygwin.
+	(ldh.exe): For consistency, add to existing MINGW_LDFLAGS rather than
+	redefining them.
+	(cygcheck.exe): Always include -lz for MINGW_LDFLAGS.  Don't try to
+	figure out where to find it.
+	(dumper.exe): Simplify check.  Assume libraries are installed rather
+	than trying to retrieve from source tree.
+	(install): Just use /bin/mkdir to create directories.
+	(Makefile): Regenerate when standard dependencies change.
+	* dump_setup.cc: Always include zlib.h.  Remove accommodations for it
+	possibly not existing.
+	* parse_pe.cc: Add define which allows building with installed
+	binutils package.
+	* dumper.cc: Ditto.
+
+2012-11-09  Corinna Vinschen <corinna@vinschen.de>
+
+	* path.cc (vcygpath): Handle cygdrive prefix.
+
+2012-11-07  Corinna Vinschen <corinna@vinschen.de>
+
+	* Makefile.in ($(MINGW_BINS)): Drop -B$(mingw_build)/ from build
+	expression.
+
+2012-11-05  Corinna Vinschen <corinna@vinschen.de>
+
+	* Makefile.in (MINGW_CXX): Attach $(CFLAGS) to allow providing
+	build option tweaks to mingw compiler as well.
+
+2012-10-24  Corinna Vinschen <corinna@vinschen.de>
+
+	* configure.in: Add AC_NO_EXECUTABLES,
+	* configure: Regenerate.
+
+2012-10-24  Kai Tietz  <ktietz70@googlemail.com>
+	    Yaakov Selkowitz  <yselkowitz@users.sourceforge.net>
+	    Corinna Vinschen <corinna@vinschen.de>
+
+	* configure.in: Add check for MINGW_CXX.  Remove libiconv check.
+	* configure: Regenerate.
+	* Makefile.in: Remove references to mingw and w32api directories.
+	Use MINGW_CXX instead of mingw script to build MINGW_BINS.
+	Check for libiconv with $CC --print-file-name.
+	* cygcheck.cc: Use relative include paths for Cygwin headers.
+	* path.cc: Ditto.
+	* strace.cc: Ditto
+	* mingw: Remove.
+
+2012-10-19  Corinna Vinschen  <corinna@vinschen.de>
+
+	* Makefile.in (cygcheck.exe): Add temporary (1.7.17-only) hack to
+	allow cygcheck running on pre-Vista despite of the new w32api not
+	matching the locally used w32api.
+
+2012-10-09  Corinna Vinschen  <corinna@vinschen.de>
+
+	* cygcheck.cc (dump_sysinfo): Convert "if/else if" chain to a switch
+	statement.  Drop "not yet supported" and "Server" from Windows 2012
+	output string.
+
+2012-09-02  Corinna Vinschen  <corinna@vinschen.de>
+
+	* cygcheck.cc (dump_sysinfo): Drop "not yet supported" text from
+	Windows 8.  Update products array.
+
+2012-07-11  Corinna Vinschen  <corinna@vinschen.de>
+
+	* Makefile.in (cygcheck.exe): Link against psapi.dll.
+	* bloda.cc: Change include section to work with Mingw64 headers.
+	Include psapi.h.  Use SystemProcessInformation instead of
+	SystemProcessesAndThreadsInformation throughout and add define for
+	w32api headers.  Ditto for PSYSTEM_PROCESS_INFORMATION vs.
+	PSYSTEM_PROCESSES.
+	(system_module_list): New type to replace SYSTEM_MODULE_INFORMATION.
+	Change usage throughout accordingly.
+	(get_module_list): Fetch module list using PSAPI functions
+	EnumDeviceDrivers and GetDeviceDriverBaseNameA.
+	* cygcheck.cc (max): Define as __max if not defined already.
+	(alloca): Only define if not defined already.
+	(handle_unique_object_name): Use explicit sharing flags rather than
+	FILE_SHARE_VALID_FLAGS which officially is only available in DDK
+	headers.
+	(PRODUCT_ULTIMATE_E): Only define if not defined already.
+	* dump_setup.cc: Change include section to work with Mingw64 headers.
+	(NtQueryAttributesFile): Drop NTOSAPI aka DECLSPEC_IMPORT.
+	* strace.cc: Change include section to work with Mingw64 headers.
+	(alloca): Only define if not defined already.
+
+2012-07-06  Corinna Vinschen  <corinna@vinschen.de>
+
+	* cygpath.cc: Change including headers to allow building against
+	Mingw64 headers. Include ntdef.h and ntdll.h rather than ddk headers.
+	Define _WIN32_WINNT and WINVER as 0x0602.
+	(RtlEqualUnicodePathPrefix): Drop definition.  Pulled in from ntdll.h
+	now.
+	(get_device_name): s/Zw/Nt.
+	* dumper.cc: Include sys/param.h
+	(dumper::dump_memory_region): Use MIN rather than min.
+	* locale.cc: Include stdlib.h.  Define _WIN32_WINNT and WINVER as
+	0x0602.
+	* ps.cc: Include ntdef.h and ntdll.h rather than ddk headers.
+	* regtool.cc (regDeleteKeyEx): Drop WINADVAPI qualifier.
+
 2012-06-03  Corinna Vinschen  <corinna@vinschen.de>
 
 	* cygcheck.cc (dump_sysinfo): Change "Server 8" to official

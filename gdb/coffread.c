@@ -653,13 +653,14 @@ coff_symfile_read (struct objfile *objfile, int symfile_flags)
       char *debugfile;
 
       debugfile = find_separate_debug_file_by_debuglink (objfile);
+      make_cleanup (xfree, debugfile);
 
       if (debugfile)
 	{
 	  bfd *abfd = symfile_bfd_open (debugfile);
 
+	  make_cleanup_bfd_unref (abfd);
 	  symbol_file_add_separate (abfd, symfile_flags, objfile);
-	  xfree (debugfile);
 	}
     }
 
@@ -940,7 +941,7 @@ coff_symtab_read (long symtab_offset, unsigned int nsyms,
 		      cs->c_sclass == C_EXT || cs->c_sclass == C_THUMBEXTFUNC
 		      || cs->c_sclass == C_THUMBEXT ?
 		      mst_text : mst_file_text;
-		    tmpaddr = gdbarch_smash_text_address (gdbarch, tmpaddr);
+		    tmpaddr = gdbarch_addr_bits_remove (gdbarch, tmpaddr);
 		  }
 		else if (bfd_section->flags & SEC_ALLOC
 			 && bfd_section->flags & SEC_LOAD)

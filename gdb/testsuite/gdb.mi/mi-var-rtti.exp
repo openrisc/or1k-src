@@ -23,13 +23,10 @@ if [mi_gdb_start] {
     continue
 }
 
-set testfile mi-var-rtti
-set srcfile "$testfile.cc"
-set executable ${testfile}
-set binfile $objdir/$subdir/$testfile
+standard_testfile .cc
 set opts {debug c++}
 
-if [build_executable $testfile.exp $executable $srcfile $opts] {
+if [build_executable $testfile.exp $testfile $srcfile $opts] {
     return -1;
 }
 
@@ -40,7 +37,7 @@ mi_prepare_inline_tests $srcfile
 # Enable using RTTI to determine real types of the objects
 proc set_print_object {state testname} {
     mi_gdb_test "-interpreter-exec console \"set print object ${state}\"" \
-        {\^done} \
+	"(.*=cmd-param-changed,param=\"print object\",value=\"${state}\".*|)\\^done" \
         "-interpreter-exec console \"set print object ${state}\" in $testname"
 }
 

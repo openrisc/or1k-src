@@ -1,3 +1,13 @@
+2012-10-04  Chao-ying Fu  <fu@mips.com>
+	    Steve Ellcey  <sellcey@mips.com>
+
+	* mips/mips3264r2.igen (rdhwr): New.
+
+2012-09-03 Joel Sherrill <joel.sherrill@oarcorp.com>
+
+	* configure.ac: Always link against dv-sockser.o.
+	* configure: Regenerate.
+
 2012-06-15  Joel Brobecker  <brobecker@adacore.com>
 
 	* config.in, configure: Regenerate.

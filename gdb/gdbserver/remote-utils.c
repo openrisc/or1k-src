@@ -56,7 +56,7 @@
 #if HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
-#include <sys/stat.h>
+#include "gdb_stat.h"
 #if HAVE_ERRNO_H
 #include <errno.h>
 #endif
@@ -761,7 +761,7 @@ read_ptid (char *buf, char **obuf)
 
   /* Since the stub is not sending a process id, then default to
      what's in the current inferior.  */
-  pid = ptid_get_pid (((struct inferior_list_entry *) current_inferior)->id);
+  pid = ptid_get_pid (current_ptid);
 
   if (obuf)
     *obuf = pp;

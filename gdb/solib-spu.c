@@ -36,6 +36,7 @@
 #include "breakpoint.h"
 #include "gdbthread.h"
 #include "exceptions.h"
+#include "gdb_bfd.h"
 
 #include "spu-tdep.h"
 
@@ -157,7 +158,7 @@ append_ocl_sos (struct so_list **link_ptr)
 static struct so_list *
 spu_current_sos (void)
 {
-  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch);
+  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch ());
   struct so_list *head;
   struct so_list **link_ptr;
 
@@ -325,16 +326,16 @@ spu_bfd_fopen (char *name, CORE_ADDR addr)
   CORE_ADDR *open_closure = xmalloc (sizeof (CORE_ADDR));
   *open_closure = addr;
 
-  nbfd = bfd_openr_iovec (xstrdup (name), "elf32-spu",
-                          spu_bfd_iovec_open, open_closure,
-                          spu_bfd_iovec_pread, spu_bfd_iovec_close,
-			  spu_bfd_iovec_stat);
+  nbfd = gdb_bfd_openr_iovec (name, "elf32-spu",
+			      spu_bfd_iovec_open, open_closure,
+			      spu_bfd_iovec_pread, spu_bfd_iovec_close,
+			      spu_bfd_iovec_stat);
   if (!nbfd)
     return NULL;
 
   if (!bfd_check_format (nbfd, bfd_object))
     {
-      bfd_close (nbfd);
+      gdb_bfd_unref (nbfd);
       return NULL;
     }
 
@@ -417,9 +418,9 @@ spu_enable_break (struct objfile *objfile)
     {
       CORE_ADDR addr = SYMBOL_VALUE_ADDRESS (spe_event_sym);
 
-      addr = gdbarch_convert_from_func_ptr_addr (target_gdbarch, addr,
+      addr = gdbarch_convert_from_func_ptr_addr (target_gdbarch (), addr,
                                                  &current_target);
-      create_solib_event_breakpoint (target_gdbarch, addr);
+      create_solib_event_breakpoint (target_gdbarch (), addr);
       return 1;
     }
 

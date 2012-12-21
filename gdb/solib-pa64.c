@@ -37,6 +37,7 @@
 #include "target.h"
 #include "inferior.h"
 #include "regcache.h"
+#include "gdb_bfd.h"
 
 #include "hppa-tdep.h"
 #include "solist.h"
@@ -362,7 +363,7 @@ manpage for methods to privately map shared library text."));
 	 to find any magic formula to find it for Solaris (appears to
 	 be trivial on GNU/Linux).  Therefore, we have to try an alternate
 	 mechanism to find the dynamic linker's base address.  */
-      tmp_bfd = bfd_openr (buf, gnutarget);
+      tmp_bfd = gdb_bfd_open (buf, gnutarget, -1);
       if (tmp_bfd == NULL)
 	return;
 
@@ -371,7 +372,7 @@ manpage for methods to privately map shared library text."));
 	{
 	  warning (_("Unable to grok dynamic linker %s as an object file"),
 		   buf);
-	  bfd_close (tmp_bfd);
+	  gdb_bfd_unref (tmp_bfd);
 	  return;
 	}
 
@@ -390,7 +391,7 @@ manpage for methods to privately map shared library text."));
       /* Create the shared library breakpoint.  */
       {
 	struct breakpoint *b
-	  = create_solib_event_breakpoint (target_gdbarch, sym_addr);
+	  = create_solib_event_breakpoint (target_gdbarch (), sym_addr);
 
 	/* The breakpoint is actually hard-coded into the dynamic linker,
 	   so we don't need to actually insert a breakpoint instruction
@@ -401,7 +402,7 @@ manpage for methods to privately map shared library text."));
       }
 
       /* We're done with the temporary bfd.  */
-      bfd_close (tmp_bfd);
+      gdb_bfd_unref (tmp_bfd);
     }
 }
 

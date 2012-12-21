@@ -97,11 +97,11 @@ win32_device_name (const char *src_path, char *win32_path, device& dev)
 #define SAMBA_EXTENDED_INFO_VERSION_STRING_LENGTH 28
 #pragma pack(push,4)
 struct smb_extended_info {
-  DWORD         samba_magic;             /* Always SAMBA_EXTENDED_INFO_MAGIC */
-  DWORD         samba_version;           /* Major/Minor/Release/Revision */
-  DWORD         samba_subversion;        /* Prerelease/RC/Vendor patch */
+  DWORD		samba_magic;		/* Always SAMBA_EXTENDED_INFO_MAGIC */
+  DWORD		samba_version;		/* Major/Minor/Release/Revision */
+  DWORD		samba_subversion;	/* Prerelease/RC/Vendor patch */
   LARGE_INTEGER samba_gitcommitdate;
-  char          samba_version_string[SAMBA_EXTENDED_INFO_VERSION_STRING_LENGTH];
+  char		samba_version_string[SAMBA_EXTENDED_INFO_VERSION_STRING_LENGTH];
 };
 #pragma pack(pop)
 
@@ -648,7 +648,6 @@ mount_info::conv_to_win32_path (const char *src_path, char *dst, device& dev,
 
       if (!src_path[n])
 	{
-	  unit = 0;
 	  dst[0] = '\0';
 	  if (mount_table->cygdrive_len > 1)
 	    dev = *cygdrive_dev;
@@ -1573,11 +1572,13 @@ mount_info::del_item (const char *path, unsigned flags)
 
 /************************* mount_item class ****************************/
 
-/* Order must be identical to mount.h, enum fs_info_type. */
+/* Don't add new fs types without adding them to fs_info_type in mount.h!
+   Don't reorder without reordering fs_info_type in mount.h!*/
 fs_names_t fs_names[] = {
     { "none", false },
     { "vfat", true },
     { "ntfs", true },
+    { "refs", true },
     { "smbfs", false },
     { "nfs", false },
     { "netapp", false },
@@ -1898,6 +1899,34 @@ extern "C" struct mntent *
 getmntent (FILE *)
 {
   return mount_table->getmntent (_my_tls.locals.iteration++);
+}
+
+extern "C" struct mntent *
+getmntent_r (FILE *, struct mntent *mntbuf, char *buf, int buflen)
+{
+  struct mntent *mnt = mount_table->getmntent (_my_tls.locals.iteration++);
+  int fsname_len, dir_len, type_len, tmplen = buflen;
+
+  if (!mnt)
+    return NULL;
+
+  fsname_len = strlen (mnt->mnt_fsname) + 1;
+  dir_len = strlen (mnt->mnt_dir) + 1;
+  type_len = strlen (mnt->mnt_type) + 1;
+
+  snprintf (buf, buflen, "%s%c%s%c%s%c%s", mnt->mnt_fsname, '\0',
+	    mnt->mnt_dir, '\0', mnt->mnt_type, '\0', mnt->mnt_opts);
+
+  mntbuf->mnt_fsname = buf;
+  tmplen -= fsname_len;
+  mntbuf->mnt_dir = tmplen > 0 ? buf + fsname_len : (char *)"";
+  tmplen -= dir_len;
+  mntbuf->mnt_type = tmplen > 0 ? buf + fsname_len + dir_len : (char *)"";
+  tmplen -= type_len;
+  mntbuf->mnt_opts = tmplen > 0 ? buf + fsname_len + dir_len + type_len : (char *)"";
+  mntbuf->mnt_freq = mnt->mnt_freq;
+  mntbuf->mnt_passno = mnt->mnt_passno;
+  return mntbuf;
 }
 
 extern "C" int

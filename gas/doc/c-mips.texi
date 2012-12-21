@@ -79,7 +79,7 @@ VxWorks-style position-independent macro expansions.
 @itemx -mips2
 @itemx -mips3
 @itemx -mips4
-@itemx -mips5xo
+@itemx -mips5
 @itemx -mips32
 @itemx -mips32r2
 @itemx -mips64
@@ -304,6 +304,7 @@ m14kec,
 34kf2_1,
 34kf,
 34kf1_1,
+34kn,
 74kc,
 74kf2_1,
 74kf,

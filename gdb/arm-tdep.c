@@ -18,9 +18,10 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+#include "defs.h"
+
 #include <ctype.h>		/* XXX for isupper ().  */
 
-#include "defs.h"
 #include "frame.h"
 #include "inferior.h"
 #include "gdbcmd.h"
@@ -447,18 +448,16 @@ arm_pc_is_thumb (struct gdbarch *gdbarch, CORE_ADDR memaddr)
 static CORE_ADDR
 arm_addr_bits_remove (struct gdbarch *gdbarch, CORE_ADDR val)
 {
+  /* On M-profile devices, do not strip the low bit from EXC_RETURN
+     (the magic exception return address).  */
+  if (gdbarch_tdep (gdbarch)->is_m
+      && (val & 0xfffffff0) == 0xfffffff0)
+    return val;
+
   if (arm_apcs_32)
     return UNMAKE_THUMB_ADDR (val);
   else
     return (val & 0x03fffffc);
-}
-
-/* When reading symbols, we need to zap the low bit of the address,
-   which may be set to 1 for Thumb functions.  */
-static CORE_ADDR
-arm_smash_text_address (struct gdbarch *gdbarch, CORE_ADDR val)
-{
-  return val & ~1;
 }
 
 /* Return 1 if PC is the start of a compiler helper function which
@@ -1400,7 +1399,8 @@ arm_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR pc)
       if (post_prologue_pc
 	  && (s == NULL
 	      || s->producer == NULL
-	      || strncmp (s->producer, "GNU ", sizeof ("GNU ") - 1) == 0))
+	      || strncmp (s->producer, "GNU ", sizeof ("GNU ") - 1) == 0 
+	      || strncmp (s->producer, "clang ", sizeof ("clang ") - 1) == 0))
 	return post_prologue_pc;
 
       if (post_prologue_pc != 0)
@@ -2924,6 +2924,127 @@ struct frame_unwind arm_stub_unwind = {
   arm_stub_unwind_sniffer
 };
 
+/* Put here the code to store, into CACHE->saved_regs, the addresses
+   of the saved registers of frame described by THIS_FRAME.  CACHE is
+   returned.  */
+
+static struct arm_prologue_cache *
+arm_m_exception_cache (struct frame_info *this_frame)
+{
+  struct gdbarch *gdbarch = get_frame_arch (this_frame);
+  enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+  struct arm_prologue_cache *cache;
+  CORE_ADDR unwound_sp;
+  LONGEST xpsr;
+
+  cache = FRAME_OBSTACK_ZALLOC (struct arm_prologue_cache);
+  cache->saved_regs = trad_frame_alloc_saved_regs (this_frame);
+
+  unwound_sp = get_frame_register_unsigned (this_frame,
+					    ARM_SP_REGNUM);
+
+  /* The hardware saves eight 32-bit words, comprising xPSR,
+     ReturnAddress, LR (R14), R12, R3, R2, R1, R0.  See details in
+     "B1.5.6 Exception entry behavior" in
+     "ARMv7-M Architecture Reference Manual".  */
+  cache->saved_regs[0].addr = unwound_sp;
+  cache->saved_regs[1].addr = unwound_sp + 4;
+  cache->saved_regs[2].addr = unwound_sp + 8;
+  cache->saved_regs[3].addr = unwound_sp + 12;
+  cache->saved_regs[12].addr = unwound_sp + 16;
+  cache->saved_regs[14].addr = unwound_sp + 20;
+  cache->saved_regs[15].addr = unwound_sp + 24;
+  cache->saved_regs[ARM_PS_REGNUM].addr = unwound_sp + 28;
+
+  /* If bit 9 of the saved xPSR is set, then there is a four-byte
+     aligner between the top of the 32-byte stack frame and the
+     previous context's stack pointer.  */
+  cache->prev_sp = unwound_sp + 32;
+  if (safe_read_memory_integer (unwound_sp + 28, 4, byte_order, &xpsr)
+      && (xpsr & (1 << 9)) != 0)
+    cache->prev_sp += 4;
+
+  return cache;
+}
+
+/* Implementation of function hook 'this_id' in
+   'struct frame_uwnind'.  */
+
+static void
+arm_m_exception_this_id (struct frame_info *this_frame,
+			 void **this_cache,
+			 struct frame_id *this_id)
+{
+  struct arm_prologue_cache *cache;
+
+  if (*this_cache == NULL)
+    *this_cache = arm_m_exception_cache (this_frame);
+  cache = *this_cache;
+
+  /* Our frame ID for a stub frame is the current SP and LR.  */
+  *this_id = frame_id_build (cache->prev_sp,
+			     get_frame_pc (this_frame));
+}
+
+/* Implementation of function hook 'prev_register' in
+   'struct frame_uwnind'.  */
+
+static struct value *
+arm_m_exception_prev_register (struct frame_info *this_frame,
+			       void **this_cache,
+			       int prev_regnum)
+{
+  struct gdbarch *gdbarch = get_frame_arch (this_frame);
+  struct arm_prologue_cache *cache;
+
+  if (*this_cache == NULL)
+    *this_cache = arm_m_exception_cache (this_frame);
+  cache = *this_cache;
+
+  /* The value was already reconstructed into PREV_SP.  */
+  if (prev_regnum == ARM_SP_REGNUM)
+    return frame_unwind_got_constant (this_frame, prev_regnum,
+				      cache->prev_sp);
+
+  return trad_frame_get_prev_register (this_frame, cache->saved_regs,
+				       prev_regnum);
+}
+
+/* Implementation of function hook 'sniffer' in
+   'struct frame_uwnind'.  */
+
+static int
+arm_m_exception_unwind_sniffer (const struct frame_unwind *self,
+				struct frame_info *this_frame,
+				void **this_prologue_cache)
+{
+  CORE_ADDR this_pc = get_frame_pc (this_frame);
+
+  /* No need to check is_m; this sniffer is only registered for
+     M-profile architectures.  */
+
+  /* Exception frames return to one of these magic PCs.  Other values
+     are not defined as of v7-M.  See details in "B1.5.8 Exception
+     return behavior" in "ARMv7-M Architecture Reference Manual".  */
+  if (this_pc == 0xfffffff1 || this_pc == 0xfffffff9
+      || this_pc == 0xfffffffd)
+    return 1;
+
+  return 0;
+}
+
+/* Frame unwinder for M-profile exceptions.  */
+
+struct frame_unwind arm_m_exception_unwind =
+{
+  SIGTRAMP_FRAME,
+  default_frame_unwind_stop_reason,
+  arm_m_exception_this_id,
+  arm_m_exception_prev_register,
+  NULL,
+  arm_m_exception_unwind_sniffer
+};
+
 static CORE_ADDR
 arm_normal_frame_base (struct frame_info *this_frame, void **this_cache)
 {
@@ -3217,6 +3338,9 @@ arm_in_function_epilogue_p (struct gdbarch *gdbarch, CORE_ADDR pc)
       else if ((insn & 0x0fff0000) == 0x08bd0000)
 	/* POP (LDMIA).  */
 	found_stack_adjust = 1;
+      else if ((insn & 0x0fff0000) == 0x049d0000)
+	/* POP of a single register.  */
+	found_stack_adjust = 1;
     }
 
   if (found_stack_adjust)
@@ -3282,7 +3406,6 @@ arm_type_align (struct type *t)
     case TYPE_CODE_FLT:
     case TYPE_CODE_SET:
     case TYPE_CODE_RANGE:
-    case TYPE_CODE_BITSTRING:
     case TYPE_CODE_REF:
     case TYPE_CODE_CHAR:
     case TYPE_CODE_BOOL:
@@ -3648,7 +3771,8 @@ arm_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 					 val + i * unit_length);
 		  else
 		    {
-		      sprintf (name_buf, "%c%d", reg_char, reg_scaled + i);
+		      xsnprintf (name_buf, sizeof (name_buf), "%c%d",
+				 reg_char, reg_scaled + i);
 		      regnum = user_reg_map_name_to_regnum (gdbarch, name_buf,
 							    strlen (name_buf));
 		      regcache_cooked_write (regcache, regnum,
@@ -3979,7 +4103,7 @@ arm_dwarf_reg_to_regnum (struct gdbarch *gdbarch, int reg)
     {
       char name_buf[4];
 
-      sprintf (name_buf, "s%d", reg - 64);
+      xsnprintf (name_buf, sizeof (name_buf), "s%d", reg - 64);
       return user_reg_map_name_to_regnum (gdbarch, name_buf,
 					  strlen (name_buf));
     }
@@ -3990,7 +4114,7 @@ arm_dwarf_reg_to_regnum (struct gdbarch *gdbarch, int reg)
     {
       char name_buf[4];
 
-      sprintf (name_buf, "d%d", reg - 256);
+      xsnprintf (name_buf, sizeof (name_buf), "d%d", reg - 256);
       return user_reg_map_name_to_regnum (gdbarch, name_buf,
 					  strlen (name_buf));
     }
@@ -4538,7 +4662,7 @@ thumb_get_next_pc_raw (struct frame_info *frame, CORE_ADDR pc)
   else if ((inst1 & 0xff00) == 0x4700)	/* bx REG, blx REG */
     {
       if (bits (inst1, 3, 6) == 0x0f)
-	nextpc = pc_val;
+	nextpc = UNMAKE_THUMB_ADDR (pc_val);
       else
 	nextpc = get_frame_register_unsigned (frame, bits (inst1, 3, 6));
     }
@@ -9038,7 +9162,7 @@ arm_return_value (struct gdbarch *gdbarch, struct value *function,
 	      char name_buf[4];
 	      int regnum;
 
-	      sprintf (name_buf, "%c%d", reg_char, i);
+	      xsnprintf (name_buf, sizeof (name_buf), "%c%d", reg_char, i);
 	      regnum = user_reg_map_name_to_regnum (gdbarch, name_buf,
 						    strlen (name_buf));
 	      if (writebuf)
@@ -9191,7 +9315,7 @@ arm_update_current_architecture (void)
   struct gdbarch_info info;
 
   /* If the current architecture is not ARM, we have nothing to do.  */
-  if (gdbarch_bfd_arch_info (target_gdbarch)->arch != bfd_arch_arm)
+  if (gdbarch_bfd_arch_info (target_gdbarch ())->arch != bfd_arch_arm)
     return;
 
   /* Update the architecture.  */
@@ -9225,10 +9349,10 @@ static void
 show_fp_model (struct ui_file *file, int from_tty,
 	       struct cmd_list_element *c, const char *value)
 {
-  struct gdbarch_tdep *tdep = gdbarch_tdep (target_gdbarch);
+  struct gdbarch_tdep *tdep = gdbarch_tdep (target_gdbarch ());
 
   if (arm_fp_model == ARM_FLOAT_AUTO
-      && gdbarch_bfd_arch_info (target_gdbarch)->arch == bfd_arch_arm)
+      && gdbarch_bfd_arch_info (target_gdbarch ())->arch == bfd_arch_arm)
     fprintf_filtered (file, _("\
 The current ARM floating point model is \"auto\" (currently \"%s\").\n"),
 		      fp_model_strings[tdep->fp_model]);
@@ -9262,10 +9386,10 @@ static void
 arm_show_abi (struct ui_file *file, int from_tty,
 	     struct cmd_list_element *c, const char *value)
 {
-  struct gdbarch_tdep *tdep = gdbarch_tdep (target_gdbarch);
+  struct gdbarch_tdep *tdep = gdbarch_tdep (target_gdbarch ());
 
   if (arm_abi_global == ARM_ABI_AUTO
-      && gdbarch_bfd_arch_info (target_gdbarch)->arch == bfd_arch_arm)
+      && gdbarch_bfd_arch_info (target_gdbarch ())->arch == bfd_arch_arm)
     fprintf_filtered (file, _("\
 The current ARM ABI is \"auto\" (currently \"%s\").\n"),
 		      arm_abi_strings[tdep->arm_abi]);
@@ -9288,7 +9412,7 @@ static void
 arm_show_force_mode (struct ui_file *file, int from_tty,
 		     struct cmd_list_element *c, const char *value)
 {
-  struct gdbarch_tdep *tdep = gdbarch_tdep (target_gdbarch);
+  struct gdbarch_tdep *tdep = gdbarch_tdep (target_gdbarch ());
 
   fprintf_filtered (file,
 		    _("The current execution mode assumed "
@@ -9492,7 +9616,7 @@ arm_neon_quad_read (struct gdbarch *gdbarch, struct regcache *regcache,
   int offset, double_regnum;
   enum register_status status;
 
-  sprintf (name_buf, "d%d", regnum << 1);
+  xsnprintf (name_buf, sizeof (name_buf), "d%d", regnum << 1);
   double_regnum = user_reg_map_name_to_regnum (gdbarch, name_buf,
 					       strlen (name_buf));
 
@@ -9544,7 +9668,7 @@ arm_pseudo_read (struct gdbarch *gdbarch, struct regcache *regcache,
       else
 	offset = (regnum & 1) ? 4 : 0;
 
-      sprintf (name_buf, "d%d", regnum >> 1);
+      xsnprintf (name_buf, sizeof (name_buf), "d%d", regnum >> 1);
       double_regnum = user_reg_map_name_to_regnum (gdbarch, name_buf,
 						   strlen (name_buf));
 
@@ -9569,7 +9693,7 @@ arm_neon_quad_write (struct gdbarch *gdbarch, struct regcache *regcache,
   char name_buf[4];
   int offset, double_regnum;
 
-  sprintf (name_buf, "d%d", regnum << 1);
+  xsnprintf (name_buf, sizeof (name_buf), "d%d", regnum << 1);
   double_regnum = user_reg_map_name_to_regnum (gdbarch, name_buf,
 					       strlen (name_buf));
 
@@ -9610,7 +9734,7 @@ arm_pseudo_write (struct gdbarch *gdbarch, struct regcache *regcache,
       else
 	offset = (regnum & 1) ? 4 : 0;
 
-      sprintf (name_buf, "d%d", regnum >> 1);
+      xsnprintf (name_buf, sizeof (name_buf), "d%d", regnum >> 1);
       double_regnum = user_reg_map_name_to_regnum (gdbarch, name_buf,
 						   strlen (name_buf));
 
@@ -10151,7 +10275,6 @@ arm_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   frame_base_set_default (gdbarch, &arm_normal_base);
 
   /* Address manipulation.  */
-  set_gdbarch_smash_text_address (gdbarch, arm_smash_text_address);
   set_gdbarch_addr_bits_remove (gdbarch, arm_addr_bits_remove);
 
   /* Advance PC across function entry code.  */
@@ -10214,6 +10337,8 @@ arm_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   dwarf2_frame_set_init_reg (gdbarch, arm_dwarf2_frame_init_reg);
 
   /* Add some default predicates.  */
+  if (is_m)
+    frame_unwind_append_unwinder (gdbarch, &arm_m_exception_unwind);
   frame_unwind_append_unwinder (gdbarch, &arm_stub_unwind);
   dwarf2_append_unwinders (gdbarch);
   frame_unwind_append_unwinder (gdbarch, &arm_exidx_unwind);

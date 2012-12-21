@@ -1,3 +1,74 @@
+2012-11-23  Yufeng Zhang  <yufeng.zhang@arm.com>
+
+	* aarch64/configure.in: Replace the direct generation of
+	cpu-init/Makefile.in with AC_CONFIG_SUBDIRS(cpu-init).
+	* aarch64/configure: Re-generate.
+	* aarch64/cpu-init/Makefile.in (objtype): Remove.
+	(Makefile, config.status): Update the rules.
+	* aarch64/cpu-init/aclocal.m4: New file (generated).
+	* aarch64/cpu-init/configure.in: New file.
+	* aarch64/cpu-init/configure: New file (generated).
+
+2012-10-27  Anthony Green  <green@moxielogic.com>
+
+	* moxie/sim-unlink.S (unlink): Loop forever.
+	moxie/sim-time.S (_sim_time): Ditto.
+
+2012-10-27  Anthony Green  <green@moxielogic.com>
+
+	* moxie/crt0.S (_start): Call memset with correct
+	ABI.
+
+2012-10-03  DJ Delorie  <dj@redhat.com>
+
+	* rl78/crt0.S (_interrupt_vector_table): Convert from CPP macros
+	to GAS macros, to avoid dependence on the line separation
+	character.
+
+2012-10-01  DJ Delorie  <dj@redhat.com>
+
+	* v850/sbrk.c (_sbrk): Change heap_start to be an array of
+	undefined size, to avoid problems when compiled with -msda=4.
+
+2012-09-26  Ian Bolton  <ian.bolton@arm.com>
+        Jim MacArthur  <jim.macarthur@arm.com>
+        Marcus Shawcroft  <marcus.shawcroft@arm.com>
+        Nigel Stephens  <nigel.stephens@arm.com>
+        Ramana Radhakrishnan  <ramana.radhakrishnan@arm.com>
+        Richard Earnshaw  <rearnsha@arm.com>
+        Sofiane Naci  <sofiane.naci@arm.com>
+        Tejas Belagod  <tejas.belagod@arm.com>
+        Yufeng Zhang  <yufeng.zhang@arm.com>
+
+	* aarch64/Makefile.in: New file.
+	* aarch64/_exit.c: New file.
+	* aarch64/_kill.c: New file.
+	* aarch64/aclocal.m4: Generated.
+	* aarch64/configure: Generated.
+	* aarch64/configure.in: New file.
+	* aarch64/cpu-init/Makefile.in: New file.
+	* aarch64/cpu-init/rdimon-aem-el3.S: New file.
+	* aarch64/crt0.S: New file.
+	* aarch64/elf-rdimon.specs: New file.
+	* aarch64/libcfunc.c: New file.
+	* aarch64/svc.h: New file.
+	* aarch64/syscalls.c: New file.
+	* configure.in: Add AArch64.
+	* configure: Re-generated.
+
+2012-09-13  Anthony Green  <green@moxielogic.com>
+
+	* moxie/moxie-elf-common.ld: Add bi-endian support.
+
+2012-08-30  DJ Delorie  <dj@redhat.com>
+
+	* rx/rx.ld: Add W_* sections to .rodata.
+	* rx/rx-sim.ld: Likewise.
+
+2012-08-30  Kaushik Phatak  <kaushik.phatak@kpitcummins.com>
+
+	* cr16/sys/syscall.h: New file.
+
 2012-05-02  Greta Yorsh  <Greta.Yorsh@arm.com>
 
 	* arm/redboot-crt0.S (__change_mode): Replace mov with movs.

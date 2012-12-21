@@ -1,5 +1,5 @@
 .syntax unified
-
+.arch armv7-a
 .thumb
 
 	@ldr-immediate
@@ -57,3 +57,5 @@
 	str r1, [r2, r13]
 	str r1, [r2, r15]
 
+	@ PR 14260
+	ldrt r0, =0x0

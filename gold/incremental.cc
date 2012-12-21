@@ -1432,7 +1432,7 @@ Output_section_incremental_inputs<size, big_endian>::do_write(Output_file* of)
   gold_assert(pov - oview == oview_size);
 
   // Write the .gnu_incremental_symtab section.
-  gold_assert(global_sym_count * 4 == symtab_size);
+  gold_assert(static_cast<off_t>(global_sym_count) * 4 == symtab_size);
   this->write_symtab(symtab_view, global_syms, global_sym_count);
 
   delete[] global_syms;
@@ -2727,8 +2727,6 @@ Sized_incr_dynobj<size, big_endian>::do_add_symbols(
   unsigned char symbuf[sym_size];
   elfcpp::Sym<size, big_endian> sym(symbuf);
   elfcpp::Sym_write<size, big_endian> osym(symbuf);
-
-  typedef typename elfcpp::Elf_types<size>::Elf_WXword Elf_size_type;
 
   unsigned int nsyms = this->input_reader_.get_global_symbol_count();
   this->symbols_.resize(nsyms);

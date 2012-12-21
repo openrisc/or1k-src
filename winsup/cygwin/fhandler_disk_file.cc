@@ -984,7 +984,6 @@ fhandler_disk_file::facl (int cmd, int nentries, __aclent32_t *aclbufp)
 cant_access_acl:
       switch (cmd)
 	{
-	  struct __stat64 st;
 
 	  case SETACL:
 	    /* Open for writing required to be able to set ctime
@@ -1000,6 +999,7 @@ cant_access_acl:
 	      set_errno (ENOSPC);
 	    else
 	      {
+		struct __stat64 st;
 		if (!fstat (&st))
 		  {
 		    aclbufp[0].a_type = USER_OBJ;
@@ -2358,7 +2358,7 @@ fhandler_disk_file::rewinddir (DIR *dir)
 			   FILE_SYNCHRONOUS_IO_NONALERT
 			   | FILE_OPEN_FOR_BACKUP_INTENT
 			   | FILE_DIRECTORY_FILE);
-      if (!NT_SUCCESS (stat))
+      if (!NT_SUCCESS (status))
 	debug_printf ("Unable to reopen dir %s, NT error: %p",
 		      get_name (), status);
       else

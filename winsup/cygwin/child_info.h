@@ -35,7 +35,7 @@ enum child_status
 #define EXEC_MAGIC_SIZE sizeof(child_info)
 
 /* Change this value if you get a message indicating that it is out-of-sync. */
-#define CURR_CHILD_INFO_MAGIC 0xf1378eabU
+#define CURR_CHILD_INFO_MAGIC 0xc6c53f76U
 
 #define NPROCS	256
 
@@ -172,8 +172,6 @@ public:
       return true;
     if (type != _CH_EXEC)
       return false;
-    lock->acquire ();
-    lock->release ();
     return !!hExeced;
   }
   bool get_parent_handle ();

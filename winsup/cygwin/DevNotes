@@ -1,3 +1,67 @@
+2012-08-17  cgf-000016
+
+While debugging another problem I finally noticed that
+sigpacket::process was unconditionally calling tls->set_siginfo prior to
+calling setup_handler even though setup_handler could fail.  In the
+event of two successive signals, that would cause the second signal's
+info to overwrite the first even though the signal handler for the first
+would eventually be called.  Doh.
+
+Fixing this required passing the sigpacket si field into setup_handler.
+Making setup_handler part of the sigpacket class seemed to make a lot of
+sense so that's what I did.  Then I passed the si element into
+interrupt_setup so that the infodata structure could be filled out prior
+to arming the signal.
+
+The other changes checked in here eliminate the ResetEvent for
+signal_arrived since previous changes to cygwait should handle the
+case of spurious signal_arrived detection.  Since signal_arrived is
+not a manual-reset event, we really should just let the appropriate
+WFMO handle it.  Otherwise, there is a race where a signal comes in
+a "split second" after WFMO responds to some other event.  Resetting
+the signal_arrived would cause any subsequent WFMO to never be
+triggered.  My current theory is that this is what is causing:
+
+http://cygwin.com/ml/cygwin/2012-08/msg00310.html
+
+2012-08-15  cgf-000015
+
+RIP cancelable_wait.  Yay.
+
+2012-08-09  cgf-000014
+
+So, apparently I got it somewhat right before wrt signal handling.
+Checking on linux, it appears that signals will be sent to a thread
+which can accept the signal.  So resurrecting and extending the
+"find_tls" function is in order.  This function will return the tls
+of any thread which 1) is waiting for a signal with sigwait*() or
+2) has the signal unmasked.
+
+In redoing this it became obvious that I had the class designation wrong
+for the threadlist handling so I moved the manipulation of the global
+threadlist into the cygheap where it logically belongs.
+
+2012-07-21  cgf-000013
+
+These changes reflect a revamp of the "wait for signal" functionality
+which has existed in Cygwin through several signal massages.
+
+We now create a signal event only when a thread is waiting for a signal
+and arm it only for that thread.  The "set_signal_arrived" function is
+used to establish the event and set it in a location referencable by
+the caller.
+
+I still do not handle all of the race conditions.  What happens when
+a signal comes in just after a WF?O succeeds for some other purpose?  I
+suspect that it will arm the next WF?O call and the subsequent call to
+call_signal_handler could cause a function to get an EINTR when possibly
+it shouldn't have.
+
+I haven't yet checked all of the test cases for the URL listed in the
+previous entry.
+
+Baby steps.
+
 2012-06-12  cgf-000012
 
 These changes are the preliminary for redoing the way threads wait for
@@ -8,7 +72,7 @@ http://cygwin.com/ml/cygwin/2012-05/msg00434.html
 I've known that the signal handling in threads wasn't quite right for
 some time.  I lost all of my thread signal tests in the great "rm -r"
 debacle of a few years ago and have been less than enthusiastic about
-redoing everything (I had PCTS tests and everyting).  But it really is
+redoing everything (I had PCTS tests and everything).  But it really is
 time to redo this signal handling to make it more like it is supposed to
 be.
 
@@ -28,7 +92,7 @@ Corinna's 2012-05-23 change to refcnt exposed a potential problem with
 dup handling where the fdtab could be updated while not locked.
 
 That should be fixed by this change but, on closer examination, it seems
-ilke there are many places where it is possible for the refcnt to be
+like there are many places where it is possible for the refcnt to be
 updated while the fdtab is not locked since the default for
 cygheap_fdget is to not lock the fdtab (and that should be the default -
 you can't have read holding a lock).

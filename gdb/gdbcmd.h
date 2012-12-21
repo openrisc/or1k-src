@@ -64,10 +64,6 @@ extern struct cmd_list_element *togglelist;
 
 extern struct cmd_list_element *stoplist;
 
-/* Chain containing all defined "enable breakpoint" subcommands.  */
-
-extern struct cmd_list_element *enablebreaklist;
-
 /* Chain containing all defined set subcommands.  */
 
 extern struct cmd_list_element *setlist;
@@ -116,6 +112,10 @@ extern struct cmd_list_element *setprintlist;
 
 extern struct cmd_list_element *showprintlist;
 
+extern struct cmd_list_element *setprinttypelist;
+
+extern struct cmd_list_element *showprinttypelist;
+
 extern struct cmd_list_element *setdebuglist;
 
 extern struct cmd_list_element *showdebuglist;
@@ -123,8 +123,6 @@ extern struct cmd_list_element *showdebuglist;
 extern struct cmd_list_element *setchecklist;
 
 extern struct cmd_list_element *showchecklist;
-
-extern struct cmd_list_element *skiplist;
 
 /* Chain containing all defined "save" subcommands.  */
 

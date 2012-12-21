@@ -183,7 +183,7 @@ class fhandler_base
 
  public:
   long inc_refcnt () {return InterlockedIncrement (&_refcnt);}
-  long dec_refcnt () {return InterlockedDecrement (&_refcnt);} 
+  long dec_refcnt () {return InterlockedDecrement (&_refcnt);}
   class fhandler_base *archetype;
   int usecount;
 
@@ -558,7 +558,7 @@ class fhandler_socket: public fhandler_base
   int open (int flags, mode_t mode = 0);
   void __stdcall read (void *ptr, size_t& len) __attribute__ ((regparm (3)));
   ssize_t __stdcall readv (const struct iovec *, int iovcnt, ssize_t tot = -1);
-  inline ssize_t recv_internal (struct _WSAMSG *wsamsg);
+  inline ssize_t recv_internal (struct _WSAMSG *wsamsg, bool use_recvmsg) __attribute__ ((regparm (3)));
   ssize_t recvfrom (void *ptr, size_t len, int flags,
 		    struct sockaddr *from, int *fromlen);
   ssize_t recvmsg (struct msghdr *msg, int flags);
@@ -798,7 +798,9 @@ class fhandler_mailslot : public fhandler_base_overlapped
 class fhandler_dev_raw: public fhandler_base
 {
  protected:
+  char *devbufalloc;
   char *devbuf;
+  size_t devbufalign;
   size_t devbufsiz;
   size_t devbufstart;
   size_t devbufend;
@@ -856,7 +858,6 @@ class fhandler_dev_floppy: public fhandler_dev_raw
 {
  private:
   _off64_t drive_size;
-  unsigned long bytes_per_sector;
   part_t *partitions;
   struct status_flags
   {
@@ -1721,7 +1722,6 @@ class fhandler_dev_clipboard: public fhandler_base
   _off64_t pos;
   void *membuffer;
   size_t msize;
-  bool eof;
  public:
   fhandler_dev_clipboard ();
   int is_windows () { return 1; }

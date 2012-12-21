@@ -217,8 +217,8 @@ create_got_section (bfd *dynobj, struct bfd_link_info *info)
   asection *s;
 
   /* This function may be called more than once.  */
-  s = bfd_get_section_by_name (dynobj, ".got");
-  if (s != NULL && (s->flags & SEC_LINKER_CREATED) != 0)
+  s = bfd_get_linker_section (dynobj, ".got");
+  if (s != NULL)
     return TRUE;
 
   htab = lm32_elf_hash_table (info);
@@ -228,9 +228,9 @@ create_got_section (bfd *dynobj, struct bfd_link_info *info)
   if (! _bfd_elf_create_got_section (dynobj, info))
     return FALSE;
 
-  htab->sgot = bfd_get_section_by_name (dynobj, ".got");
-  htab->sgotplt = bfd_get_section_by_name (dynobj, ".got.plt");
-  htab->srelgot = bfd_get_section_by_name (dynobj, ".rela.got");
+  htab->sgot = bfd_get_linker_section (dynobj, ".got");
+  htab->sgotplt = bfd_get_linker_section (dynobj, ".got.plt");
+  htab->srelgot = bfd_get_linker_section (dynobj, ".rela.got");
   if (! htab->sgot || ! htab->sgotplt || ! htab->srelgot)
     abort ();
 
@@ -250,16 +250,18 @@ create_rofixup_section (bfd *dynobj, struct bfd_link_info *info)
     return FALSE;
 
   /* Fixup section for R_LM32_32 relocs.  */
-  lm32fdpic_fixup32_section (info) = bfd_make_section_with_flags (dynobj,
-                                                                   ".rofixup",
-				                                   (SEC_ALLOC
-                                                                   | SEC_LOAD
-                                                                   | SEC_HAS_CONTENTS
-                                                                   | SEC_IN_MEMORY
-	                                                           | SEC_LINKER_CREATED
-                                                                   | SEC_READONLY));
+  lm32fdpic_fixup32_section (info)
+    = bfd_make_section_anyway_with_flags (dynobj,
+					  ".rofixup",
+					  (SEC_ALLOC
+					   | SEC_LOAD
+					   | SEC_HAS_CONTENTS
+					   | SEC_IN_MEMORY
+					   | SEC_LINKER_CREATED
+					   | SEC_READONLY));
   if (lm32fdpic_fixup32_section (info) == NULL
-      || ! bfd_set_section_alignment (dynobj, lm32fdpic_fixup32_section (info), 2))
+      || ! bfd_set_section_alignment (dynobj,
+				      lm32fdpic_fixup32_section (info), 2))
     return FALSE;
 
   return TRUE;
@@ -1031,7 +1033,8 @@ lm32_elf_relocate_section (bfd *output_bfd,
 
                           /* We need to generate a R_LM32_RELATIVE reloc
                              for the dynamic linker.  */
-                          srelgot = bfd_get_section_by_name (dynobj, ".rela.got");
+                          srelgot = bfd_get_linker_section (dynobj,
+							    ".rela.got");
                           BFD_ASSERT (srelgot != NULL);
 
                           outrel.r_offset = (sgot->output_section->vma
@@ -1346,7 +1349,7 @@ lm32_elf_check_relocs (bfd *abfd,
               /* Create .rofixup section */
               if (htab->sfixup32 == NULL)
                 {
-                  if (! create_rofixup_section (abfd, info))
+                  if (! create_rofixup_section (dynobj, info))
                     return FALSE;
                 }
               break;
@@ -1356,7 +1359,9 @@ lm32_elf_check_relocs (bfd *abfd,
               /* Create .rofixup section.  */
               if (htab->sfixup32 == NULL)
                 {
-                  if (! create_rofixup_section (abfd, info))
+		  if (dynobj == NULL)
+		    htab->root.dynobj = dynobj = abfd;
+                  if (! create_rofixup_section (dynobj, info))
                     return FALSE;
                 }
               break;
@@ -1427,7 +1432,7 @@ lm32_elf_finish_dynamic_sections (bfd *output_bfd,
   dynobj = htab->root.dynobj;
 
   sgot = htab->sgotplt;
-  sdyn = bfd_get_section_by_name (dynobj, ".dynamic");
+  sdyn = bfd_get_linker_section (dynobj, ".dynamic");
 
   if (htab->root.dynamic_sections_created)
     {
@@ -1725,8 +1730,7 @@ lm32_elf_finish_dynamic_symbol (bfd *output_bfd,
                   && (h->root.type == bfd_link_hash_defined
                       || h->root.type == bfd_link_hash_defweak));
 
-      s = bfd_get_section_by_name (h->root.u.def.section->owner,
-                                   ".rela.bss");
+      s = bfd_get_linker_section (htab->root.dynobj, ".rela.bss");
       BFD_ASSERT (s != NULL);
 
       rela.r_offset = (h->root.u.def.value
@@ -1741,8 +1745,7 @@ lm32_elf_finish_dynamic_symbol (bfd *output_bfd,
     }
 
   /* Mark some specially defined symbols as absolute.  */
-  if (strcmp (h->root.root.string, "_DYNAMIC") == 0
-      || h == htab->root.hgot)
+  if (h == htab->root.hdynamic || h == htab->root.hgot)
     sym->st_shndx = SHN_ABS;
 
   return TRUE;
@@ -2139,7 +2142,7 @@ lm32_elf_size_dynamic_sections (bfd *output_bfd,
       /* Set the contents of the .interp section to the interpreter.  */
       if (info->executable)
 	{
-	  s = bfd_get_section_by_name (dynobj, ".interp");
+	  s = bfd_get_linker_section (dynobj, ".interp");
 	  BFD_ASSERT (s != NULL);
 	  s->size = sizeof ELF_DYNAMIC_INTERPRETER;
 	  s->contents = (unsigned char *) ELF_DYNAMIC_INTERPRETER;
@@ -2483,7 +2486,7 @@ lm32_elf_create_dynamic_sections (bfd *abfd, struct bfd_link_info *info)
   if (bed->plt_readonly)
     pltflags |= SEC_READONLY;
 
-  s = bfd_make_section_with_flags (abfd, ".plt", pltflags);
+  s = bfd_make_section_anyway_with_flags (abfd, ".plt", pltflags);
   htab->splt = s;
   if (s == NULL
       || ! bfd_set_section_alignment (abfd, s, bed->plt_alignment))
@@ -2511,9 +2514,10 @@ lm32_elf_create_dynamic_sections (bfd *abfd, struct bfd_link_info *info)
         return FALSE;
     }
 
-  s = bfd_make_section_with_flags (abfd,
-				   bed->default_use_rela_p ? ".rela.plt" : ".rel.plt",
-				   flags | SEC_READONLY);
+  s = bfd_make_section_anyway_with_flags (abfd,
+					  bed->default_use_rela_p
+					  ? ".rela.plt" : ".rel.plt",
+					  flags | SEC_READONLY);
   htab->srelplt = s;
   if (s == NULL
       || ! bfd_set_section_alignment (abfd, s, ptralign))
@@ -2523,32 +2527,6 @@ lm32_elf_create_dynamic_sections (bfd *abfd, struct bfd_link_info *info)
       && ! create_got_section (abfd, info))
     return FALSE;
 
-  {
-    const char *secname;
-    char *relname;
-    flagword secflags;
-    asection *sec;
-
-    for (sec = abfd->sections; sec; sec = sec->next)
-      {
-        secflags = bfd_get_section_flags (abfd, sec);
-        if ((secflags & (SEC_DATA | SEC_LINKER_CREATED))
-            || ((secflags & SEC_HAS_CONTENTS) != SEC_HAS_CONTENTS))
-          continue;
-        secname = bfd_get_section_name (abfd, sec);
-        relname = bfd_malloc ((bfd_size_type) strlen (secname) + 6);
-        strcpy (relname, ".rela");
-        strcat (relname, secname);
-        if (bfd_get_section_by_name (abfd, secname))
-          continue;
-        s = bfd_make_section_with_flags (abfd, relname,
-					 flags | SEC_READONLY);
-        if (s == NULL
-            || ! bfd_set_section_alignment (abfd, s, ptralign))
-          return FALSE;
-      }
-  }
-
   if (bed->want_dynbss)
     {
       /* The .dynbss section is a place to put symbols which are defined
@@ -2557,8 +2535,8 @@ lm32_elf_create_dynamic_sections (bfd *abfd, struct bfd_link_info *info)
          image and use a R_*_COPY reloc to tell the dynamic linker to
          initialize them at run time.  The linker script puts the .dynbss
          section into the .bss section of the final image.  */
-      s = bfd_make_section_with_flags (abfd, ".dynbss",
-				       SEC_ALLOC | SEC_LINKER_CREATED);
+      s = bfd_make_section_anyway_with_flags (abfd, ".dynbss",
+					      SEC_ALLOC | SEC_LINKER_CREATED);
       htab->sdynbss = s;
       if (s == NULL)
         return FALSE;
@@ -2575,10 +2553,10 @@ lm32_elf_create_dynamic_sections (bfd *abfd, struct bfd_link_info *info)
          copy relocs.  */
       if (! info->shared)
         {
-          s = bfd_make_section_with_flags (abfd,
-					   (bed->default_use_rela_p
-					    ? ".rela.bss" : ".rel.bss"),
-					   flags | SEC_READONLY);
+          s = bfd_make_section_anyway_with_flags (abfd,
+						  (bed->default_use_rela_p
+						   ? ".rela.bss" : ".rel.bss"),
+						  flags | SEC_READONLY);
           htab->srelbss = s;
           if (s == NULL
               || ! bfd_set_section_alignment (abfd, s, ptralign))
@@ -2637,134 +2615,21 @@ lm32_elf_copy_indirect_symbol (struct bfd_link_info *info,
 }
 
 static bfd_boolean
-lm32_elf_always_size_sections (bfd *output_bfd,
-				 struct bfd_link_info *info)
+lm32_elf_always_size_sections (bfd *output_bfd, struct bfd_link_info *info)
 {
   if (!info->relocatable)
     {
-      struct elf_link_hash_entry *h;
+      if (!bfd_elf_stack_segment_size (output_bfd, info,
+				       "__stacksize", DEFAULT_STACK_SIZE))
+	return FALSE;
 
-      /* Force a PT_GNU_STACK segment to be created.  */
-      if (! elf_tdata (output_bfd)->stack_flags)
-	elf_tdata (output_bfd)->stack_flags = PF_R | PF_W | PF_X;
-
-      /* Define __stacksize if it's not defined yet.  */
-      h = elf_link_hash_lookup (elf_hash_table (info), "__stacksize",
-				FALSE, FALSE, FALSE);
-      if (! h || h->root.type != bfd_link_hash_defined
-	  || h->type != STT_OBJECT
-	  || !h->def_regular)
-	{
-	  struct bfd_link_hash_entry *bh = NULL;
-
-	  if (!(_bfd_generic_link_add_one_symbol
-		(info, output_bfd, "__stacksize",
-		 BSF_GLOBAL, bfd_abs_section_ptr, DEFAULT_STACK_SIZE,
-		 (const char *) NULL, FALSE,
-		 get_elf_backend_data (output_bfd)->collect, &bh)))
-	    return FALSE;
-
-	  h = (struct elf_link_hash_entry *) bh;
-	  h->def_regular = 1;
-	  h->type = STT_OBJECT;
-	  /* This one must NOT be hidden.  */
-	}
-    }
-
-  return TRUE;
-}
-
-static bfd_boolean
-lm32_elf_modify_segment_map (bfd *output_bfd,
-			     struct bfd_link_info *info)
-{
-  struct elf_segment_map *m;
-
-  /* objcopy and strip preserve what's already there using elf32_lm32fdpic_copy_
-     private_bfd_data ().  */
-  if (! info)
-    return TRUE;
-
-  for (m = elf_tdata (output_bfd)->segment_map; m != NULL; m = m->next)
-    if (m->p_type == PT_GNU_STACK)
-      break;
-
-  if (m)
-    {
       asection *sec = bfd_get_section_by_name (output_bfd, ".stack");
-      struct elf_link_hash_entry *h;
-
       if (sec)
-	{
-	  /* Obtain the pointer to the __stacksize symbol.  */
-	  h = elf_link_hash_lookup (elf_hash_table (info), "__stacksize",
-				    FALSE, FALSE, FALSE);
-	  while (h->root.type == bfd_link_hash_indirect
-		 || h->root.type == bfd_link_hash_warning)
-	    h = (struct elf_link_hash_entry *)h->root.u.i.link;
-	  BFD_ASSERT (h->root.type == bfd_link_hash_defined);
-
-	  /* Set the section size from the symbol value.  We
-	     intentionally ignore the symbol section.  */
-	  if (h->root.type == bfd_link_hash_defined)
-	    sec->size = h->root.u.def.value;
-	  else
-	    sec->size = DEFAULT_STACK_SIZE;
-
-	  /* Add the stack section to the PT_GNU_STACK segment,
-	     such that its size and alignment requirements make it
-	     to the segment.  */
-	  m->sections[m->count] = sec;
-	  m->count++;
-	}
+	sec->size = info->stacksize >= 0 ? info->stacksize : 0;
     }
 
   return TRUE;
 }
-
-static bfd_boolean
-lm32_elf_modify_program_headers (bfd *output_bfd,
-				       struct bfd_link_info *info)
-{
-  struct elf_obj_tdata *tdata = elf_tdata (output_bfd);
-  struct elf_segment_map *m;
-  Elf_Internal_Phdr *p;
-
-  if (! info)
-    return TRUE;
-
-  for (p = tdata->phdr, m = tdata->segment_map; m != NULL; m = m->next, p++)
-    if (m->p_type == PT_GNU_STACK)
-      break;
-
-  if (m)
-    {
-      struct elf_link_hash_entry *h;
-
-      /* Obtain the pointer to the __stacksize symbol.  */
-      h = elf_link_hash_lookup (elf_hash_table (info), "__stacksize",
-				FALSE, FALSE, FALSE);
-      if (h)
-	{
-	  while (h->root.type == bfd_link_hash_indirect
-		 || h->root.type == bfd_link_hash_warning)
-	    h = (struct elf_link_hash_entry *) h->root.u.i.link;
-	  BFD_ASSERT (h->root.type == bfd_link_hash_defined);
-	}
-
-      /* Set the header p_memsz from the symbol value.  We
-	 intentionally ignore the symbol section.  */
-      if (h && h->root.type == bfd_link_hash_defined)
-	p->p_memsz = h->root.u.def.value;
-      else
-	p->p_memsz = DEFAULT_STACK_SIZE;
-
-      p->p_align = 8;
-    }
-
-  return TRUE;
-}
-
 
 static bfd_boolean
 lm32_elf_copy_private_bfd_data (bfd *ibfd, bfd *obfd)
@@ -2844,6 +2709,7 @@ lm32_elf_fdpic_copy_private_bfd_data (bfd *ibfd, bfd *obfd)
 #define elf_backend_rela_normal                 1
 #define elf_backend_object_p                    lm32_elf_object_p
 #define elf_backend_final_write_processing      lm32_elf_final_write_processing
+#define elf_backend_stack_align			8
 #define elf_backend_can_gc_sections             1
 #define elf_backend_can_refcount                1
 #define elf_backend_gc_mark_hook                lm32_elf_gc_mark_hook
@@ -2879,10 +2745,6 @@ lm32_elf_fdpic_copy_private_bfd_data (bfd *ibfd, bfd *obfd)
 
 #undef  elf_backend_always_size_sections
 #define elf_backend_always_size_sections        lm32_elf_always_size_sections
-#undef  elf_backend_modify_segment_map
-#define elf_backend_modify_segment_map          lm32_elf_modify_segment_map
-#undef  elf_backend_modify_program_headers
-#define elf_backend_modify_program_headers      lm32_elf_modify_program_headers
 #undef  bfd_elf32_bfd_copy_private_bfd_data
 #define bfd_elf32_bfd_copy_private_bfd_data     lm32_elf_fdpic_copy_private_bfd_data
 

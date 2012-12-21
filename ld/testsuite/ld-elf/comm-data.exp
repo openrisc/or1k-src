@@ -59,6 +59,8 @@ if [is_elf64 "tmpdir/libcomm-data.so"] {
     append AFLAGS " --defsym ELF64=1"
 }
 
+setup_xfail "arm*-*-*" "ld/13802"
+
 # Verify that a common symbol has been converted to an undefined
 # reference to the global symbol of the same name defined above
 # and that the debug reference has been dropped.
@@ -74,5 +76,25 @@ run_ld_link_tests [list \
 	    { readelf "-x .debug_foo" comm-data2.xd } \
 	} \
 	"comm-data" \
+    ] \
+    [list \
+	"$testname 3a" \
+	"-static" \
+	"" \
+	{ comm-data3a.s comm-data3b.s } \
+	{ \
+	    { readelf -s comm-data3.sd } \
+	} \
+	"comm-data3a" \
+    ] \
+    [list \
+	"$testname 3b" \
+	"-static" \
+	"" \
+	{ comm-data3b.s comm-data3a.s } \
+	{ \
+	    { readelf -s comm-data3.sd } \
+	} \
+	"comm-data3b" \
     ] \
 ]

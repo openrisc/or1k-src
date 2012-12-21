@@ -1,6 +1,6 @@
 /* BFD support for the NEC V850 processor
    Copyright 1996, 1997, 1998, 2000, 2001, 2002, 2003, 2005, 2007,
-   2010  Free Software Foundation, Inc.
+   2010, 2012  Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -25,7 +25,7 @@
 #include "safe-ctype.h"
 
 #define N(number, print, default, next)  \
-{  32, 32, 8, bfd_arch_v850, number, "v850", print, 2, default, \
+{  32, 32, 8, bfd_arch_v850, number, "v850", print " (using old gcc ABI)", 2, default, \
    bfd_default_compatible, bfd_default_scan, bfd_arch_default_fill, next }
 
 #define NEXT NULL

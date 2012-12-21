@@ -82,12 +82,12 @@ typedef struct name_list {
 name_list;
 
 typedef enum {sort_none, sort_ascending, sort_descending} sort_order;
-  
+
 /* A wildcard specification.  */
 
 typedef enum {
   none, by_name, by_alignment, by_name_alignment, by_alignment_name,
-  by_init_priority
+  by_none, by_init_priority
 } sort_type;
 
 extern sort_type sort_section;
@@ -148,29 +148,6 @@ typedef struct {
 
   /* 1 => do not assign addresses to common symbols.  */
   bfd_boolean inhibit_common_definition;
-
-  /* Enable or disable target specific optimizations.
-
-     Not all targets have optimizations to enable.
-
-     Normally these optimizations are disabled by default but some targets
-     prefer to enable them by default.  So this field is a tri-state variable.
-     The values are:
-     
-     zero: Enable the optimizations (either from --relax being specified on
-       the command line or the backend's before_allocation emulation function.
-       
-     positive: The user has requested that these optimizations be disabled.
-       (Via the --no-relax command line option).
-
-     negative: The optimizations are disabled.  (Set when initializing the
-       args_type structure in ldmain.c:main.  */
-  signed int disable_target_specific_optimizations;
-#define RELAXATION_DISABLED_BY_DEFAULT (command_line.disable_target_specific_optimizations < 0)
-#define RELAXATION_DISABLED_BY_USER    (command_line.disable_target_specific_optimizations > 0)
-#define RELAXATION_ENABLED (command_line.disable_target_specific_optimizations == 0)
-#define DISABLE_RELAXATION do { command_line.disable_target_specific_optimizations = 1; } while (0)
-#define ENABLE_RELAXATION  do { command_line.disable_target_specific_optimizations = 0; } while (0)
 
   /* If TRUE, build MIPS embedded PIC relocation tables in the output
      file.  */
@@ -296,6 +273,9 @@ typedef struct {
   /* If set, numbers and absolute symbols are simply treated as
      numbers everywhere.  */
   bfd_boolean sane_expr;
+
+  /* If set, code and non-code sections should never be in one segment.  */
+  bfd_boolean separate_code;
 
   /* The rpath separation character.  Usually ':'.  */
   char rpath_separator;

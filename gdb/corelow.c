@@ -46,6 +46,7 @@
 #include "filenames.h"
 #include "progspace.h"
 #include "objfiles.h"
+#include "gdb_bfd.h"
 
 #ifndef O_LARGEFILE
 #define O_LARGEFILE 0
@@ -215,9 +216,7 @@ core_close (int quitting)
 	  core_data = NULL;
 	}
 
-      name = bfd_get_filename (core_bfd);
-      gdb_bfd_close_or_warn (core_bfd);
-      xfree (name);
+      gdb_bfd_unref (core_bfd);
       core_bfd = NULL;
     }
   core_vec = NULL;
@@ -319,9 +318,9 @@ core_open (char *filename, int from_tty)
   if (scratch_chan < 0)
     perror_with_name (filename);
 
-  temp_bfd = bfd_fopen (filename, gnutarget, 
-			write_files ? FOPEN_RUB : FOPEN_RB,
-			scratch_chan);
+  temp_bfd = gdb_bfd_fopen (filename, gnutarget, 
+			    write_files ? FOPEN_RUB : FOPEN_RB,
+			    scratch_chan);
   if (temp_bfd == NULL)
     perror_with_name (filename);
 
@@ -332,7 +331,7 @@ core_open (char *filename, int from_tty)
       /* FIXME: should be checking for errors from bfd_close (for one
          thing, on error it does not free all the storage associated
          with the bfd).  */
-      make_cleanup_bfd_close (temp_bfd);
+      make_cleanup_bfd_unref (temp_bfd);
       error (_("\"%s\" is not a core dump: %s"),
 	     filename, bfd_errmsg (bfd_get_error ()));
     }
@@ -340,17 +339,11 @@ core_open (char *filename, int from_tty)
   /* Looks semi-reasonable.  Toss the old core file and work on the
      new.  */
 
-  discard_cleanups (old_chain);	/* Don't free filename any more */
+  do_cleanups (old_chain);
   unpush_target (&core_ops);
   core_bfd = temp_bfd;
   old_chain = make_cleanup (core_close_cleanup, 0 /*ignore*/);
 
-  /* FIXME: kettenis/20031023: This is very dangerous.  The
-     CORE_GDBARCH that results from this call may very well be
-     different from CURRENT_GDBARCH.  However, its methods may only
-     work if it is selected as the current architecture, because they
-     rely on swapped data (see gdbarch.c).  We should get rid of that
-     swapped data.  */
   core_gdbarch = gdbarch_from_bfd (core_bfd);
 
   /* Find a suitable core file handler to munch on core_bfd */
@@ -663,6 +656,36 @@ add_to_spuid_list (bfd *abfd, asection *asect, void *list_p)
   list->pos += 4;
 }
 
+/* Read siginfo data from the core, if possible.  Returns -1 on
+   failure.  Otherwise, returns the number of bytes read.  ABFD is the
+   core file's BFD; READBUF, OFFSET, and LEN are all as specified by
+   the to_xfer_partial interface.  */
+
+static LONGEST
+get_core_siginfo (bfd *abfd, gdb_byte *readbuf, ULONGEST offset, LONGEST len)
+{
+  asection *section;
+  long pid;
+  char *section_name;
+  const char *name = ".note.linuxcore.siginfo";
+
+  if (ptid_get_lwp (inferior_ptid))
+    section_name = xstrprintf ("%s/%ld", name,
+			       ptid_get_lwp (inferior_ptid));
+  else
+    section_name = xstrdup (name);
+
+  section = bfd_get_section_by_name (abfd, section_name);
+  xfree (section_name);
+  if (section == NULL)
+    return -1;
+
+  if (!bfd_get_section_contents (abfd, section, readbuf, offset, len))
+    return -1;
+
+  return len;
+}
+
 static LONGEST
 core_xfer_partial (struct target_ops *ops, enum target_object object,
 		   const char *annex, gdb_byte *readbuf,
@@ -799,6 +822,11 @@ core_xfer_partial (struct target_ops *ops, enum target_object object,
 	  bfd_map_over_sections (core_bfd, add_to_spuid_list, &list);
 	  return list.written;
 	}
+      return -1;
+
+    case TARGET_OBJECT_SIGNAL_INFO:
+      if (readbuf)
+	return get_core_siginfo (core_bfd, readbuf, offset, len);
       return -1;
 
     default:

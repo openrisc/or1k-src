@@ -1,3 +1,402 @@
+2012-11-27  Nick Clifton  <nickc@redhat.com>
+
+	PR ld/14776
+	* ld.texinfo: Fix spelling mistakes.
+
+2012-11-26  Roland McGrath  <mcgrathr@google.com>
+
+	* emultempl/aarch64elf.em (gld${EMULATION_NAME}_before_parse):
+	Copy last elf32.em here too.
+	* emultempl/armelf.em (gld${EMULATION_NAME}_before_parse): Likewise.
+	* emultempl/mmixelf.em (gld${EMULATION_NAME}_before_parse): Likewise.
+	* emultempl/scoreelf.em (gld${EMULATION_NAME}_before_parse): Likewise.
+
+2012-11-21  Roland McGrath  <mcgrathr@google.com>
+
+	* ld.h (ld_config_type): New flag member separate_code.
+	* emultempl/elf32.em
+	(gld${EMULATION_NAME}_before_parse): Set it based on $SEPARATE_CODE.
+	* ldlang.c (ldlang_override_segment_assignment): If it's set, then
+	always return TRUE when SEC_CODE differs between the sections.
+
+2012-11-20  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* ld.texinfo: Document "-z global".
+
+	* emultempl/elf32.em (gld${EMULATION_NAME}_handle_option): Support
+	"-z global".
+	(gld${EMULATION_NAME}_list_options): Likewise.
+
+2012-11-15  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	Port lib32 arrangement from Debian.
+	* emulparams/elf_i386.sh: Include lib32 directories in library search
+	path.
+
+2012-11-15  Simon Baldwin  <simonb@google.com>
+
+	* ldmain.c (main): Add start_sbrk set to sbrk(0) on entry.
+	On exit, compute data size as the delta between current
+	sbrk(0) and start_sbrk.
+
+2012-11-09  Nick Clifton  <nickc@redhat.com>
+
+	* emultempl/rxelf.em (no_flag_mismatch_warnings): Initialise to
+	true.
+	(PARSE_AND_LIST_LONGOPTS): Add flag-mismatch-warnings.
+	(PARSE_AND_LIST_ARG_CASES): Add support for
+	--flag-mismatch-warnings.
+
+	* Makefile.am: (ALL_EMULATION_SOURCES): Add ev850_rh850.c.
+	* Makefile.in: Regenerate.
+	* configure.tgt (v850*-*-*): Make v850_rh850 the default
+	emulation. Add vanilla v850 as an extra emulation.
+	* emulparams/v850_rh850.sh: New file.
+	* scripttempl/v850_rh850.sc: New file.
+
+2012-11-09  Edgar E. Iglesias <edgar.iglesias@gmail.com>
+
+	* Makefile.am: Add eelf32microblazeel.c and eelf32mbel_linux.c.
+	* Makefile.in: Regenerated.
+	* configure.tgt: Add microblazeel and set endian per target.
+	* emulparams/elf32mb_linux.sh: Add OUTPUT_FORMAT.
+	* emulparams/elf32microblaze.sh: Likewise.
+	* emulparams/elf32mbel_linux.sh: New file.
+	* emulparams/elf32microblazeel.sh: Likewise.
+
+2012-11-09  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* testplug.c (record_add_file): Remove trailing redundant `;'.
+
+2012-11-05  Alan Modra  <amodra@gmail.com>
+
+	* configure.in: Apply 2012-09-10 change to config.in here.
+
+2012-11-01  Nathan Sidwell  <nathan@codesourcery.com>
+
+	* emultempl/elf32.em: Print stacksize help.
+
+2012-11-01  Alan Modra  <amodra@gmail.com>
+
+	* ldlang.c (insert_pad): Correct output section size calculation.
+	(lang_size_sections_1): Likewise for lang_data_statement and
+	lang_reloc_statement.
+
+2012-10-29  Alan Modra  <amodra@gmail.com>
+
+	* configure.tgt (powerpcle-pe,winnt,cygwin): Add deffilep.o
+	and pe-dll.o.
+
+2012-10-24  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* ld.h (command_line): Remove
+	disable_target_specific_optimizations.
+	(RELAXATION_DISABLED_BY_DEFAULT): Removed.
+	(RELAXATION_DISABLED_BY_USER): Likewise.
+	(RELAXATION_ENABLED): Likewise.
+	(DISABLE_RELAXATION): Likewise.
+	(ENABLE_RELAXATION): Likewise.
+
+	* ldmain.c (main): Updated.
+
+	* ldmain.h (RELAXATION_DISABLED_BY_DEFAULT): New macro.
+	(RELAXATION_DISABLED_BY_USER): Likewise.
+	(RELAXATION_ENABLED): Likewise.
+	(DISABLE_RELAXATION): Likewise.
+	(ENABLE_RELAXATION): Likewise.
+
+2012-10-23  Nathan Sidwell  <nathan@codesourcery.com>
+
+	* ld.texinfo (stack-size): New option.
+	* emultempl/elf32.em: Add stack-size option.
+
+2012-10-22  Jan Beich  <jbeich@tormail.org>
+	    Alan Modra  <amodra@gmail.com>
+
+	PR ld/14426
+	* ldlex.h (option_values): Add OPTION_IGNORE_UNRESOLVED_SYMBOL.
+	* lexsup.c (parse_args): Likewise.
+	(ld_options): Describe --ignore-unresolved-symbol.
+	* ldmain.h (add_ignoresym): Declare.
+	* ldmain.c (add_ignoresym): New function, extracted from..
+	(undefined_symbol): ..here.  Return if the symbol is in ignore_hash.
+	(constructor_callback): Don't use global link_info here.
+	(reloc_overflow): Likewise.
+
+2012-10-22  Alan Modra  <amodra@gmail.com>
+
+	* plugin.c (plugin_load_plugins): Warning fix.
+
+2012-10-18  Kai Tietz  <ktietz@redhat.com>
+
+	PR binutils/14067
+	* NEWS: Menition new feature.
+	* scripttempl/pep.sc: Add zdebug sections.
+	* scripttempl/pe.sc: L
+
+2012-09-19  Steve Ellcey  <sellcey@mips.com>
+
+	* configure.tgt: Add mips*-mti-elf* target.
+
+2012-09-17  Alan Modra  <amodra@gmail.com>
+
+	* ld.texinfo (Expression Section): Correct description of
+	conversions for a binary operation involving an absolute symbol
+	and a number.
+
+2012-09-14  David Edelsohn  <dje.gcc@gmail.com>
+
+	* configure: Regenerate.
+
+2012-09-13  Anthony Green  <green@moxielogic.com>
+
+	* emulparams/elf32moxie.sh (BIG_OUTPUT_FORMAT,
+	LITTLE_OUTPUT_FORMAT): Define.
+	(OUTPUT_FORMAT): Change to elf32-bigmoxie.
+	(EMBEDDED): Define.
+
+2012-09-12  DJ Delorie  <dj@redhat.com>
+
+	* emulparams/elf32rx.sh (OTHER_READONLY_SECTIONS): Add W_* sections.
+
+2012-09-10  Matthias Klose  <doko@ubuntu.com>
+
+	* config.in: Disable sanity check for kfreebsd.
+
+2012-09-10  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* configure: Regenerated.
+
+2012-09-10  Iain Sandoe  <iain@codesourcery.com>
+	    Alan Modra  <amodra@gmail.com>
+
+	* configure.tgt (powerpc-*-elf, et al): Define targ_extra_libpath.
+	Correct whitespace.
+	(powerpcle-*-elf, et al): Likewise.  Correct targ_extra_emuls.
+
+2012-09-10  Iain Sandoe  <iain@codesourcery.com>
+
+	* configure.tgt (powerpc-*-elf, et al): Define targ64_extra_emuls
+	and targ64_extra_libpath.
+	(powerpcle-*-elf, et al): Likewise.
+
+2012-09-09  Hans-Peter Nilsson  <hp@bitrange.com>
+
+	* emultempl/mmo.em (mmo_place_orphan): Rewrite to also attach
+	orphan sections to .data and .bss output sections, not just .text.
+	When giving up on finding a suitable output section, attach to any
+	output section other than .MMIX.reg_contents, if it exists.
+	* scripttempl/mmo.sc: Move output debug sections to just before
+	.MMIX.reg_contents.  Add .gnu.attributes.  Add new . = . NOP
+	assignments and move end-of-section provide-symbols after them
+	to force the end-of-section symbols to the address after orphan
+	placement.  Add SORT_NONE to .init and .fini sections.
+
+2012-08-30  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR ld/14525
+	* scripttempl/elf.sc: Also provide __executable_start for PIE.
+
+2012-08-17  Kai Tietz  <ktietz@redhat.com>
+
+	PR ld/14326
+	* scripttempl/pe.sc: Add _etext symbol.
+
+2012-08-14  Nick Clifton  <nickc@redhat.com>
+
+	* configure.in (ALL_LINGUGAS): Add uk.
+	* configure: Regenerate.
+	* po/uk.po: New Ukranian translation.
+
+2012-08-13  Ian Bolton  <ian.bolton@arm.com>
+	    Laurent Desnogues  <laurent.desnogues@arm.com>
+	    Jim MacArthur  <jim.macarthur@arm.com>
+	    Marcus Shawcroft  <marcus.shawcroft@arm.com>
+	    Nigel Stephens  <nigel.stephens@arm.com>
+	    Ramana Radhakrishnan  <ramana.radhakrishnan@arm.com>
+	    Richard Earnshaw  <rearnsha@arm.com>
+	    Sofiane Naci  <sofiane.naci@arm.com>
+	    Tejas Belagod  <tejas.belagod@arm.com>
+	    Yufeng Zhang  <yufeng.zhang@arm.com>
+
+	* Makefile.am: Add AArch64.
+	* Makefile.in: Regenerate.
+	* configure.tgt: Add AArch64.
+	* emulparams/aarch64elf.sh: New file.
+	* emulparams/aarch64elfb.sh: New file.
+	* emulparams/aarch64linux.sh: New file.
+	* emulparams/aarch64linuxb.sh: New file.
+	* emultempl/aarch64elf.em: New file.
+	* NEWS: Mention the new feature.
+
+2012-08-09  Nick Clifton  <nickc@redhat.com>
+
+	* po/vi.po: Updated Vietnamese translation.
+
+2012-08-07  Daniel Green  <venix1@gmail.com>
+
+	* scripttempl/pe.sc (R_TLS): Add .tls$AAA and .tls$ZZZ.
+	* scripttempl/pep.sc (R_TLS): Add .tls$AAA and .tls$ZZZ.
+
+2012-08-07  Nick Clifton  <nickc@redhat.com>
+
+	* po/ja.po: Updated Japanese translation.
+
+2012-08-06  Maciej W. Rozycki  <macro@codesourcery.com>
+
+	* emulparams/elf32bmip.sh: Make _gp hidden.
+	* emulparams/elf32bmipn32-defs.sh: Likewise.
+	* emulparams/elf32mipswindiss.sh: Likewise.
+	* scripttempl/mips.sc: Likewise.
+
+2012-08-06  Maciej W. Rozycki  <macro@codesourcery.com>
+
+	* ldexp.h (etree_union): Add defsym member to the assign member
+	structure.
+	(exp_assign): Add hidden argument to prototype.
+	* ldexp.c (exp_fold_tree_1): Use the defsym member to handle
+	--defsym symbols.
+	(exp_assop): Add defsym argument, initialize the defsym member
+	of the assign structure.
+	(exp_assign): Handle hidden symbols.
+	(exp_defsym): Update to use the defsym argument to exp_assop.
+	(exp_provide): Update to handle the defsym argument to exp_assop.
+	* ldlex.l (HIDDEN): New token.
+	* ldgram.y (HIDDEN): Likewise.
+	(assignment, section): Update calls to exp_assign.
+	* ldctor.c (ldctor_build_sets): Likewise.
+	* mri.c (mri_format): Likewise.
+	* ldlang.c (lang_insert_orphan, lang_leave_overlay): Likewise.
+	(open_input_bfds): Remove --defsym symbols special case.
+	* emultempl/beos.em (gld_${EMULATION_NAME}_set_symbols): Update
+	call to exp_assign.
+	* emultempl/pe.em (gld_${EMULATION_NAME}_set_symbols): Likewise.
+	* emultempl/pep.em (gld_${EMULATION_NAME}_set_symbols): Likewise.
+	* emultempl/spuelf.em (spu_place_special_section): Likewise.
+	* emultempl/xtensaelf.em (ld_xtensa_insert_page_offsets):
+	Likewise.
+	* ld.texinfo (Assigning Values to Symbols): Add HIDDEN.
+	(HIDDEN): New subsection.
+
+2012-07-31  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR ld/14156
+	* ldlang.c (wild_sort): Properly handle by_none.
+
+	* scripttempl/elf.sc: Add SORT_NONE to .init and .fini sections.
+	* scripttempl/elf32msp430.sc: Likewise.
+	* scripttempl/elf32msp430_3.sc: Likewise.
+	* scripttempl/elfd10v.sc: Likewise.
+	* scripttempl/elfd30v.sc: Likewise.
+	* scripttempl/elfxtensa.sc: Likewise.
+
+2012-07-30  Nick Clifton  <nickc@redhat.com>
+
+	* po/ld.pot: Updated template.
+	* po/bg.po: Updated Bulgarian translation.
+	* po/es.po: Updated Spanish translation.
+	* po/fi.po: Updated Finnish translation.
+
+2012-07-27  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.in (BFD_VERSION): Run bfd/configure --version and
+	parse the output of that.
+	* configure: Regenerate.
+
+2012-07-27  Tristan Gingold  <gingold@adacore.com>
+
+	* NEWS: Add marker for 2.23.
+
+2012-07-24  Jan Waclawek <konfera@efton.sk>
+
+	PR ld/14058
+	* emultempl/avrelf.em (avr_elf_after_allocation): Call
+	elf32_avr_size_stubs with is_prealloc_run as TRUE.
+
+2012-07-13  Andreas Krebbel  <Andreas.Krebbel@de.ibm.com>
+
+	* emulparams/elf_s390.sh (IREL_IN_PLT): Define.
+	* emulparams/elf64_s390.sh (IREL_IN_PLT): Define.
+
+2012-07-13  Nick Clifton  <nickc@redhat.com>
+
+	PR ld/14357
+	* ldmain.c (trace_file_tries): Rename to 'verbose'.
+	* ldfile.c: Likewise.
+	* ldlang.c: Likewise.
+	* ldmain.h: Likewise.
+	* lexsup.c: Likewise.
+	* emultempl/elf32.em: Likewise.
+	* emultemp/spuelf.em: Likewise.
+	* pe-dll.c (pe_dll_generate_implib): Only print creation message
+	in verbose mode.
+
+2012-07-10  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR ld/14156
+	* NEWS: Mention SORT_NONE.
+
+	* ld.h (sort_type): Add by_none.
+
+	* ld.texinfo: Document SORT_NONE.
+
+	* ldgram.y: Handle SORT_NONE.
+
+	* ldlang.c (update_wild_statements): Handle by_none.  Don't
+	sort .init/.fini sections.
+
+	* ldlex.l: Add SORT_NONE.
+
+2012-07-02  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* ld.texinfo: Replace __end_SECNAME with __stop_SECNAME.
+
+2012-06-29  Nick Clifton  <nickc@redhat.com>
+
+	* scripttempl/alphavms.sc: Add .debug_macro section.
+	* scripttempl/elf.sc: Likewise.
+	* scripttempl/elf64hppa.sc: Likewise.
+	* scripttempl/elf_chaos.sc: Likewise.
+	* scripttempl/elfxtensa.sc: Likewise.
+	* scripttempl/ia64vms.sc: Likewise.
+
+	* scripttempl/armbpabi.sc: Add .debug_pubtypes, .debug_ranges and
+	.debug_macro sections.
+	* scripttempl/avr.sc: Likewise.
+	* scripttempl/elf32cr16.sc: Likewise.
+	* scripttempl/elf32crx.sc: Likewise.
+	* scripttempl/elf32msp430.sc: Likewise.
+	* scripttempl/elf32msp430_3.sc: Likewise.
+	* scripttempl/elf32sh-symbian.sc: Likewise.
+	* scripttempl/elfd30v.sc: Likewise.
+	* scripttempl/elfi370.sc: Likewise.
+	* scripttempl/elfm68hc11.sc: Likewise.
+	* scripttempl/elfm68hc12.sc: Likewise.
+	* scripttempl/elfxgate.sc: Likewise.
+	* scripttempl/i386beos.sc: Likewise.
+	* scripttempl/i386go32.sc: Likewise.
+	* scripttempl/ip2k.sc: Likewise.
+	* scripttempl/iq2000.sc: Likewise.
+	* scripttempl/mep.sc: Likewise.
+	* scripttempl/mmo.sc: Likewise.
+	* scripttempl/v850.sc: Likewise.
+	* scripttempl/xstormy16.sc: Likewise.
+
+2012-06-28  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* ldlang.c (update_wild_statements): Remove redundant statement.
+
+2012-06-25  Alan Modra  <amodra@gmail.com>
+
+	* ldlang.c (load_symbols): Close file and set flags.loaded
+	after parsing script file.
+	(open_input_bfds): Don't segv on closed script.
+
+2012-06-24  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* configure.tgt: Enable elf_k1om for x86_64-*-linux-gnux32.
+	Remove x32 in tdir_i386linux and tdir_elf_i386.
+
 2012-06-22  Roland McGrath  <mcgrathr@google.com>
 
 	* NEWS: Mention __ehdr_start.

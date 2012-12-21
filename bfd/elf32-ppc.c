@@ -1451,14 +1451,14 @@ static reloc_howto_type ppc_elf_howto_raw[] = {
 	 0,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
 	 32,			/* bitsize */
-	 FALSE,			/* pc_relative */  /* FIXME: Does this apply to split relocs? */
+	 FALSE,			/* pc_relative */
 	 0,			/* bitpos */
 	 complain_overflow_bitfield, /* complain_on_overflow */
 	 bfd_elf_generic_reloc,	 /* special_function */
 	 "R_PPC_VLE_LO16A",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0,			/* src_mask */
-	 0x1f00fff,		/* dst_mask */
+	 0x1f007ff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
   /* The 16 LSBS in split16d format.  */
@@ -1488,7 +1488,7 @@ static reloc_howto_type ppc_elf_howto_raw[] = {
 	 "R_PPC_VLE_HI16A",		/* name */
 	 FALSE,			/* partial_inplace */
 	 0,			/* src_mask */
-	 0x1f00fff,		/* dst_mask */
+	 0x1f007ff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
   /* Bits 16-31 split16d format.  */
@@ -1518,7 +1518,7 @@ static reloc_howto_type ppc_elf_howto_raw[] = {
 	 "R_PPC_VLE_HA16A",		/* name */
 	 FALSE,			/* partial_inplace */
 	 0,			/* src_mask */
-	 0x1f00fff,		/* dst_mask */
+	 0x1f007ff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
   /* Bits 16-31 (High Adjusted) in split16d format.  */
@@ -1578,7 +1578,7 @@ static reloc_howto_type ppc_elf_howto_raw[] = {
 	 "R_PPC_VLE_SDAREL_LO16A",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0,			/* src_mask */
-	 0x1f00fff,		/* dst_mask */
+	 0x1f007ff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
   /* The 16 LSBS relative to _SDA_BASE_ in split16d format.  */
@@ -1609,7 +1609,7 @@ static reloc_howto_type ppc_elf_howto_raw[] = {
 	 "R_PPC_VLE_SDAREL_HI16A",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0,			/* src_mask */
-	 0x1f00fff,		/* dst_mask */
+	 0x1f007ff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
   /* Bits 16-31 relative to _SDA_BASE_ in split16d format.  */
@@ -1639,7 +1639,7 @@ static reloc_howto_type ppc_elf_howto_raw[] = {
 	 "R_PPC_VLE_SDAREL_HA16A",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0,			/* src_mask */
-	 0x1f00fff,		/* dst_mask */
+	 0x1f007ff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
   /* Bits 16-31 (HA) relative to _SDA_BASE split16d format.  */
@@ -1815,7 +1815,9 @@ ppc_elf_reloc_type_lookup (bfd *abfd ATTRIBUTE_UNUSED,
     case BFD_RELOC_NONE:		r = R_PPC_NONE;			break;
     case BFD_RELOC_32:			r = R_PPC_ADDR32;		break;
     case BFD_RELOC_PPC_BA26:		r = R_PPC_ADDR24;		break;
+    case BFD_RELOC_PPC64_ADDR16_DS:
     case BFD_RELOC_16:			r = R_PPC_ADDR16;		break;
+    case BFD_RELOC_PPC64_ADDR16_LO_DS:
     case BFD_RELOC_LO16:		r = R_PPC_ADDR16_LO;		break;
     case BFD_RELOC_HI16:		r = R_PPC_ADDR16_HI;		break;
     case BFD_RELOC_HI16_S:		r = R_PPC_ADDR16_HA;		break;
@@ -1826,7 +1828,9 @@ ppc_elf_reloc_type_lookup (bfd *abfd ATTRIBUTE_UNUSED,
     case BFD_RELOC_PPC_B16:		r = R_PPC_REL14;		break;
     case BFD_RELOC_PPC_B16_BRTAKEN:	r = R_PPC_REL14_BRTAKEN;	break;
     case BFD_RELOC_PPC_B16_BRNTAKEN:	r = R_PPC_REL14_BRNTAKEN;	break;
+    case BFD_RELOC_PPC64_GOT16_DS:
     case BFD_RELOC_16_GOTOFF:		r = R_PPC_GOT16;		break;
+    case BFD_RELOC_PPC64_GOT16_LO_DS:
     case BFD_RELOC_LO16_GOTOFF:		r = R_PPC_GOT16_LO;		break;
     case BFD_RELOC_HI16_GOTOFF:		r = R_PPC_GOT16_HI;		break;
     case BFD_RELOC_HI16_S_GOTOFF:	r = R_PPC_GOT16_HA;		break;
@@ -1837,26 +1841,34 @@ ppc_elf_reloc_type_lookup (bfd *abfd ATTRIBUTE_UNUSED,
     case BFD_RELOC_32_PCREL:		r = R_PPC_REL32;		break;
     case BFD_RELOC_32_PLTOFF:		r = R_PPC_PLT32;		break;
     case BFD_RELOC_32_PLT_PCREL:	r = R_PPC_PLTREL32;		break;
+    case BFD_RELOC_PPC64_PLT16_LO_DS:
     case BFD_RELOC_LO16_PLTOFF:		r = R_PPC_PLT16_LO;		break;
     case BFD_RELOC_HI16_PLTOFF:		r = R_PPC_PLT16_HI;		break;
     case BFD_RELOC_HI16_S_PLTOFF:	r = R_PPC_PLT16_HA;		break;
     case BFD_RELOC_GPREL16:		r = R_PPC_SDAREL16;		break;
+    case BFD_RELOC_PPC64_SECTOFF_DS:
     case BFD_RELOC_16_BASEREL:		r = R_PPC_SECTOFF;		break;
+    case BFD_RELOC_PPC64_SECTOFF_LO_DS:
     case BFD_RELOC_LO16_BASEREL:	r = R_PPC_SECTOFF_LO;		break;
     case BFD_RELOC_HI16_BASEREL:	r = R_PPC_SECTOFF_HI;		break;
     case BFD_RELOC_HI16_S_BASEREL:	r = R_PPC_SECTOFF_HA;		break;
     case BFD_RELOC_CTOR:		r = R_PPC_ADDR32;		break;
+    case BFD_RELOC_PPC64_TOC16_DS:
     case BFD_RELOC_PPC_TOC16:		r = R_PPC_TOC16;		break;
     case BFD_RELOC_PPC_TLS:		r = R_PPC_TLS;			break;
     case BFD_RELOC_PPC_TLSGD:		r = R_PPC_TLSGD;		break;
     case BFD_RELOC_PPC_TLSLD:		r = R_PPC_TLSLD;		break;
     case BFD_RELOC_PPC_DTPMOD:		r = R_PPC_DTPMOD32;		break;
+    case BFD_RELOC_PPC64_TPREL16_DS:
     case BFD_RELOC_PPC_TPREL16:		r = R_PPC_TPREL16;		break;
+    case BFD_RELOC_PPC64_TPREL16_LO_DS:
     case BFD_RELOC_PPC_TPREL16_LO:	r = R_PPC_TPREL16_LO;		break;
     case BFD_RELOC_PPC_TPREL16_HI:	r = R_PPC_TPREL16_HI;		break;
     case BFD_RELOC_PPC_TPREL16_HA:	r = R_PPC_TPREL16_HA;		break;
     case BFD_RELOC_PPC_TPREL:		r = R_PPC_TPREL32;		break;
+    case BFD_RELOC_PPC64_DTPREL16_DS:
     case BFD_RELOC_PPC_DTPREL16:	r = R_PPC_DTPREL16;		break;
+    case BFD_RELOC_PPC64_DTPREL16_LO_DS:
     case BFD_RELOC_PPC_DTPREL16_LO:	r = R_PPC_DTPREL16_LO;		break;
     case BFD_RELOC_PPC_DTPREL16_HI:	r = R_PPC_DTPREL16_HI;		break;
     case BFD_RELOC_PPC_DTPREL16_HA:	r = R_PPC_DTPREL16_HA;		break;
@@ -3209,13 +3221,13 @@ ppc_elf_create_got (bfd *abfd, struct bfd_link_info *info)
     return FALSE;
 
   htab = ppc_elf_hash_table (info);
-  htab->got = s = bfd_get_section_by_name (abfd, ".got");
+  htab->got = s = bfd_get_linker_section (abfd, ".got");
   if (s == NULL)
     abort ();
 
   if (htab->is_vxworks)
     {
-      htab->sgotplt = bfd_get_section_by_name (abfd, ".got.plt");
+      htab->sgotplt = bfd_get_linker_section (abfd, ".got.plt");
       if (!htab->sgotplt)
 	abort ();
     }
@@ -3229,7 +3241,7 @@ ppc_elf_create_got (bfd *abfd, struct bfd_link_info *info)
 	return FALSE;
     }
 
-  htab->relgot = bfd_get_section_by_name (abfd, ".rela.got");
+  htab->relgot = bfd_get_linker_section (abfd, ".rela.got");
   if (!htab->relgot)
     abort ();
 
@@ -3303,7 +3315,7 @@ ppc_elf_create_dynamic_sections (bfd *abfd, struct bfd_link_info *info)
       && !ppc_elf_create_glink (abfd, info))
     return FALSE;
 
-  htab->dynbss = bfd_get_section_by_name (abfd, ".dynbss");
+  htab->dynbss = bfd_get_linker_section (abfd, ".dynbss");
   s = bfd_make_section_anyway_with_flags (abfd, ".dynsbss",
 					  SEC_ALLOC | SEC_LINKER_CREATED);
   htab->dynsbss = s;
@@ -3312,7 +3324,7 @@ ppc_elf_create_dynamic_sections (bfd *abfd, struct bfd_link_info *info)
 
   if (! info->shared)
     {
-      htab->relbss = bfd_get_section_by_name (abfd, ".rela.bss");
+      htab->relbss = bfd_get_linker_section (abfd, ".rela.bss");
       flags = (SEC_ALLOC | SEC_LOAD | SEC_READONLY | SEC_HAS_CONTENTS
 	       | SEC_IN_MEMORY | SEC_LINKER_CREATED);
       s = bfd_make_section_anyway_with_flags (abfd, ".rela.sbss", flags);
@@ -3326,8 +3338,8 @@ ppc_elf_create_dynamic_sections (bfd *abfd, struct bfd_link_info *info)
       && !elf_vxworks_create_dynamic_sections (abfd, info, &htab->srelplt2))
     return FALSE;
 
-  htab->relplt = bfd_get_section_by_name (abfd, ".rela.plt");
-  htab->plt = s = bfd_get_section_by_name (abfd, ".plt");
+  htab->relplt = bfd_get_linker_section (abfd, ".rela.plt");
+  htab->plt = s = bfd_get_linker_section (abfd, ".plt");
   if (s == NULL)
     abort ();
 
@@ -6004,7 +6016,7 @@ ppc_elf_size_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
       /* Set the contents of the .interp section to the interpreter.  */
       if (info->executable)
 	{
-	  s = bfd_get_section_by_name (htab->elf.dynobj, ".interp");
+	  s = bfd_get_linker_section (htab->elf.dynobj, ".interp");
 	  BFD_ASSERT (s != NULL);
 	  s->size = sizeof ELF_DYNAMIC_INTERPRETER;
 	  s->contents = (unsigned char *) ELF_DYNAMIC_INTERPRETER;
@@ -7243,6 +7255,21 @@ _bfd_elf_ppc_at_tprel_transform (unsigned int insn, unsigned int reg)
   return insn;
 }
 
+static bfd_boolean
+is_insn_ds_form (unsigned int insn)
+{
+  return ((insn & (0x3f << 26)) == 58u << 26 /* ld,ldu,lwa */
+	  || (insn & (0x3f << 26)) == 62u << 26 /* std,stdu,stq */
+	  || (insn & (0x3f << 26)) == 57u << 26 /* lfdp */
+	  || (insn & (0x3f << 26)) == 61u << 26 /* stfdp */);
+}
+
+static bfd_boolean
+is_insn_dq_form (unsigned int insn)
+{
+  return (insn & (0x3f << 26)) == 56u << 26; /* lq */
+}
+
 /* The RELOCATE_SECTION function is called by the ELF backend linker
    to handle the relocations for a section.
 
@@ -7826,6 +7853,7 @@ ppc_elf_relocate_section (bfd *output_bfd,
 		  ;
 		else
 		  {
+		    BFD_ASSERT (h->dynindx != -1);
 		    indx = h->dynindx;
 		    unresolved_reloc = FALSE;
 		  }
@@ -8176,6 +8204,7 @@ ppc_elf_relocate_section (bfd *output_bfd,
 			    || h->root.type == bfd_link_hash_undefweak))
 		       || !SYMBOL_REFERENCES_LOCAL (info, h))
 		{
+		  BFD_ASSERT (h->dynindx != -1);
 		  unresolved_reloc = FALSE;
 		  outrel.r_info = ELF32_R_INFO (h->dynindx, r_type);
 		  outrel.r_addend = rel->r_addend;
@@ -8786,6 +8815,54 @@ ppc_elf_relocate_section (bfd *output_bfd,
 	     Bits 0:15 are not used.  */
 	  addend += 0x8000;
 	  break;
+
+	case R_PPC_ADDR16:
+	case R_PPC_ADDR16_LO:
+	case R_PPC_GOT16:
+	case R_PPC_GOT16_LO:
+	case R_PPC_SDAREL16:
+	case R_PPC_SECTOFF:
+	case R_PPC_SECTOFF_LO:
+	case R_PPC_DTPREL16:
+	case R_PPC_DTPREL16_LO:
+	case R_PPC_TPREL16:
+	case R_PPC_TPREL16_LO:
+	case R_PPC_GOT_TLSGD16:
+	case R_PPC_GOT_TLSGD16_LO:
+	case R_PPC_GOT_TLSLD16:
+	case R_PPC_GOT_TLSLD16_LO:
+	case R_PPC_GOT_DTPREL16:
+	case R_PPC_GOT_DTPREL16_LO:
+	case R_PPC_GOT_TPREL16:
+	case R_PPC_GOT_TPREL16_LO:
+	  {
+	    /* The 32-bit ABI lacks proper relocations to deal with
+	       certain 64-bit instructions.  Prevent damage to bits
+	       that make up part of the insn opcode.  */
+	    unsigned int insn, mask, lobit;
+
+	    insn = bfd_get_32 (output_bfd, contents + rel->r_offset - d_offset);
+	    mask = 0;
+	    if (is_insn_ds_form (insn))
+	      mask = 3;
+	    else if (is_insn_dq_form (insn))
+	      mask = 15;
+	    else
+	      break;
+	    lobit = mask & (relocation + addend);
+	    if (lobit != 0)
+	      {
+		addend -= lobit;
+		info->callbacks->einfo
+		  (_("%P: %H: error: %s against `%s' not a multiple of %u\n"),
+		   input_bfd, input_section, rel->r_offset,
+		   howto->name, sym_name, mask + 1);
+		bfd_set_error (bfd_error_bad_value);
+		ret = FALSE;
+	      }
+	    addend += insn & mask;
+	  }
+	  break;
 	}
 
 #ifdef DEBUG
@@ -8980,7 +9057,7 @@ ppc_elf_finish_dynamic_symbol (bfd *output_bfd,
 			    htab->plt->contents + ent->plt.offset + 28);
 
 		/* Fill in the GOT entry corresponding to this PLT slot with
-		   the address immediately after the the "bctr" instruction
+		   the address immediately after the "bctr" instruction
 		   in this PLT entry.  */
 		bfd_put_32 (output_bfd, (htab->plt->output_section->vma
 					 + htab->plt->output_offset
@@ -9240,9 +9317,9 @@ ppc_elf_finish_dynamic_sections (bfd *output_bfd,
 
   htab = ppc_elf_hash_table (info);
   dynobj = elf_hash_table (info)->dynobj;
-  sdyn = bfd_get_section_by_name (dynobj, ".dynamic");
+  sdyn = bfd_get_linker_section (dynobj, ".dynamic");
   if (htab->is_vxworks)
-    splt = bfd_get_section_by_name (dynobj, ".plt");
+    splt = bfd_get_linker_section (dynobj, ".plt");
   else
     splt = NULL;
 

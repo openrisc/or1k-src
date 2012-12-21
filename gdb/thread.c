@@ -54,7 +54,7 @@ void _initialize_thread (void);
 
 /* Prototypes for local functions.  */
 
-static struct thread_info *thread_list = NULL;
+struct thread_info *thread_list = NULL;
 static int highest_thread_num;
 
 static void thread_command (char *tidstr, int from_tty);
@@ -987,7 +987,6 @@ switch_to_thread (ptid_t ptid)
 
   inferior_ptid = ptid;
   reinit_frame_cache ();
-  registers_changed ();
 
   /* We don't check for is_stopped, because we're called at times
      while in the TARGET_RUNNING state, e.g., while handling an

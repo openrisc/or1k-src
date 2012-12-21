@@ -263,7 +263,7 @@ me_module_register_set (CONFIG_ATTR me_module,
        mask contains any of the me_module's coprocessor ISAs,
        specifically excluding the generic coprocessor register sets.  */
 
-  CGEN_CPU_DESC desc = gdbarch_tdep (target_gdbarch)->cpu_desc;
+  CGEN_CPU_DESC desc = gdbarch_tdep (target_gdbarch ())->cpu_desc;
   const CGEN_HW_ENTRY *hw;
 
   if (me_module == CONFIG_NONE)
@@ -854,7 +854,7 @@ current_me_module (void)
       return regval;
     }
   else
-    return gdbarch_tdep (target_gdbarch)->me_module;
+    return gdbarch_tdep (target_gdbarch ())->me_module;
 }
 
 
@@ -2337,11 +2337,10 @@ mep_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 
   for (i = 0; i < argc; i++)
     {
-      unsigned arg_size = TYPE_LENGTH (value_type (argv[i]));
       ULONGEST value;
 
       /* Arguments that fit in a GPR get expanded to fill the GPR.  */
-      if (arg_size <= MEP_GPR_SIZE)
+      if (TYPE_LENGTH (value_type (argv[i])) <= MEP_GPR_SIZE)
         value = extract_unsigned_integer (value_contents (argv[i]),
                                           TYPE_LENGTH (value_type (argv[i])),
 					  byte_order);

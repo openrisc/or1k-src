@@ -269,16 +269,14 @@ m2_print_array_contents (struct type *type, const gdb_byte *valaddr,
 			 const struct value_print_options *options,
 			 int len)
 {
-  int eltlen;
   CHECK_TYPEDEF (type);
 
   if (TYPE_LENGTH (type) > 0)
     {
-      eltlen = TYPE_LENGTH (type);
       if (options->prettyprint_arrays)
 	print_spaces_filtered (2 + 2 * recurse, stream);
       /* For an array of chars, print with string syntax.  */
-      if (eltlen == 1 &&
+      if (TYPE_LENGTH (type) == 1 &&
 	  ((TYPE_CODE (type) == TYPE_CODE_INT)
 	   || ((current_language->la_language == language_m2)
 	       && (TYPE_CODE (type) == TYPE_CODE_CHAR)))
@@ -320,7 +318,6 @@ m2_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
   unsigned int i = 0;	/* Number of characters printed.  */
   unsigned len;
   struct type *elttype;
-  unsigned eltlen;
   CORE_ADDR addr;
 
   CHECK_TYPEDEF (type);
@@ -330,12 +327,11 @@ m2_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
       if (TYPE_LENGTH (type) > 0 && TYPE_LENGTH (TYPE_TARGET_TYPE (type)) > 0)
 	{
 	  elttype = check_typedef (TYPE_TARGET_TYPE (type));
-	  eltlen = TYPE_LENGTH (elttype);
-	  len = TYPE_LENGTH (type) / eltlen;
+	  len = TYPE_LENGTH (type) / TYPE_LENGTH (elttype);
 	  if (options->prettyprint_arrays)
 	    print_spaces_filtered (2 + 2 * recurse, stream);
 	  /* For an array of chars, print with string syntax.  */
-	  if (eltlen == 1 &&
+	  if (TYPE_LENGTH (elttype) == 1 &&
 	      ((TYPE_CODE (elttype) == TYPE_CODE_INT)
 	       || ((current_language->la_language == language_m2)
 		   && (TYPE_CODE (elttype) == TYPE_CODE_CHAR)))
@@ -409,7 +405,6 @@ m2_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 			       options, NULL, 0);
       break;
 
-    case TYPE_CODE_BITSTRING:
     case TYPE_CODE_SET:
       elttype = TYPE_INDEX_TYPE (type);
       CHECK_TYPEDEF (elttype);
@@ -424,13 +419,9 @@ m2_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 	  struct type *range = elttype;
 	  LONGEST low_bound, high_bound;
 	  int i;
-	  int is_bitstring = TYPE_CODE (type) == TYPE_CODE_BITSTRING;
 	  int need_comma = 0;
 
-	  if (is_bitstring)
-	    fputs_filtered ("B'", stream);
-	  else
-	    fputs_filtered ("{", stream);
+	  fputs_filtered ("{", stream);
 
 	  i = get_discrete_bounds (range, &low_bound, &high_bound);
 	maybe_bad_bstring:
@@ -450,9 +441,7 @@ m2_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 		  i = element;
 		  goto maybe_bad_bstring;
 		}
-	      if (is_bitstring)
-		fprintf_filtered (stream, "%d", element);
-	      else if (element)
+	      if (element)
 		{
 		  if (need_comma)
 		    fputs_filtered (", ", stream);
@@ -476,10 +465,7 @@ m2_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 		}
 	    }
 	done:
-	  if (is_bitstring)
-	    fputs_filtered ("'", stream);
-	  else
-	    fputs_filtered ("}", stream);
+	  fputs_filtered ("}", stream);
 	}
       break;
 

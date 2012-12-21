@@ -19,13 +19,14 @@
 if ![supports_reverse] {
     return
 }
+if {[skip_shlib_tests]} {
+    return
+}
 
-set testfile "solib-reverse"
-set srcfile  ${testfile}.c
+standard_testfile
 set libfile  "shr2"
 set libsrc   ${libfile}.c
-set library  ${objdir}/${subdir}/${libfile}.sl
-set binfile  ${objdir}/${subdir}/${testfile}
+set library  [standard_output_file ${libfile}.sl]
 
 if [get_compiler_info] {
     return -1
@@ -53,7 +54,7 @@ gdb_test_no_output "set debug-file-directory"
 
 gdb_reinitialize_dir $srcdir/$subdir
 gdb_load ${binfile}
-
+gdb_load_shlibs $library
 
 runto main
 

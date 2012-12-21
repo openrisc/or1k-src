@@ -10,13 +10,11 @@
 #include "_ansi.h"
 #include <sys/reent.h>
 #include <sys/cdefs.h>
+#include <sys/features.h>
 
 #define __need_size_t
+#define __need_NULL
 #include <stddef.h>
-
-#ifndef NULL
-#define NULL 0
-#endif
 
 _BEGIN_STD_C
 
@@ -65,9 +63,17 @@ char 	*_EXFUN(stpncpy,(char *, const char *, size_t));
 int	 _EXFUN(strcasecmp,(const char *, const char *));
 char	*_EXFUN(strcasestr,(const char *, const char *));
 char 	*_EXFUN(strchrnul,(const char *, int));
+#endif
+#if !defined(__STRICT_ANSI__) || (_XOPEN_SOURCE >= 500)
 char 	*_EXFUN(strdup,(const char *));
+#endif
+#ifndef __STRICT_ANSI__
 char 	*_EXFUN(_strdup_r,(struct _reent *, const char *));
+#endif
+#if !defined(__STRICT_ANSI__) || (_XOPEN_SOURCE >= 700)
 char 	*_EXFUN(strndup,(const char *, size_t));
+#endif
+#ifndef __STRICT_ANSI__
 char 	*_EXFUN(_strndup_r,(struct _reent *, const char *, size_t));
 /* There are two common strerror_r variants.  If you request
    _GNU_SOURCE, you get the GNU version; otherwise you get the POSIX

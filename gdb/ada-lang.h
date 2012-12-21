@@ -23,6 +23,7 @@
 
 struct frame_info;
 struct inferior;
+struct type_print_options;
 
 #include "value.h"
 #include "gdbtypes.h"
@@ -45,6 +46,7 @@ struct inferior;
 
 #if !defined (ADA_KNOWN_RUNTIME_FILE_NAME_PATTERNS)
 #define ADA_KNOWN_RUNTIME_FILE_NAME_PATTERNS \
+   "^unwind-seh.c$", \
    "^[agis]-.*\\.ad[bs]$",
 #endif
 
@@ -163,7 +165,7 @@ extern void ada_error (char *); /* Defined in ada-exp.y */
 
                         /* Defined in ada-typeprint.c */
 extern void ada_print_type (struct type *, const char *, struct ui_file *, int,
-                            int);
+                            int, const struct type_print_options *);
 
 extern void ada_print_typedef (struct type *type, struct symbol *new_symbol,
 			       struct ui_file *stream);

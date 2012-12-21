@@ -37,6 +37,7 @@ struct agent_expr;
 struct program_space;
 struct language_defn;
 struct probe;
+struct common_block;
 
 /* Some of the structures in this file are space critical.
    The space-critical structures are:
@@ -119,6 +120,10 @@ struct general_symbol_info
 
     CORE_ADDR address;
 
+    /* A common block.  Used with COMMON_BLOCK_DOMAIN.  */
+
+    struct common_block *common_block;
+
     /* For opaque typedef struct chain.  */
 
     struct symbol *chain;
@@ -181,6 +186,7 @@ extern CORE_ADDR symbol_overlayed_address (CORE_ADDR, struct obj_section *);
 #define SYMBOL_VALUE(symbol)		(symbol)->ginfo.value.ivalue
 #define SYMBOL_VALUE_ADDRESS(symbol)	(symbol)->ginfo.value.address
 #define SYMBOL_VALUE_BYTES(symbol)	(symbol)->ginfo.value.bytes
+#define SYMBOL_VALUE_COMMON_BLOCK(symbol) (symbol)->ginfo.value.common_block
 #define SYMBOL_BLOCK_VALUE(symbol)	(symbol)->ginfo.value.block
 #define SYMBOL_VALUE_CHAIN(symbol)	(symbol)->ginfo.value.chain
 #define SYMBOL_LANGUAGE(symbol)		(symbol)->ginfo.language
@@ -348,6 +354,11 @@ struct minimal_symbol
   unsigned int target_flag_1 : 1;
   unsigned int target_flag_2 : 1;
 
+  /* Nonzero iff the size of the minimal symbol has been set.
+     Symbol size information can sometimes not be determined, because
+     the object file format may not carry that piece of information.  */
+  unsigned int has_size : 1;
+
   /* Minimal symbols with the same hash key are kept on a linked
      list.  This is the link.  */
 
@@ -361,7 +372,14 @@ struct minimal_symbol
 
 #define MSYMBOL_TARGET_FLAG_1(msymbol)  (msymbol)->target_flag_1
 #define MSYMBOL_TARGET_FLAG_2(msymbol)  (msymbol)->target_flag_2
-#define MSYMBOL_SIZE(msymbol)		(msymbol)->size
+#define MSYMBOL_SIZE(msymbol)		((msymbol)->size + 0)
+#define SET_MSYMBOL_SIZE(msymbol, sz)		\
+  do						\
+    {						\
+      (msymbol)->size = sz;			\
+      (msymbol)->has_size = 1;			\
+    } while (0)
+#define MSYMBOL_HAS_SIZE(msymbol)	((msymbol)->has_size + 0)
 #define MSYMBOL_TYPE(msymbol)		(msymbol)->type
 
 #include "minsyms.h"
@@ -394,7 +412,10 @@ typedef enum domain_enum_tag
 
   /* LABEL_DOMAIN may be used for names of labels (for gotos).  */
 
-  LABEL_DOMAIN
+  LABEL_DOMAIN,
+
+  /* Fortran common blocks.  Their naming must be separate from VAR_DOMAIN.  */
+  COMMON_BLOCK_DOMAIN
 } domain_enum;
 
 /* Searching domains, used for `search_symbols'.  Element numbers are
@@ -1113,13 +1134,6 @@ extern int find_line_pc_range (struct symtab_and_line, CORE_ADDR *,
 
 extern void resolve_sal_pc (struct symtab_and_line *);
 
-/* Given a string, return the line specified by it.  For commands like "list"
-   and "breakpoint".  */
-
-extern struct symtabs_and_lines decode_line_spec (char *, int);
-
-extern struct symtabs_and_lines decode_line_spec_1 (char *, int);
-
 /* Symmisc.c */
 
 void maintenance_print_symbols (char *, int);
@@ -1148,7 +1162,19 @@ extern void clear_solib (void);
 
 extern int identify_source_line (struct symtab *, int, int, CORE_ADDR);
 
-extern void print_source_lines (struct symtab *, int, int, int);
+/* Flags passed as 4th argument to print_source_lines.  */
+
+enum print_source_lines_flags
+  {
+    /* Do not print an error message.  */
+    PRINT_SOURCE_LINES_NOERROR = (1 << 0),
+
+    /* Print the filename in front of the source lines.  */
+    PRINT_SOURCE_LINES_FILENAME = (1 << 1)
+  };
+
+extern void print_source_lines (struct symtab *, int, int,
+				enum print_source_lines_flags);
 
 extern void forget_cached_source_info_for_objfile (struct objfile *);
 extern void forget_cached_source_info (void);
@@ -1249,6 +1275,8 @@ void fixup_section (struct general_symbol_info *ginfo,
 		    CORE_ADDR addr, struct objfile *objfile);
 
 struct objfile *lookup_objfile_from_block (const struct block *block);
+
+extern int symtab_create_debug;
 
 extern int basenames_may_differ;
 

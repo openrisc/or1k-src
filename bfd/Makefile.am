@@ -35,7 +35,7 @@ AM_CFLAGS = $(WARN_CFLAGS)
 AM_CPPFLAGS = -DBINDIR='"$(bindir)"'
 if PLUGINS
 bfdinclude_HEADERS += $(INCDIR)/plugin-api.h
-LIBDL = -ldl
+LIBDL = @lt_cv_dlopen_libs@
 endif
 
 # bfd.h goes here, for now
@@ -71,6 +71,7 @@ BFD64_LIBS_CFILES = archive64.c
 # This list is alphabetized to make it easier to keep in sync
 # with the decls and initializer in archures.c.
 ALL_MACHINES = \
+	cpu-aarch64.lo \
 	cpu-alpha.lo \
 	cpu-arc.lo \
 	cpu-arm.lo \
@@ -139,6 +140,7 @@ ALL_MACHINES = \
 	cpu-tilegx.lo \
 	cpu-tilepro.lo \
 	cpu-v850.lo \
+	cpu-v850_rh850.lo \
 	cpu-vax.lo \
 	cpu-w65.lo \
 	cpu-we32k.lo \
@@ -150,6 +152,7 @@ ALL_MACHINES = \
 	cpu-z8k.lo
 
 ALL_MACHINES_CFILES = \
+	cpu-aarch64.c \
 	cpu-alpha.c \
 	cpu-arc.c \
 	cpu-arm.c \
@@ -218,6 +221,7 @@ ALL_MACHINES_CFILES = \
 	cpu-tilegx.c \
 	cpu-tilepro.c \
 	cpu-v850.c \
+	cpu-v850_rh850.c \
 	cpu-vax.c \
 	cpu-w65.c \
 	cpu-we32k.c \
@@ -607,6 +611,7 @@ BFD32_BACKENDS_CFILES = \
 # elf32-ia64.c requires a 64-bit bfd_vma, and hence can not be put in
 # BFD32_BACKENDS.
 BFD64_BACKENDS = \
+	elf64-aarch64.lo \
 	aix5ppc-core.lo \
 	aout64.lo \
 	coff-alpha.lo \
@@ -645,6 +650,7 @@ BFD64_BACKENDS = \
 	vms-alpha.lo
 
 BFD64_BACKENDS_CFILES = \
+	elf64-aarch64.c \
 	aix5ppc-core.c \
 	aout64.c \
 	coff-alpha.c \

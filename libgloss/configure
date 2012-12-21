@@ -665,6 +665,7 @@ target_alias
 CCAS
 CCASFLAGS'
 ac_subdirs_all='doc
+aarch64
 epiphany
 i386
 m32r
@@ -2392,6 +2393,11 @@ config_testsuite=true
 config_libnosys=true
 
 case "${target}" in
+  aarch64*-*-*)
+	subdirs="$subdirs aarch64"
+
+	config_testsuite=true
+	;;
   epiphany-*-*)
 	subdirs="$subdirs epiphany"
 

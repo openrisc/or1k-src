@@ -213,7 +213,6 @@ value_arg_coerce (struct gdbarch *gdbarch, struct value *arg,
     case TYPE_CODE_SET:
     case TYPE_CODE_RANGE:
     case TYPE_CODE_STRING:
-    case TYPE_CODE_BITSTRING:
     case TYPE_CODE_ERROR:
     case TYPE_CODE_MEMBERPTR:
     case TYPE_CODE_METHODPTR:
@@ -618,15 +617,38 @@ call_function_by_hand (struct value *function, int nargs, struct value **args)
      not just the breakpoint but also an extra word containing the
      size (?) of the structure being passed.  */
 
-  /* The actual breakpoint (at BP_ADDR) is inserted separatly so there
-     is no need to write that out.  */
-
   switch (gdbarch_call_dummy_location (gdbarch))
     {
     case ON_STACK:
-      sp = push_dummy_code (gdbarch, sp, funaddr,
-				args, nargs, target_values_type,
-				&real_pc, &bp_addr, get_current_regcache ());
+      {
+	const gdb_byte *bp_bytes;
+	CORE_ADDR bp_addr_as_address;
+	int bp_size;
+
+	/* Be careful BP_ADDR is in inferior PC encoding while
+	   BP_ADDR_AS_ADDRESS is a plain memory address.  */
+
+	sp = push_dummy_code (gdbarch, sp, funaddr, args, nargs,
+			      target_values_type, &real_pc, &bp_addr,
+			      get_current_regcache ());
+
+	/* Write a legitimate instruction at the point where the infcall
+	   breakpoint is going to be inserted.  While this instruction
+	   is never going to be executed, a user investigating the
+	   memory from GDB would see this instruction instead of random
+	   uninitialized bytes.  We chose the breakpoint instruction
+	   as it may look as the most logical one to the user and also
+	   valgrind 3.7.0 needs it for proper vgdb inferior calls.
+
+	   If software breakpoints are unsupported for this target we
+	   leave the user visible memory content uninitialized.  */
+
+	bp_addr_as_address = bp_addr;
+	bp_bytes = gdbarch_breakpoint_from_pc (gdbarch, &bp_addr_as_address,
+					       &bp_size);
+	if (bp_bytes != NULL)
+	  write_memory (bp_addr_as_address, bp_bytes, bp_size);
+      }
       break;
     case AT_ENTRY_POINT:
       {
@@ -634,8 +656,12 @@ call_function_by_hand (struct value *function, int nargs, struct value **args)
 
 	real_pc = funaddr;
 	dummy_addr = entry_point_address ();
+
 	/* A call dummy always consists of just a single breakpoint, so
-	   its address is the same as the address of the dummy.  */
+	   its address is the same as the address of the dummy.
+
+	   The actual breakpoint is inserted separatly so there is no need to
+	   write that out.  */
 	bp_addr = dummy_addr;
 	break;
       }
@@ -682,13 +708,11 @@ call_function_by_hand (struct value *function, int nargs, struct value **args)
 
   if (struct_return || hidden_first_param_p)
     {
-      int len = TYPE_LENGTH (values_type);
-
       if (gdbarch_inner_than (gdbarch, 1, 2))
 	{
 	  /* Stack grows downward.  Align STRUCT_ADDR and SP after
              making space for the return value.  */
-	  sp -= len;
+	  sp -= TYPE_LENGTH (values_type);
 	  if (gdbarch_frame_align_p (gdbarch))
 	    sp = gdbarch_frame_align (gdbarch, sp);
 	  struct_addr = sp;
@@ -700,7 +724,7 @@ call_function_by_hand (struct value *function, int nargs, struct value **args)
 	  if (gdbarch_frame_align_p (gdbarch))
 	    sp = gdbarch_frame_align (gdbarch, sp);
 	  struct_addr = sp;
-	  sp += len;
+	  sp += TYPE_LENGTH (values_type);
 	  if (gdbarch_frame_align_p (gdbarch))
 	    sp = gdbarch_frame_align (gdbarch, sp);
 	}

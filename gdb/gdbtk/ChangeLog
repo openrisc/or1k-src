@@ -1,3 +1,72 @@
+2012-11-21  Pierre Muller  <muller@sourceware.org>
+
+	* generic/gdbtk-register.c (register_changed_p): Adapt to
+	function name change from frame_register_read to
+	deprecated_frame_register_read.
+
+2012-11-16  Keith Seitz  <keiths@redhat.com>
+
+	From Pierre Muller  <muller@sourceware.org>
+	Adapt to change in gdb/configure.ac
+	Don't check for ctype.h, time.h.
+	* generic/gdbtk-cmds.c: Don't use HAVE_CTYPE_H.
+
+2012-11-10  Keith Seitz  <keiths@redhat.com>
+
+	* generic/gdbtk-bp.c (breakpoint_notify): Fix logic error
+	when detecting breakpoint types to be handled.
+
+2012-11-10  Keith Seitz  <keiths@redhat.com>
+
+	* generic/gdbtk-bp.c (breakpoint_notify): Handle tracepoints, too.
+	(tracepoint_notify): Remove.
+	(gdbtk_create_tracepoint): Remove.
+	(gdbtk_delete_tracepoint): Remove.
+	(gdbtk_modify_tracepoint): Remove.
+	* generic/gdbtk-hooks.c: Remove deleted function extern declarations.
+	(gdbtk_add_hooks): Remove tracepoint observers.
+
+2012-10-24  Keith Seitz  <keiths@redhat.com>
+
+	* generic/gdbtk-hooks.c (gdbtk_memory_changed): Update for
+	API changes.
+
+2012-10-10  Keith Seitz  <keiths@redhat.com>
+
+	* generic/gdbtk-hooks.c (gdbtk_memory_changed): Change LEN
+	from int to ssize_t to match changes in the API.
+	(x_event): Use set_quit_flag to set the quit_flag.
+	* generic/gdbtk-cmds.c (gdb_stop): Likewise.
+
+2012-08-08  Roland Schwingel  <roland.schwingel@onevision.com>
+
+	* generic/gdbtk-cmds.c (gdb_load_info): Replace call to
+	make_cleanup_bfd_close with make_cleanup_bfd_unref due
+	to changes in gdb.
+	(gdb_loc): Replace call to decode_line_spec with call to
+	decode_line_with_current_source due to changes in gdb.
+	* generic/gdbtk-wrapper.c: Comment unused functions
+	GDB_parse_exp_1 and wrap_parse_exp_1 as parse_exp_1 has
+	changed its interface and the code appears to be unused
+	anyway.
+	* generic/gdbtk-wrapper.h: ditto
+
+2012-06-25  Roland Schwingel  <roland.schwingel@onevision.com>
+
+	* generic/gdbtk-cmds.c: On windows include
+	windows.h/tlhelp32.h. Declare new
+	function gdb_list_processes().
+	(Gdbtk_Init): Register new tcl function
+	"gdb_list_processes".
+	(gdb_list_processes): New function.
+	* library/attachdlg.itb: Updated copyright.
+	(list_pids): Use gdb_list_processes for
+	getting the process list. Fallback to
+	ps if empty list is returned. Adapt method comment.
+	* library/srcbar.itcl: Updated copyright.
+	(create_run_menu): Allow "Attach to process" on
+	windows, too.
+
 2012-05-25  Roland Schwingel  <roland.schwingel@onevision.com>
 
 	* generic/gdbtk-bp.c (gdb_set_bp): Add new NULL param

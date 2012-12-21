@@ -2668,7 +2668,7 @@ const bfd_target rs6000coff64_vec =
     },
 
     /* Generic */
-    bfd_true,
+    _bfd_archive_close_and_cleanup,
     bfd_true,
     coff_new_section_hook,
     _bfd_generic_get_section_contents,
@@ -2710,6 +2710,7 @@ const bfd_target rs6000coff64_vec =
     coff_bfd_is_target_special_symbol,
     coff_get_lineno,
     coff_find_nearest_line,
+    _bfd_generic_find_nearest_line_discriminator,
     _bfd_generic_find_line,
     coff_find_inliner_info,
     coff_bfd_make_debug_symbol,
@@ -2925,7 +2926,7 @@ const bfd_target aix5coff64_vec =
     },
 
     /* Generic */
-    bfd_true,
+    _bfd_archive_close_and_cleanup,
     bfd_true,
     coff_new_section_hook,
     _bfd_generic_get_section_contents,
@@ -2967,6 +2968,7 @@ const bfd_target aix5coff64_vec =
     coff_bfd_is_target_special_symbol,
     coff_get_lineno,
     coff_find_nearest_line,
+    _bfd_generic_find_nearest_line_discriminator,
     _bfd_generic_find_line,
     coff_find_inliner_info,
     coff_bfd_make_debug_symbol,

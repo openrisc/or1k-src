@@ -208,6 +208,7 @@ cfgetospeed NOSIGFE
 cfmakeraw NOSIGFE
 cfsetispeed SIGFE
 cfsetospeed SIGFE
+cfsetspeed SIGFE
 chdir SIGFE
 _chdir = chdir SIGFE
 chmod SIGFE
@@ -738,6 +739,7 @@ _getlogin = getlogin NOSIGFE
 getlogin_r NOSIGFE
 getmntent SIGFE
 _getmntent = getmntent SIGFE
+getmntent_r SIGFE
 getmode SIGFE
 _getmode = getmode SIGFE
 getnameinfo = cygwin_getnameinfo SIGFE

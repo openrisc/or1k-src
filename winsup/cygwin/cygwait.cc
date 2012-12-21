@@ -21,8 +21,10 @@
 
 #define is_cw_sig_handle	(mask & (is_cw_sig | is_cw_sig_eintr))
 
+LARGE_INTEGER cw_nowait_storage;
+
 DWORD
-cancelable_wait (HANDLE object, PLARGE_INTEGER timeout, unsigned mask)
+cygwait (HANDLE object, PLARGE_INTEGER timeout, unsigned mask)
 {
   DWORD res;
   DWORD num = 0;
@@ -36,14 +38,13 @@ cancelable_wait (HANDLE object, PLARGE_INTEGER timeout, unsigned mask)
   if (object)
     wait_objects[num++] = object;
 
+  set_signal_arrived thread_waiting (is_cw_sig_handle, wait_objects[num]);
+  debug_only_printf ("object %p, thread waiting %d, signal_arrived %p", object, (int) thread_waiting, _my_tls.signal_arrived);
   DWORD sig_n;
-  if (!is_cw_sig_handle)
+  if (!thread_waiting)
     sig_n = WAIT_TIMEOUT + 1;
   else
-    {
-      sig_n = WAIT_OBJECT_0 + num++;
-      wait_objects[sig_n] = signal_arrived;
-    }
+    sig_n = WAIT_OBJECT_0 + num++;
 
   DWORD cancel_n;
   if (!is_cw_cancel || !pthread::is_good_object (&thread) ||
@@ -71,20 +72,25 @@ cancelable_wait (HANDLE object, PLARGE_INTEGER timeout, unsigned mask)
   while (1)
     {
       res = WaitForMultipleObjects (num, wait_objects, FALSE, INFINITE);
+      debug_only_printf ("res %d", res);
       if (res == cancel_n)
-	{
-	  if (is_cw_cancel_self)
-	    pthread::static_cancel_self ();
-	  res = WAIT_CANCELED;
-	}
+	res = WAIT_CANCELED;
       else if (res == timeout_n)
 	res = WAIT_TIMEOUT;
       else if (res != sig_n)
 	/* all set */;
-      else if (is_cw_sig_eintr)
-	res = WAIT_SIGNALED;
-      else if (_my_tls.call_signal_handler () || &_my_tls != _main_tls)
-	continue;
+      else
+	{
+	  _my_tls.lock ();
+	  int sig = _my_tls.sig;
+	  _my_tls.unlock ();
+	  if (!sig)
+	    continue;
+	  if (is_cw_sig_eintr)
+	    res = WAIT_SIGNALED;	/* caller will deal with signals */
+	  else if (_my_tls.call_signal_handler ())
+	    continue;
+	}
       break;
     }
 
@@ -100,6 +106,9 @@ cancelable_wait (HANDLE object, PLARGE_INTEGER timeout, unsigned mask)
 	timeout->QuadPart = tbi.SignalState ? 0LL : tbi.TimeRemaining.QuadPart;
       NtCancelTimer (_my_tls.locals.cw_timer, NULL);
     }
+
+  if (res == WAIT_CANCELED && is_cw_cancel_self)
+    pthread::static_cancel_self ();
 
   return res;
 }

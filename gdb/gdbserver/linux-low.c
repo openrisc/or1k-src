@@ -21,7 +21,7 @@
 #include "linux-osdata.h"
 #include "agent.h"
 
-#include <sys/wait.h>
+#include "gdb_wait.h"
 #include <stdio.h>
 #include <sys/param.h>
 #include <sys/ptrace.h>
@@ -40,7 +40,7 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <dirent.h>
-#include <sys/stat.h>
+#include "gdb_stat.h"
 #include <sys/vfs.h>
 #include <sys/uio.h>
 #ifndef ELFMAG0
@@ -659,7 +659,9 @@ linux_create_inferior (char *program, char **allargs)
 	  dup2 (2, 1);
 	  if (write (2, "stdin/stdout redirected\n",
 		     sizeof ("stdin/stdout redirected\n") - 1) < 0)
-	    /* Errors ignored.  */;
+	    {
+	      /* Errors ignored.  */;
+	    }
 	}
 
       execv (program, allargs);
@@ -2618,7 +2620,10 @@ Check if we're already there.\n",
 		   || (!step_over_finished
 		       && !bp_explains_trap && !trace_event)
 		   || (gdb_breakpoint_here (event_child->stop_pc)
-		   && gdb_condition_true_at_breakpoint (event_child->stop_pc)));
+		       && gdb_condition_true_at_breakpoint (event_child->stop_pc)
+		       && gdb_no_commands_at_breakpoint (event_child->stop_pc)));
+
+  run_breakpoint_commands (event_child->stop_pc);
 
   /* We found no reason GDB would want us to stop.  We either hit one
      of our own breakpoints, or finished an internal step GDB
@@ -3499,7 +3504,8 @@ need_step_over_p (struct inferior_list_entry *entry, void *dummy)
 	 though.  If the condition is being evaluated on the target's side
 	 and it evaluate to false, step over this breakpoint as well.  */
       if (gdb_breakpoint_here (pc)
-	  && gdb_condition_true_at_breakpoint (pc))
+	  && gdb_condition_true_at_breakpoint (pc)
+	  && gdb_no_commands_at_breakpoint (pc))
 	{
 	  if (debug_threads)
 	    fprintf (stderr,
@@ -5874,6 +5880,7 @@ initialize_low (void)
 		       the_low_target.breakpoint_len);
   linux_init_signals ();
   linux_test_for_tracefork ();
+  linux_ptrace_init_warnings ();
 #ifdef HAVE_LINUX_REGSETS
   for (num_regsets = 0; target_regsets[num_regsets].size >= 0; num_regsets++)
     ;

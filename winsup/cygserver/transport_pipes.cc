@@ -52,21 +52,6 @@ enum
 
 #ifndef __INSIDE_CYGWIN__
 
-static pthread_once_t pipe_instance_lock_once = PTHREAD_ONCE_INIT;
-static CRITICAL_SECTION pipe_instance_lock;
-static long pipe_instance = 0;
-
-static void
-initialise_pipe_instance_lock ()
-{
-  assert (pipe_instance == 0);
-  InitializeCriticalSection (&pipe_instance_lock);
-}
-
-#endif /* !__INSIDE_CYGWIN__ */
-
-#ifndef __INSIDE_CYGWIN__
-
 transport_layer_pipes::transport_layer_pipes (const HANDLE hPipe)
   : _hPipe (hPipe),
     _is_accepted_endpoint (true),
@@ -107,7 +92,32 @@ transport_layer_pipes::listen ()
 
   _is_listening_endpoint = true;
 
-  /* no-op */
+  debug ("Try to create named pipe: %ls", _pipe_name);
+
+  HANDLE listen_pipe =
+    CreateNamedPipeW (_pipe_name,
+		      PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
+		      PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
+		      0, 0, 1000, &sec_all_nih);
+  if (listen_pipe != INVALID_HANDLE_VALUE)
+    {
+      HANDLE connect_pipe =
+	CreateFileW (_pipe_name, GENERIC_READ | GENERIC_WRITE, 0, &sec_all_nih,
+		     OPEN_EXISTING, 0, NULL);
+      if (connect_pipe == INVALID_HANDLE_VALUE)
+	{
+	  CloseHandle (listen_pipe);
+	  listen_pipe = INVALID_HANDLE_VALUE;
+	}
+    }
+
+  if (listen_pipe == INVALID_HANDLE_VALUE)
+    {
+      system_printf ("failed to create named pipe: "
+		     "is the daemon already running?");
+      return -1;
+    }
+
   return 0;
 }
 
@@ -118,44 +128,12 @@ transport_layer_pipes::accept (bool *const recoverable)
   assert (!_is_accepted_endpoint);
   assert (_is_listening_endpoint);
 
-  pthread_once (&pipe_instance_lock_once, &initialise_pipe_instance_lock);
-
-  EnterCriticalSection (&pipe_instance_lock);
-
-  // Read: http://www.securityinternals.com/research/papers/namedpipe.php
-  // See also the Microsoft security bulletins MS00-053 and MS01-031.
-
-  // FIXME: Remove FILE_CREATE_PIPE_INSTANCE.
-
-  const bool first_instance = (pipe_instance == 0);
-
-  debug ("Try to create named pipe: %ls", _pipe_name);
+  debug ("Try to create named pipe instance: %ls", _pipe_name);
 
   const HANDLE accept_pipe =
-    CreateNamedPipeW (_pipe_name,
-		     (PIPE_ACCESS_DUPLEX
-		      | (first_instance ? FILE_FLAG_FIRST_PIPE_INSTANCE : 0)),
-		     (PIPE_TYPE_BYTE | PIPE_WAIT),
-		     PIPE_UNLIMITED_INSTANCES,
-		     0, 0, 1000,
-		     &sec_all_nih);
-
-  const bool duplicate = (accept_pipe == INVALID_HANDLE_VALUE
-			  && pipe_instance == 0
-			  && GetLastError () == ERROR_ACCESS_DENIED);
-
-  if (accept_pipe != INVALID_HANDLE_VALUE)
-    InterlockedIncrement (&pipe_instance);
-
-  LeaveCriticalSection (&pipe_instance_lock);
-
-  if (duplicate)
-    {
-      *recoverable = false;
-      system_printf ("failed to create named pipe: "
-		     "is the daemon already running?");
-      return NULL;
-    }
+    CreateNamedPipeW (_pipe_name, PIPE_ACCESS_DUPLEX,
+		      PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
+		      0, 0, 1000, &sec_all_nih);
 
   if (accept_pipe == INVALID_HANDLE_VALUE)
     {
@@ -163,8 +141,6 @@ transport_layer_pipes::accept (bool *const recoverable)
       *recoverable = true;	// FIXME: case analysis?
       return NULL;
     }
-
-  assert (accept_pipe);
 
   if (!ConnectNamedPipe (accept_pipe, NULL)
       && GetLastError () != ERROR_PIPE_CONNECTED)
@@ -195,11 +171,7 @@ transport_layer_pipes::close ()
 	{
 	  (void) FlushFileBuffers (_hPipe); // Blocks until client reads.
 	  (void) DisconnectNamedPipe (_hPipe);
-	  EnterCriticalSection (&pipe_instance_lock);
 	  (void) CloseHandle (_hPipe);
-	  assert (pipe_instance > 0);
-	  InterlockedDecrement (&pipe_instance);
-	  LeaveCriticalSection (&pipe_instance_lock);
 	}
       else
 	(void) CloseHandle (_hPipe);

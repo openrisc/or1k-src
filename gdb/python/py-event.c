@@ -17,6 +17,7 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+#include "defs.h"
 #include "py-event.h"
 
 void
@@ -48,7 +49,8 @@ create_event_object (PyTypeObject *py_type)
 
 /* Add the attribute ATTR to the event object EVENT.  In
    python this attribute will be accessible by the name NAME.
-   returns 0 if the operation succeeds and -1 otherwise.  */
+   returns 0 if the operation succeeds and -1 otherwise.  This
+   function acquires a new reference to ATTR.  */
 
 int
 evpy_add_attribute (PyObject *event, char *name, PyObject *attr)

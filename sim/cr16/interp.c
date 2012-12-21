@@ -1192,7 +1192,11 @@ sim_resume (SIM_DESC sd, int step, int siggnal)
       iaddr = imem_addr ((uint32)PC);
       if (iaddr == State.mem.fault)
         {
+#ifdef SIGBUS
           State.exception = SIGBUS;
+#else
+          State.exception = SIGSEGV;
+#endif
           break;
         }
  
@@ -1548,6 +1552,11 @@ sim_store_register (sd, rn, memory, length)
   return size;
 }
 
+char **
+sim_complete_command (SIM_DESC sd, char *text, char *word)
+{
+  return NULL;
+}
 
 void
 sim_do_command (sd, cmd)

@@ -469,7 +469,7 @@ post_create_inferior (struct target_ops *target, int from_tty)
 
 	  /* If the solist is global across processes, there's no need to
 	     refetch it here.  */
-	  if (!gdbarch_has_global_solist (target_gdbarch))
+	  if (!gdbarch_has_global_solist (target_gdbarch ()))
 	    {
 #ifdef SOLIB_ADD
 	      SOLIB_ADD (NULL, 0, target, auto_solib_add);
@@ -1140,7 +1140,7 @@ jump_command (char *arg, int from_tty)
   if (!arg)
     error_no_arg (_("starting address"));
 
-  sals = decode_line_spec_1 (arg, DECODE_LINE_FUNFIRSTLINE);
+  sals = decode_line_with_last_displayed (arg, DECODE_LINE_FUNFIRSTLINE);
   if (sals.nelts != 1)
     {
       error (_("Unreasonable jump request"));
@@ -1777,6 +1777,11 @@ finish_command (char *arg, int from_tty)
       return;
     }
 
+  /* Ignore TAILCALL_FRAME type frames, they were executed already before
+     entering THISFRAME.  */
+  while (get_frame_type (frame) == TAILCALL_FRAME)
+    frame = get_prev_frame (frame);
+
   /* Find the function we will return from.  */
 
   function = find_pc_function (get_frame_pc (get_selected_frame (NULL)));
@@ -1834,7 +1839,7 @@ program_info (char *args, int from_tty)
 
   target_files_info ();
   printf_filtered (_("Program stopped at %s.\n"),
-		   paddress (target_gdbarch, stop_pc));
+		   paddress (target_gdbarch (), stop_pc));
   if (tp->control.stop_step)
     printf_filtered (_("It stopped after being stepped.\n"));
   else if (stat != 0)
@@ -2015,6 +2020,84 @@ path_command (char *dirname, int from_tty)
 }
 
 
+/* Print out the register NAME with value VAL, to FILE, in the default
+   fashion.  */
+
+static void
+default_print_one_register_info (struct ui_file *file,
+				 const char *name,
+				 struct value *val)
+{
+  struct type *regtype = value_type (val);
+
+  fputs_filtered (name, file);
+  print_spaces_filtered (15 - strlen (name), file);
+
+  if (!value_entirely_available (val))
+    {
+      fprintf_filtered (file, "*value not available*\n");
+      return;
+    }
+
+  /* If virtual format is floating, print it that way, and in raw
+     hex.  */
+  if (TYPE_CODE (regtype) == TYPE_CODE_FLT
+      || TYPE_CODE (regtype) == TYPE_CODE_DECFLOAT)
+    {
+      int j;
+      struct value_print_options opts;
+      const gdb_byte *valaddr = value_contents_for_printing (val);
+      enum bfd_endian byte_order = gdbarch_byte_order (get_type_arch (regtype));
+
+      get_user_print_options (&opts);
+      opts.deref_ref = 1;
+
+      val_print (regtype,
+		 value_contents_for_printing (val),
+		 value_embedded_offset (val), 0,
+		 file, 0, val, &opts, current_language);
+
+      fprintf_filtered (file, "\t(raw 0x");
+      for (j = 0; j < TYPE_LENGTH (regtype); j++)
+	{
+	  int idx;
+
+	  if (byte_order == BFD_ENDIAN_BIG)
+	    idx = j;
+	  else
+	    idx = TYPE_LENGTH (regtype) - 1 - j;
+	  fprintf_filtered (file, "%02x", (unsigned char) valaddr[idx]);
+	}
+      fprintf_filtered (file, ")");
+    }
+  else
+    {
+      struct value_print_options opts;
+
+      /* Print the register in hex.  */
+      get_formatted_print_options (&opts, 'x');
+      opts.deref_ref = 1;
+      val_print (regtype,
+		 value_contents_for_printing (val),
+		 value_embedded_offset (val), 0,
+		 file, 0, val, &opts, current_language);
+      /* If not a vector register, print it also according to its
+	 natural format.  */
+      if (TYPE_VECTOR (regtype) == 0)
+	{
+	  get_user_print_options (&opts);
+	  opts.deref_ref = 1;
+	  fprintf_filtered (file, "\t");
+	  val_print (regtype,
+		     value_contents_for_printing (val),
+		     value_embedded_offset (val), 0,
+		     file, 0, val, &opts, current_language);
+	}
+    }
+
+  fprintf_filtered (file, "\n");
+}
+
 /* Print out the machine register regnum.  If regnum is -1, print all
    registers (print_all == 1) or all non-float and non-vector
    registers (print_all == 0).
@@ -2068,76 +2151,16 @@ default_print_registers_info (struct gdbarch *gdbarch,
 	  || *(gdbarch_register_name (gdbarch, i)) == '\0')
 	continue;
 
-      fputs_filtered (gdbarch_register_name (gdbarch, i), file);
-      print_spaces_filtered (15 - strlen (gdbarch_register_name
-					  (gdbarch, i)), file);
-
       regtype = register_type (gdbarch, i);
       val = allocate_value (regtype);
 
       /* Get the data in raw format.  */
-      if (! frame_register_read (frame, i, value_contents_raw (val)))
-	{
-	  fprintf_filtered (file, "*value not available*\n");
-	  continue;
-	}
+      if (! deprecated_frame_register_read (frame, i, value_contents_raw (val)))
+	mark_value_bytes_unavailable (val, 0, TYPE_LENGTH (value_type (val)));
 
-      /* If virtual format is floating, print it that way, and in raw
-         hex.  */
-      if (TYPE_CODE (regtype) == TYPE_CODE_FLT
-	  || TYPE_CODE (regtype) == TYPE_CODE_DECFLOAT)
-	{
-	  int j;
-	  struct value_print_options opts;
-	  const gdb_byte *valaddr = value_contents_for_printing (val);
-
-	  get_user_print_options (&opts);
-	  opts.deref_ref = 1;
-
-	  val_print (regtype,
-		     value_contents_for_printing (val),
-		     value_embedded_offset (val), 0,
-		     file, 0, val, &opts, current_language);
-
-	  fprintf_filtered (file, "\t(raw 0x");
-	  for (j = 0; j < register_size (gdbarch, i); j++)
-	    {
-	      int idx;
-
-	      if (gdbarch_byte_order (gdbarch) == BFD_ENDIAN_BIG)
-		idx = j;
-	      else
-		idx = register_size (gdbarch, i) - 1 - j;
-	      fprintf_filtered (file, "%02x", (unsigned char) valaddr[idx]);
-	    }
-	  fprintf_filtered (file, ")");
-	}
-      else
-	{
-	  struct value_print_options opts;
-
-	  /* Print the register in hex.  */
-	  get_formatted_print_options (&opts, 'x');
-	  opts.deref_ref = 1;
-	  val_print (regtype,
-		     value_contents_for_printing (val),
-		     value_embedded_offset (val), 0,
-		     file, 0, val, &opts, current_language);
-          /* If not a vector register, print it also according to its
-             natural format.  */
-	  if (TYPE_VECTOR (regtype) == 0)
-	    {
-	      get_user_print_options (&opts);
-	      opts.deref_ref = 1;
-	      fprintf_filtered (file, "\t");
-	      val_print (regtype,
-			 value_contents_for_printing (val),
-			 value_embedded_offset (val), 0,
-			 file, 0, val, &opts, current_language);
-	    }
-	}
-
-      fprintf_filtered (file, "\n");
+      default_print_one_register_info (file,
+				       gdbarch_register_name (gdbarch, i),
+				       val);
     }
 }
 
@@ -2198,17 +2221,16 @@ registers_info (char *addr_exp, int fpregs)
 	    if (regnum >= gdbarch_num_regs (gdbarch)
 			  + gdbarch_num_pseudo_regs (gdbarch))
 	      {
-		struct value_print_options opts;
-		struct value *val = value_of_user_reg (regnum, frame);
+		struct value *regval = value_of_user_reg (regnum, frame);
+		const char *regname = user_reg_map_regnum_to_name (gdbarch,
+								   regnum);
 
-		printf_filtered ("%.*s: ", (int) (end - start), start);
-		get_formatted_print_options (&opts, 'x');
-		val_print_scalar_formatted (check_typedef (value_type (val)),
-					    value_contents_for_printing (val),
-					    value_embedded_offset (val),
-					    val,
-					    &opts, 0, gdb_stdout);
-		printf_filtered ("\n");
+		/* Print in the same fashion
+		   gdbarch_print_registers_info's default
+		   implementation prints.  */
+		default_print_one_register_info (gdb_stdout,
+						 regname,
+						 regval);
 	      }
 	    else
 	      gdbarch_print_registers_info (gdbarch, gdb_stdout,
@@ -2520,7 +2542,7 @@ attach_command (char *args, int from_tty)
 
   dont_repeat ();		/* Not for the faint of heart */
 
-  if (gdbarch_has_global_solist (target_gdbarch))
+  if (gdbarch_has_global_solist (target_gdbarch ()))
     /* Don't complain if all processes share the same symbol
        space.  */
     ;
@@ -2710,7 +2732,7 @@ detach_command (char *args, int from_tty)
 
   /* If the solist is global across inferiors, don't clear it when we
      detach from a single inferior.  */
-  if (!gdbarch_has_global_solist (target_gdbarch))
+  if (!gdbarch_has_global_solist (target_gdbarch ()))
     no_shared_libraries (NULL, from_tty);
 
   /* If we still have inferiors to debug, then don't mess with their
@@ -2918,6 +2940,7 @@ _initialize_infcmd (void)
 {
   static struct cmd_list_element *info_proc_cmdlist;
   struct cmd_list_element *c = NULL;
+  char *cmd_name;
 
   /* Add the filename of the terminal connected to inferior I/O.  */
   add_setshow_filename_cmd ("inferior-tty", class_run,
@@ -2930,14 +2953,18 @@ Usage: set inferior-tty /dev/pts/1"),
 			    &setlist, &showlist);
   add_com_alias ("tty", "set inferior-tty", class_alias, 0);
 
-  add_setshow_optional_filename_cmd ("args", class_run,
-				     &inferior_args_scratch, _("\
+  cmd_name = "args";
+  add_setshow_string_noescape_cmd (cmd_name, class_run,
+				   &inferior_args_scratch, _("\
 Set argument list to give program being debugged when it is started."), _("\
 Show argument list to give program being debugged when it is started."), _("\
 Follow this command with any number of args, to be passed to the program."),
-				     set_args_command,
-				     show_args_command,
-				     &setlist, &showlist);
+				   set_args_command,
+				   show_args_command,
+				   &setlist, &showlist);
+  c = lookup_cmd (&cmd_name, setlist, "", -1, 1);
+  gdb_assert (c != NULL);
+  set_cmd_completer (c, filename_completer);
 
   c = add_cmd ("environment", no_class, environment_info, _("\
 The environment to give the program, or one variable's value.\n\
@@ -3011,40 +3038,50 @@ Disconnect from a target.\n\
 The target will wait for another debugger to connect.  Not available for\n\
 all targets."));
 
-  add_com ("signal", class_run, signal_command, _("\
-Continue program giving it signal specified by the argument.\n\
-An argument of \"0\" means continue program without giving it a signal."));
+  c = add_com ("signal", class_run, signal_command, _("\
+Continue program with the specified signal.\n\
+Usage: signal SIGNAL\n\
+The SIGNAL argument is processed the same as the handle command.\n\
+\n\
+An argument of \"0\" means continue the program without sending it a signal.\n\
+This is useful in cases where the program stopped because of a signal,\n\
+and you want to resume the program while discarding the signal."));
+  set_cmd_completer (c, signal_completer);
 
   add_com ("stepi", class_run, stepi_command, _("\
 Step one instruction exactly.\n\
-Argument N means do this N times (or till program stops for another \
+Usage: stepi [N]\n\
+Argument N means step N times (or till program stops for another \
 reason)."));
   add_com_alias ("si", "stepi", class_alias, 0);
 
   add_com ("nexti", class_run, nexti_command, _("\
 Step one instruction, but proceed through subroutine calls.\n\
-Argument N means do this N times (or till program stops for another \
+Usage: nexti [N]\n\
+Argument N means step N times (or till program stops for another \
 reason)."));
   add_com_alias ("ni", "nexti", class_alias, 0);
 
   add_com ("finish", class_run, finish_command, _("\
 Execute until selected stack frame returns.\n\
+Usage: finish\n\
 Upon return, the value returned is printed and put in the value history."));
   add_com_alias ("fin", "finish", class_run, 1);
 
   add_com ("next", class_run, next_command, _("\
 Step program, proceeding through subroutine calls.\n\
-Like the \"step\" command as long as subroutine calls do not happen;\n\
-when they do, the call is treated as one instruction.\n\
-Argument N means do this N times (or till program stops for another \
-reason)."));
+Usage: next [N]\n\
+Unlike \"step\", if the current source line calls a subroutine,\n\
+this command does not enter the subroutine, but instead steps over\n\
+the call, in effect treating it as a single source line."));
   add_com_alias ("n", "next", class_run, 1);
   if (xdb_commands)
     add_com_alias ("S", "next", class_run, 1);
 
   add_com ("step", class_run, step_command, _("\
 Step program until it reaches a different source line.\n\
-Argument N means do this N times (or till program stops for another \
+Usage: step [N]\n\
+Argument N means step N times (or till program stops for another \
 reason)."));
   add_com_alias ("s", "step", class_run, 1);
 
@@ -3063,9 +3100,11 @@ Execution will also stop upon exit from the current stack frame."));
 
   c = add_com ("jump", class_run, jump_command, _("\
 Continue program being debugged at specified line or address.\n\
+Usage: jump <location>\n\
 Give as argument either LINENUM or *ADDR, where ADDR is an expression\n\
 for an address to start at."));
   set_cmd_completer (c, location_completer);
+  add_com_alias ("j", "jump", class_run, 1);
 
   if (xdb_commands)
     {
@@ -3084,6 +3123,7 @@ This command is a combination of tbreak and jump."));
 
   add_com ("continue", class_run, continue_command, _("\
 Continue program being debugged, after signal or breakpoint.\n\
+Usage: continue [N]\n\
 If proceeding from breakpoint, a number N may be used as an argument,\n\
 which means to set the ignore count of that breakpoint to N - 1 (so that\n\
 the breakpoint won't break until the Nth time it is reached).\n\

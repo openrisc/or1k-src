@@ -34,6 +34,8 @@ AM_YFLAGS = -d
 am__skiplex =
 am__skipyacc =
 
+bin_PROGRAMS = dwp
+
 noinst_PROGRAMS = ld-new incremental-dump
 noinst_LIBRARIES = libgold.a
 
@@ -144,11 +146,11 @@ DEFFILES = arm-reloc.def
 EXTRA_DIST = yyscript.c yyscript.h
 
 TARGETSOURCES = \
-	i386.cc x86_64.cc sparc.cc powerpc.cc arm.cc arm-reloc-property.cc
+	i386.cc x86_64.cc sparc.cc powerpc.cc arm.cc arm-reloc-property.cc tilegx.cc
 
 ALL_TARGETOBJS = \
 	i386.$(OBJEXT) x86_64.$(OBJEXT) sparc.$(OBJEXT) powerpc.$(OBJEXT) \
-	arm.$(OBJEXT) arm-reloc-property.$(OBJEXT)
+	arm.$(OBJEXT) arm-reloc-property.$(OBJEXT) tilegx.$(OBJEXT)
 
 libgold_a_SOURCES = $(CCFILES) $(HFILES) $(YFILES) $(DEFFILES)
 libgold_a_LIBADD = $(LIBOBJS)
@@ -171,6 +173,12 @@ incremental_dump_DEPENDENCIES = $(TARGETOBJS) libgold.a $(LIBIBERTY) \
 	$(LIBINTL_DEP)
 incremental_dump_LDADD = $(TARGETOBJS) libgold.a $(LIBIBERTY) $(LIBINTL) \
 	 $(THREADSLIB) $(LIBDL)
+
+dwp_SOURCES = dwp.cc
+dwp_DEPENDENCIES = libgold.a $(LIBIBERTY) $(LIBINTL_DEP)
+dwp_LDADD = libgold.a $(LIBIBERTY) $(GOLD_LDADD) $(LIBINTL) $(THREADSLIB) \
+	$(LIBDL)
+dwp_LDFLAGS = $(GOLD_LDFLAGS)
 
 # Use an explicit dependency for the bison generated header file.
 expression.$(OBJEXT): yyscript.h

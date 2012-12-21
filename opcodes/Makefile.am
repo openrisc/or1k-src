@@ -11,6 +11,7 @@ BFDDIR = $(srcdir)/../bfd
 
 WARN_CFLAGS = @WARN_CFLAGS@
 NO_WERROR = @NO_WERROR@
+NO_WMISSING_FIELD_INITIALIZERS = @NO_WMISSING_FIELD_INITIALIZERS@
 AM_CFLAGS = $(WARN_CFLAGS)
 
 COMPILE_FOR_BUILD = $(CC_FOR_BUILD) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -41,6 +42,7 @@ BUILD_LIB_DEPS = @BUILD_LIB_DEPS@
 
 # Header files.
 HFILES = \
+	aarch64-asm.h aarch64-dis.h aarch64-opc.h aarch64-tbl.h \
 	epiphany-desc.h epiphany-opc.h \
 	fr30-desc.h fr30-opc.h \
 	frv-desc.h frv-opc.h \
@@ -71,6 +73,12 @@ HFILES = \
 # C source files that correspond to .o's ending up in libopcodes
 # for all machines.
 TARGET_LIBOPCODES_CFILES = \
+	aarch64-asm.c \
+	aarch64-asm-2.c \
+	aarch64-dis.c \
+	aarch64-dis-2.c \
+	aarch64-opc.c \
+	aarch64-opc-2.c \
 	alpha-dis.c \
 	alpha-opc.c \
 	arc-dis.c \
@@ -245,6 +253,7 @@ LIBOPCODES_CFILES = \
 # C source files that correspond to .o's.
 CFILES = \
 	$(LIBOPCODES_CFILES) \
+	aarch64-gen.c \
 	i386-gen.c \
 	ia64-asmtab.c \
 	ia64-gen.c \
@@ -476,14 +485,29 @@ stamp-xstormy16: $(CGENDEPS) $(CPUDIR)/xstormy16.cpu $(CPUDIR)/xstormy16.opc
 	$(MAKE) run-cgen arch=xstormy16 prefix=xstormy16 options= \
 		archfile=$(CPUDIR)/xstormy16.cpu opcfile=$(CPUDIR)/xstormy16.opc extrafiles=
 
-MOSTLYCLEANFILES = i386-gen$(EXEEXT_FOR_BUILD) ia64-gen$(EXEEXT_FOR_BUILD) \
-	s390-mkopc$(EXEEXT_FOR_BUILD) s390-opc.tab z8kgen$(EXEEXT_FOR_BUILD) \
-	opc2c$(EXEEXT_FOR_BUILD)
+MOSTLYCLEANFILES = aarch64-gen$(EXEEXT_FOR_BUILD) i386-gen$(EXEEXT_FOR_BUILD) \
+	ia64-gen$(EXEEXT_FOR_BUILD) s390-mkopc$(EXEEXT_FOR_BUILD) s390-opc.tab \
+	z8kgen$(EXEEXT_FOR_BUILD) opc2c$(EXEEXT_FOR_BUILD)
 
-MAINTAINERCLEANFILES = $(srcdir)/i386-tbl.h $(srcdir)/i386-init.h \
+MAINTAINERCLEANFILES = $(srcdir)/aarch64-asm-2.c $(srcdir)/aarch64-dis-2.c \
+	$(srcdir)/aarch64-opc-2.c $(srcdir)/i386-tbl.h $(srcdir)/i386-init.h \
 	$(srcdir)/ia64-asmtab.c $(srcdir)/z8k-opc.h \
 	$(srcdir)/rl78-decode.c \
 	$(srcdir)/rx-decode.c
+
+aarch64-gen$(EXEEXT_FOR_BUILD): aarch64-gen.o $(BUILD_LIB_DEPS)
+	$(LINK_FOR_BUILD) aarch64-gen.o $(BUILD_LIBS)
+
+aarch64-gen.o: aarch64-gen.c $(BFD_H) $(INCDIR)/getopt.h $(INCDIR)/libiberty.h\
+	$(INCDIR)/opcode/aarch64.h config.h aarch64-opc.h aarch64-tbl.h
+	$(COMPILE_FOR_BUILD) -c $(srcdir)/aarch64-gen.c
+
+$(srcdir)/aarch64-asm-2.c: @MAINT@ aarch64-gen$(exeext_for_build)
+	./aarch64-gen$(exeext_for_build) --gen-asm > $@
+$(srcdir)/aarch64-dis-2.c: @MAINT@ aarch64-gen$(exeext_for_build)
+	./aarch64-gen$(exeext_for_build) --gen-dis > $@
+$(srcdir)/aarch64-opc-2.c: @MAINT@ aarch64-gen$(exeext_for_build)
+	./aarch64-gen$(exeext_for_build) --gen-opc > $@
 
 i386-gen$(EXEEXT_FOR_BUILD): i386-gen.o $(BUILD_LIB_DEPS)
 	$(LINK_FOR_BUILD) i386-gen.o $(BUILD_LIBS)
@@ -523,6 +547,15 @@ ia64-opc.lo: $(srcdir)/ia64-asmtab.c
 
 $(srcdir)/rl78-decode.c: @MAINT@ $(srcdir)/rl78-decode.opc opc2c$(EXEEXT_FOR_BUILD)
 	./opc2c$(EXEEXT_FOR_BUILD) $(srcdir)/rl78-decode.opc > $(srcdir)/rl78-decode.c
+
+micromips-opc.lo: micromips-opc.c
+	$(LTCOMPILE) $(NO_WMISSING_FIELD_INITIALIZERS) -c -o $@ $<
+
+mips-opc.lo: mips-opc.c
+	$(LTCOMPILE) $(NO_WMISSING_FIELD_INITIALIZERS) -c -o $@ $<
+
+mips16-opc.lo: mips16-opc.c
+	$(LTCOMPILE) $(NO_WMISSING_FIELD_INITIALIZERS) -c -o $@ $<
 
 $(srcdir)/rx-decode.c: @MAINT@ $(srcdir)/rx-decode.opc opc2c$(EXEEXT_FOR_BUILD)
 	./opc2c$(EXEEXT_FOR_BUILD) $(srcdir)/rx-decode.opc > $(srcdir)/rx-decode.c

@@ -467,7 +467,7 @@ bfd_mach_o_fvmlib_command;
 typedef struct bfd_mach_o_dyld_info_command
 {
   /* File offset and size to rebase info.  */
-  unsigned int rebase_off; 
+  unsigned int rebase_off;
   unsigned int rebase_size;
 
   /* File offset and size of binding info.  */
@@ -505,6 +505,23 @@ typedef struct bfd_mach_o_encryption_info_command
 }
 bfd_mach_o_encryption_info_command;
 
+typedef struct bfd_mach_o_main_command
+{
+  bfd_uint64_t entryoff;
+  bfd_uint64_t stacksize;
+}
+bfd_mach_o_main_command;
+
+typedef struct bfd_mach_o_source_version_command
+{
+  unsigned int a;
+  unsigned short b;
+  unsigned short c;
+  unsigned short d;
+  unsigned short e;
+}
+bfd_mach_o_source_version_command;
+
 typedef struct bfd_mach_o_load_command
 {
   bfd_mach_o_load_command_type type;
@@ -527,6 +544,8 @@ typedef struct bfd_mach_o_load_command
     bfd_mach_o_version_min_command version_min;
     bfd_mach_o_encryption_info_command encryption_info;
     bfd_mach_o_fvmlib_command fvmlib;
+    bfd_mach_o_main_command main;
+    bfd_mach_o_source_version_command source_version;
   }
   command;
 }
@@ -608,7 +627,7 @@ long bfd_mach_o_get_dynamic_reloc_upper_bound (bfd *);
 long bfd_mach_o_canonicalize_dynamic_reloc (bfd *, arelent **, asymbol **);
 asymbol *bfd_mach_o_make_empty_symbol (bfd *);
 void bfd_mach_o_get_symbol_info (bfd *, asymbol *, symbol_info *);
-void bfd_mach_o_print_symbol (bfd *, PTR, asymbol *, bfd_print_symbol_type);
+void bfd_mach_o_print_symbol (bfd *, void *, asymbol *, bfd_print_symbol_type);
 int bfd_mach_o_sizeof_headers (bfd *, struct bfd_link_info *);
 unsigned long bfd_mach_o_stack_addr (enum bfd_mach_o_cpu_type);
 int bfd_mach_o_core_fetch_environment (bfd *, unsigned char **, unsigned int *);

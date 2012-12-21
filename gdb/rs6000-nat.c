@@ -53,6 +53,7 @@
 #include <a.out.h>
 #include <sys/file.h>
 #include "gdb_stat.h"
+#include "gdb_bfd.h"
 #include <sys/core.h>
 #define __LDINFO_PTRACE32__	/* for __ld_info32 */
 #define __LDINFO_PTRACE64__	/* for __ld_info64 */
@@ -75,7 +76,7 @@
 #ifndef ARCH3264
 # define ARCH64() 0
 #else
-# define ARCH64() (register_size (target_gdbarch, 0) == 8)
+# define ARCH64() (register_size (target_gdbarch (), 0) == 8)
 #endif
 
 /* Union of 32-bit and 64-bit versions of ld_info.  */
@@ -730,7 +731,7 @@ static struct vmap *
 add_vmap (LdInfo *ldi)
 {
   bfd *abfd, *last;
-  char *mem, *objname, *filename;
+  char *mem, *filename;
   struct objfile *obj;
   struct vmap *vp;
   int fd;
@@ -743,19 +744,13 @@ add_vmap (LdInfo *ldi)
   filename = LDI_FILENAME (ldi, arch64);
   mem = filename + strlen (filename) + 1;
   mem = xstrdup (mem);
-  objname = xstrdup (filename);
 
   fd = LDI_FD (ldi, arch64);
-  if (fd < 0)
-    /* Note that this opens it once for every member; a possible
-       enhancement would be to only open it once for every object.  */
-    abfd = bfd_openr (objname, gnutarget);
-  else
-    abfd = bfd_fdopenr (objname, gnutarget, fd);
+  abfd = gdb_bfd_open (filename, gnutarget, fd < 0 ? -1 : fd);
   if (!abfd)
     {
       warning (_("Could not open `%s' as an executable file: %s"),
-	       objname, bfd_errmsg (bfd_get_error ()));
+	       filename, bfd_errmsg (bfd_get_error ()));
       return NULL;
     }
 
@@ -766,35 +761,45 @@ add_vmap (LdInfo *ldi)
 
   else if (bfd_check_format (abfd, bfd_archive))
     {
-      last = 0;
-      /* FIXME??? am I tossing BFDs?  bfd?  */
-      while ((last = bfd_openr_next_archived_file (abfd, last)))
-	if (strcmp (mem, last->filename) == 0)
-	  break;
+      last = gdb_bfd_openr_next_archived_file (abfd, NULL);
+      while (last != NULL)
+	{
+	  bfd *next;
+
+	  if (strcmp (mem, last->filename) == 0)
+	    break;
+
+	  next = gdb_bfd_openr_next_archived_file (abfd, last);
+	  gdb_bfd_unref (last);
+	  last = next;
+	}
 
       if (!last)
 	{
-	  warning (_("\"%s\": member \"%s\" missing."), objname, mem);
-	  bfd_close (abfd);
+	  warning (_("\"%s\": member \"%s\" missing."), filename, mem);
+	  gdb_bfd_unref (abfd);
 	  return NULL;
 	}
 
       if (!bfd_check_format (last, bfd_object))
 	{
 	  warning (_("\"%s\": member \"%s\" not in executable format: %s."),
-		   objname, mem, bfd_errmsg (bfd_get_error ()));
-	  bfd_close (last);
-	  bfd_close (abfd);
+		   filename, mem, bfd_errmsg (bfd_get_error ()));
+	  gdb_bfd_unref (last);
+	  gdb_bfd_unref (abfd);
 	  return NULL;
 	}
 
       vp = map_vmap (last, abfd);
+      /* map_vmap acquired a reference to LAST, so we can release
+	 ours.  */
+      gdb_bfd_unref (last);
     }
   else
     {
       warning (_("\"%s\": not in executable format: %s."),
-	       objname, bfd_errmsg (bfd_get_error ()));
-      bfd_close (abfd);
+	       filename, bfd_errmsg (bfd_get_error ()));
+      gdb_bfd_unref (abfd);
       return NULL;
     }
   obj = allocate_objfile (vp->bfd, 0);
@@ -803,6 +808,11 @@ add_vmap (LdInfo *ldi)
   /* Always add symbols for the main objfile.  */
   if (vp == vmap || auto_solib_add)
     vmap_add_symbols (vp);
+
+  /* Anything needing a reference to ABFD has already acquired it, so
+     release our local reference.  */
+  gdb_bfd_unref (abfd);
+
   return vp;
 }
 

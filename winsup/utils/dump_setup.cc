@@ -1,6 +1,6 @@
 /* dump_setup.cc
 
-   Copyright 2001, 2002, 2003, 2004, 2005, 2008, 2010 Red Hat, Inc.
+   Copyright 2001, 2002, 2003, 2004, 2005, 2008, 2010, 2012 Red Hat, Inc.
 
 This file is part of Cygwin.
 
@@ -8,7 +8,6 @@ This software is a copyrighted work licensed under the terms of the
 Cygwin license.  Please consult the file "CYGWIN_LICENSE" for
 details. */
 
-#include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -17,18 +16,14 @@ details. */
 #include <io.h>
 #include <sys/stat.h>
 #include <errno.h>
+#define WIN32_NO_STATUS	/* Disable status codes in winnt.h since we include
+			   ntstatus.h for extended status codes below. */
+#include <windows.h>
+#undef WIN32_NO_STATUS
+#include <winternl.h>
+#include <ntstatus.h>
 #include "path.h"
-#include <ddk/ntapi.h>
-#include <ddk/winddk.h>
-#if 0
-#include "zlib.h"
-#endif
-
-#ifndef ZLIB_VERSION
-typedef void * gzFile;
-#define gzgets(fp, buf, size) ({0;})
-#define gzclose(fp) ({0;})
-#endif
+#include <zlib.h>
 
 static int package_len = 20;
 static unsigned int version_len = 10;
@@ -265,8 +260,8 @@ transform_chars (PWCHAR path, PWCHAR path_end)
       *path = tfx_chars[*path];
 }
 
-extern "C" NTOSAPI NTAPI NTSTATUS NtQueryAttributesFile(
-			      POBJECT_ATTRIBUTES, PFILE_BASIC_INFORMATION);
+extern "C" NTAPI NTSTATUS NtQueryAttributesFile (POBJECT_ATTRIBUTES,
+						 PFILE_BASIC_INFORMATION);
 
 /* This function checks for file existance and fills the stat structure
    with only the required mode info.  We're using a native NT function

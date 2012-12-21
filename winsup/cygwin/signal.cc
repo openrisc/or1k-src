@@ -26,7 +26,7 @@ details. */
 
 #define _SA_NORESTART	0x8000
 
-static int sigaction_worker (int, const struct sigaction *, struct sigaction *, bool, const char *)
+static int sigaction_worker (int, const struct sigaction *, struct sigaction *, bool)
   __attribute__ ((regparm (3)));
 
 #define sigtrapped(func) ((func) != SIG_IGN && (func) != SIG_DFL)
@@ -120,12 +120,9 @@ clock_nanosleep (clockid_t clk_id, int flags, const struct timespec *rqtp,
 
   syscall_printf ("clock_nanosleep (%ld.%09ld)", rqtp->tv_sec, rqtp->tv_nsec);
 
-  int rc = cancelable_wait (signal_arrived, &timeout);
-  if (rc == WAIT_OBJECT_0)
-    {
-      _my_tls.call_signal_handler ();
-      res = EINTR;
-    }
+  int rc = cygwait (NULL, &timeout, cw_sig_eintr | cw_cancel | cw_cancel_self);
+  if (rc == WAIT_SIGNALED)
+    res = EINTR;
 
   /* according to POSIX, rmtp is used only if !abstime */
   if (rmtp && !abstime)
@@ -226,7 +223,7 @@ handle_sigprocmask (int how, const sigset_t *set, sigset_t *oldset, sigset_t& op
 	  newmask = *set;
 	  break;
 	}
-      set_signal_mask (newmask, opmask);
+      set_signal_mask (opmask, newmask);
     }
   return 0;
 }
@@ -379,7 +376,7 @@ abort (void)
   sigset_t sig_mask;
   sigfillset (&sig_mask);
   sigdelset (&sig_mask, SIGABRT);
-  set_signal_mask (sig_mask, _my_tls.sigmask);
+  set_signal_mask (_my_tls.sigmask, sig_mask);
 
   raise (SIGABRT);
   _my_tls.call_signal_handler (); /* Call any signal handler */
@@ -390,9 +387,9 @@ abort (void)
   do_exit (SIGABRT);	/* signal handler didn't exit.  Goodbye. */
 }
 
-static int
+static int  __attribute__ ((regparm (3)))
 sigaction_worker (int sig, const struct sigaction *newact,
-		  struct sigaction *oldact, bool isinternal, const char *fnname)
+		  struct sigaction *oldact, bool isinternal)
 {
   int res = -1;
   myfault efault;
@@ -445,14 +442,15 @@ sigaction_worker (int sig, const struct sigaction *newact,
     }
 
 out:
-  syscall_printf ("%R = %s(%d, %p, %p)", res, fnname, sig, newact, oldact);
   return res;
 }
 
 extern "C" int
 sigaction (int sig, const struct sigaction *newact, struct sigaction *oldact)
 {
-  return sigaction_worker (sig, newact, oldact, false, "sigaction");
+  int res = sigaction_worker (sig, newact, oldact, false);
+  syscall_printf ("%R = sigaction(%d, %p, %p)", res, sig, newact, oldact);
+  return res;
 }
 
 extern "C" int
@@ -519,19 +517,25 @@ sigfillset (sigset_t *set)
 extern "C" int
 sigsuspend (const sigset_t *set)
 {
-  return handle_sigsuspend (*set);
+  int res = handle_sigsuspend (*set);
+  syscall_printf ("%R = sigsuspend(%p)", res, set);
+  return res;
 }
 
 extern "C" int
 sigpause (int signal_mask)
 {
-  return handle_sigsuspend ((sigset_t) signal_mask);
+  int res = handle_sigsuspend ((sigset_t) signal_mask);
+  syscall_printf ("%R = sigpause(%p)", res, signal_mask);
+  return res;
 }
 
 extern "C" int
 pause (void)
 {
-  return handle_sigsuspend (_my_tls.sigmask);
+  int res = handle_sigsuspend (_my_tls.sigmask);
+  syscall_printf ("%R = pause()", res);
+  return res;
 }
 
 extern "C" int
@@ -549,7 +553,9 @@ siginterrupt (int sig, int flag)
       act.sa_flags &= ~_SA_NORESTART;
       act.sa_flags |= SA_RESTART;
     }
-  return sigaction_worker (sig, &act, NULL, true, "siginterrupt");
+  int res = sigaction_worker (sig, &act, NULL, true);
+  syscall_printf ("%R = siginterrupt(%d, %p)", sig, flag);
+  return res;
 }
 
 extern "C" int
@@ -565,21 +571,18 @@ extern "C" int
 sigwaitinfo (const sigset_t *set, siginfo_t *info)
 {
   pthread_testcancel ();
-  HANDLE h;
-  h = _my_tls.event = CreateEvent (&sec_none_nih, FALSE, FALSE, NULL);
-  if (!h)
-    {
-      __seterrno ();
-      return -1;
-    }
 
-  _my_tls.sigwait_mask = *set;
+  myfault efault;
+  if (efault.faulted (EFAULT))
+    return EFAULT;
+
+  set_signal_mask (_my_tls.sigwait_mask, *set);
   sig_dispatch_pending (true);
 
   int res;
-  switch (WaitForSingleObject (h, INFINITE))
+  switch (cygwait (NULL, cw_infinite, cw_sig_eintr | cw_cancel | cw_cancel_self))
     {
-    case WAIT_OBJECT_0:
+    case WAIT_SIGNALED:
       if (!sigismember (set, _my_tls.infodata.si_signo))
 	{
 	  set_errno (EINTR);
@@ -587,10 +590,14 @@ sigwaitinfo (const sigset_t *set, siginfo_t *info)
 	}
       else
 	{
+	  _my_tls.lock ();
 	  if (info)
 	    *info = _my_tls.infodata;
 	  res = _my_tls.infodata.si_signo;
-	  InterlockedExchange ((LONG *) &_my_tls.sig, (LONG) 0);
+	  _my_tls.sig = 0;
+	  if (_my_tls.retaddr () == (__stack_t) sigdelayed)
+	    _my_tls.pop ();
+	  _my_tls.unlock ();
 	}
       break;
     default:
@@ -598,8 +605,6 @@ sigwaitinfo (const sigset_t *set, siginfo_t *info)
       res = -1;
     }
 
-  _my_tls.event = NULL;
-  CloseHandle (h);
   sigproc_printf ("returning signal %d", res);
   return res;
 }

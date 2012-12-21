@@ -90,12 +90,6 @@ cygthread::stub (VOID *arg)
 #endif
       else
 	{
-	  if (exiting)
-	    {
-	      info->inuse = false;	// FIXME: Do we need this?
-	      return 0;
-	    }
-
 	  info->callfunc (false);
 
 	  HANDLE notify = info->notify_detached;
@@ -377,7 +371,7 @@ cygthread::detach (HANDLE sigwait)
 	  unsigned n = 2;
 	  DWORD howlong = INFINITE;
 	  w4[0] = sigwait;
-	  w4[1] = signal_arrived;
+	  set_signal_arrived here (w4[1]);
 	  /* For a description of the below loop see the end of this file */
 	  for (int i = 0; i < 2; i++)
 	    switch (res = WaitForMultipleObjects (n, w4, FALSE, howlong))

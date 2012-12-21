@@ -33,11 +33,15 @@
 #include "environ.h"
 #include "cli/cli-utils.h"
 #include "continuations.h"
+#include "arch-utils.h"
+#include "target-descriptions.h"
 
 void _initialize_inferiors (void);
 
-static void inferior_alloc_data (struct inferior *inf);
-static void inferior_free_data (struct inferior *inf);
+/* Keep a registry of per-inferior data-pointers required by other GDB
+   modules.  */
+
+DEFINE_REGISTRY (inferior, REGISTRY_ACCESS_FIELD)
 
 struct inferior *inferior_list = NULL;
 static int highest_inferior_num;
@@ -96,6 +100,7 @@ free_inferior (struct inferior *inf)
   xfree (inf->args);
   xfree (inf->terminal);
   free_environ (inf->environment);
+  target_desc_info_free (inf->tdesc_info);
   xfree (inf->private);
   xfree (inf);
 }
@@ -264,9 +269,15 @@ exit_inferior_1 (struct inferior *inftoex, int silent)
       inf->vfork_parent->vfork_child = NULL;
       inf->vfork_parent = NULL;
     }
+  if (inf->vfork_child != NULL)
+    {
+      inf->vfork_child->vfork_parent = NULL;
+      inf->vfork_child = NULL;
+    }
 
   inf->has_exit_code = 0;
   inf->exit_code = 0;
+  inf->pending_detach = 0;
 }
 
 void
@@ -786,6 +797,7 @@ add_inferior_with_spaces (void)
   struct address_space *aspace;
   struct program_space *pspace;
   struct inferior *inf;
+  struct gdbarch_info info;
 
   /* If all inferiors share an address space on this system, this
      doesn't really return a new address space; otherwise, it
@@ -795,6 +807,14 @@ add_inferior_with_spaces (void)
   inf = add_inferior (0);
   inf->pspace = pspace;
   inf->aspace = pspace->aspace;
+
+  /* Setup the inferior's initial arch, based on information obtained
+     from the global "set ..." options.  */
+  gdbarch_info_init (&info);
+  inf->gdbarch = gdbarch_find_by_info (info);
+  /* The "set ..." options reject invalid settings, so we should
+     always have a valid arch by now.  */
+  gdb_assert (inf->gdbarch != NULL);
 
   return inf;
 }
@@ -934,6 +954,12 @@ clone_inferior_command (char *args, int from_tty)
       inf = add_inferior (0);
       inf->pspace = pspace;
       inf->aspace = pspace->aspace;
+      inf->gdbarch = orginf->gdbarch;
+
+      /* If the original inferior had a user specified target
+	 description, make the clone use it too.  */
+      if (target_desc_info_from_user_p (inf->tdesc_info))
+	copy_inferior_target_desc_info (inf, orginf);
 
       printf_filtered (_("Added inferior %d.\n"), inf->num);
 
@@ -955,105 +981,6 @@ show_print_inferior_events (struct ui_file *file, int from_tty,
 
 
 
-/* Keep a registry of per-inferior data-pointers required by other GDB
-   modules.  */
-
-struct inferior_data
-{
-  unsigned index;
-  void (*cleanup) (struct inferior *, void *);
-};
-
-struct inferior_data_registration
-{
-  struct inferior_data *data;
-  struct inferior_data_registration *next;
-};
-
-struct inferior_data_registry
-{
-  struct inferior_data_registration *registrations;
-  unsigned num_registrations;
-};
-
-static struct inferior_data_registry inferior_data_registry
-  = { NULL, 0 };
-
-const struct inferior_data *
-register_inferior_data_with_cleanup
-  (void (*cleanup) (struct inferior *, void *))
-{
-  struct inferior_data_registration **curr;
-
-  /* Append new registration.  */
-  for (curr = &inferior_data_registry.registrations;
-       *curr != NULL; curr = &(*curr)->next);
-
-  *curr = XMALLOC (struct inferior_data_registration);
-  (*curr)->next = NULL;
-  (*curr)->data = XMALLOC (struct inferior_data);
-  (*curr)->data->index = inferior_data_registry.num_registrations++;
-  (*curr)->data->cleanup = cleanup;
-
-  return (*curr)->data;
-}
-
-const struct inferior_data *
-register_inferior_data (void)
-{
-  return register_inferior_data_with_cleanup (NULL);
-}
-
-static void
-inferior_alloc_data (struct inferior *inf)
-{
-  gdb_assert (inf->data == NULL);
-  inf->num_data = inferior_data_registry.num_registrations;
-  inf->data = XCALLOC (inf->num_data, void *);
-}
-
-static void
-inferior_free_data (struct inferior *inf)
-{
-  gdb_assert (inf->data != NULL);
-  clear_inferior_data (inf);
-  xfree (inf->data);
-  inf->data = NULL;
-}
-
-void
-clear_inferior_data (struct inferior *inf)
-{
-  struct inferior_data_registration *registration;
-  int i;
-
-  gdb_assert (inf->data != NULL);
-
-  for (registration = inferior_data_registry.registrations, i = 0;
-       i < inf->num_data;
-       registration = registration->next, i++)
-    if (inf->data[i] != NULL && registration->data->cleanup)
-      registration->data->cleanup (inf, inf->data[i]);
-
-  memset (inf->data, 0, inf->num_data * sizeof (void *));
-}
-
-void
-set_inferior_data (struct inferior *inf,
-		       const struct inferior_data *data,
-		       void *value)
-{
-  gdb_assert (data->index < inf->num_data);
-  inf->data[data->index] = value;
-}
-
-void *
-inferior_data (struct inferior *inf, const struct inferior_data *data)
-{
-  gdb_assert (data->index < inf->num_data);
-  return inf->data[data->index];
-}
-
 void
 initialize_inferiors (void)
 {
@@ -1068,6 +995,8 @@ initialize_inferiors (void)
   current_inferior_ = add_inferior (0);
   current_inferior_->pspace = current_program_space;
   current_inferior_->aspace = current_program_space->aspace;
+  /* The architecture will be initialized shortly, by
+     initialize_current_architecture.  */
 
   add_info ("inferiors", info_inferiors_command, 
 	    _("IDs of specified inferiors (all inferiors if no argument)."));

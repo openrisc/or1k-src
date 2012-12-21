@@ -174,6 +174,10 @@ partial_map_symtabs_matching_filename (struct objfile *objfile,
     if (pst->user != NULL)
       continue;
 
+    /* Anonymous psymtabs don't have a file name.  */
+    if (pst->anonymous)
+      continue;
+
     if (FILENAME_CMP (name, pst->filename) == 0
 	|| (!is_abs && compare_filenames_for_search (pst->filename,
 						     name, name_len)))
@@ -884,6 +888,7 @@ print_partial_symbols (struct gdbarch *gdbarch,
   fprintf_filtered (outfile, "  %s partial symbols:\n", what);
   while (count-- > 0)
     {
+      QUIT;
       fprintf_filtered (outfile, "    `%s'", SYMBOL_LINKAGE_NAME (*p));
       if (SYMBOL_DEMANGLED_NAME (*p) != NULL)
 	{
@@ -973,8 +978,16 @@ dump_psymtab (struct objfile *objfile, struct partial_symtab *psymtab,
   struct gdbarch *gdbarch = get_objfile_arch (objfile);
   int i;
 
-  fprintf_filtered (outfile, "\nPartial symtab for source file %s ",
-		    psymtab->filename);
+  if (psymtab->anonymous)
+    {
+      fprintf_filtered (outfile, "\nAnonymous partial symtab (%s) ",
+			psymtab->filename);
+    }
+  else
+    {
+      fprintf_filtered (outfile, "\nPartial symtab for source file %s ",
+			psymtab->filename);
+    }
   fprintf_filtered (outfile, "(object ");
   gdb_print_host_address (psymtab, outfile);
   fprintf_filtered (outfile, ")\n\n");
@@ -1124,6 +1137,10 @@ read_psymtabs_with_filename (struct objfile *objfile, const char *filename)
 
   ALL_OBJFILE_PSYMTABS_REQUIRED (objfile, p)
     {
+      /* Anonymous psymtabs don't have a name of a source file.  */
+      if (p->anonymous)
+	continue;
+
       if (filename_cmp (filename, p->filename) == 0)
 	psymtab_to_symtab (p);
     }
@@ -1141,6 +1158,15 @@ map_symbol_filenames_psymtab (struct objfile *objfile,
       const char *fullname;
 
       if (ps->readin)
+	continue;
+
+      /* We can skip shared psymtabs here, because any file name will be
+	 attached to the unshared psymtab.  */
+      if (ps->user != NULL)
+	continue;
+
+      /* Anonymous psymtabs don't have a file name.  */
+      if (ps->anonymous)
 	continue;
 
       QUIT;
@@ -1166,6 +1192,8 @@ psymtab_to_fullname (struct partial_symtab *ps)
   int r;
 
   if (!ps)
+    return NULL;
+  if (ps->anonymous)
     return NULL;
 
   /* Use cached copy if we have it.
@@ -1377,8 +1405,13 @@ expand_symtabs_matching_via_partial
       if (ps->user != NULL)
 	continue;
 
-      if (file_matcher && ! (*file_matcher) (ps->filename, data))
-	continue;
+      if (file_matcher)
+	{
+	  if (ps->anonymous)
+	    continue;
+	  if (! (*file_matcher) (ps->filename, data))
+	    continue;
+	}
 
       if (recursively_search_psymtabs (ps, objfile, kind, name_matcher, data))
 	psymtab_to_symtab (ps);
@@ -1731,6 +1764,26 @@ allocate_psymtab (const char *filename, struct objfile *objfile)
   psymtab->next = objfile->psymtabs;
   objfile->psymtabs = psymtab;
 
+  if (symtab_create_debug)
+    {
+      /* Be a bit clever with debugging messages, and don't print objfile
+	 every time, only when it changes.  */
+      static char *last_objfile_name = NULL;
+
+      if (last_objfile_name == NULL
+	  || strcmp (last_objfile_name, objfile->name) != 0)
+	{
+	  xfree (last_objfile_name);
+	  last_objfile_name = xstrdup (objfile->name);
+	  fprintf_unfiltered (gdb_stdlog,
+			      "Creating one or more psymtabs for objfile %s ...\n",
+			      last_objfile_name);
+	}
+      fprintf_unfiltered (gdb_stdlog,
+			  "Created psymtab %s for module %s.\n",
+			  host_address_to_string (psymtab), filename);
+    }
+
   return (psymtab);
 }
 
@@ -1800,11 +1853,12 @@ print-psymbols takes an output file name and optional symbol file name"));
     perror_with_name (filename);
   make_cleanup_ui_file_delete (outfile);
 
-  immediate_quit++;
   ALL_PSYMTABS (objfile, ps)
-    if (symname == NULL || filename_cmp (symname, ps->filename) == 0)
-    dump_psymtab (objfile, ps, outfile);
-  immediate_quit--;
+    {
+      QUIT;
+      if (symname == NULL || filename_cmp (symname, ps->filename) == 0)
+	dump_psymtab (objfile, ps, outfile);
+    }
   do_cleanups (cleanups);
 }
 

@@ -45,6 +45,7 @@
 #include "regcache.h"
 #include "arch-utils.h"
 #include "psymtab.h"
+#include <ctype.h>
 
 /* tcl header files includes varargs.h unless HAS_STDARG is defined,
    but gdb uses stdarg.h, so make sure HAS_STDARG is defined.  */
@@ -88,8 +89,9 @@
 # endif
 #endif
 
-#ifdef HAVE_CTYPE_H
-#include <ctype.h>		/* for isprint() */
+#ifdef _WIN32
+#include <windows.h>    /* For gdb_list_processes() */
+#include <tlhelp32.h>
 #endif
 
 /* Various globals we reference.  */
@@ -225,6 +227,11 @@ static int perror_with_name_wrapper (PTR args);
 static int wrapped_call (PTR opaque_args);
 static int hex2bin (const char *hex, char *bin, int count);
 static int fromhex (int a);
+static int gdb_list_processes (ClientData,
+                               Tcl_Interp *,
+                               int,
+                               Tcl_Obj * CONST[]);
+
 
 
 /* Gdbtk_Init
@@ -293,6 +300,8 @@ Gdbtk_Init (Tcl_Interp *interp)
 			gdb_get_inferior_args, NULL);
   Tcl_CreateObjCommand (interp, "gdb_set_inferior_args", gdbtk_call_wrapper,
 			gdb_set_inferior_args, NULL);
+  Tcl_CreateObjCommand (interp, "gdb_list_processes", gdbtk_call_wrapper,
+			gdb_list_processes, NULL);
 
   /* gdb_context is used for debugging multiple threads or tasks */
   Tcl_LinkVar (interp, "gdb_context_id",
@@ -586,11 +595,66 @@ gdb_stop (ClientData clientData, Tcl_Interp *interp,
       if (target_ignore != (void (*) (void)) current_target.to_stop)
 	target_stop (gdbtk_get_ptid ());
       else
-	quit_flag = 1;		/* hope something sees this */
+	set_quit_flag ();		/* hope something sees this */
     }
 
   return TCL_OK;
 }
+
+/*
+ * This command lists all processes in a system. Yet only implemented
+ * for windows as the *nix part is handled directly from tcl code.
+ *
+ * Arguments:
+ *    None
+ * Tcl Result:
+ *    A list of 2 elemented lists containing all running processes 
+ *    and their pids.
+ */
+ 
+static int 
+gdb_list_processes (ClientData clientData, Tcl_Interp *interp, 
+                    int objc, Tcl_Obj * CONST objv[])
+{
+  if (objc != 1)
+    {
+      Tcl_WrongNumArgs (interp, 1, objv, NULL);
+      return TCL_ERROR;
+    }
+
+  Tcl_SetListObj (result_ptr->obj_ptr, 0, NULL);
+
+  #ifdef _WIN32
+    {
+      HANDLE processSnap = CreateToolhelp32Snapshot (TH32CS_SNAPPROCESS, 0);
+      if (processSnap != INVALID_HANDLE_VALUE)
+        {
+          PROCESSENTRY32 processEntry;
+ 
+          processEntry.dwSize = sizeof(PROCESSENTRY32);
+ 
+          if (Process32First (processSnap, &processEntry))
+            {
+              do
+                {
+                  Tcl_Obj *pidProc[2];
+                  pidProc[0] = Tcl_NewIntObj (processEntry.th32ProcessID);
+                  pidProc[1] = Tcl_NewStringObj (processEntry.szExeFile, -1);
+
+                  Tcl_ListObjAppendElement (NULL, result_ptr->obj_ptr,
+                    Tcl_NewListObj (2, pidProc));
+
+                } while(Process32Next (processSnap, &processEntry));
+            }
+
+          CloseHandle (processSnap);
+        }
+    }
+  #endif
+
+  return TCL_OK;
+}
+
 
 
 /*
@@ -901,7 +965,7 @@ gdb_load_info (ClientData clientData, Tcl_Interp *interp,
       gdbtk_set_result (interp, "Open of %s failed", filename);
       return TCL_ERROR;
     }
-  old_cleanups = make_cleanup_bfd_close (loadfile_bfd);
+  old_cleanups = make_cleanup_bfd_unref (loadfile_bfd);
 
   if (!bfd_check_format (loadfile_bfd, bfd_object))
     {
@@ -2203,7 +2267,7 @@ gdb_loc (ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
       struct symtabs_and_lines sals;
       int nelts;
 
-      sals = decode_line_spec (Tcl_GetStringFromObj (objv[1], NULL), 1);
+      sals = decode_line_with_current_source (Tcl_GetStringFromObj (objv[1], NULL), 1);
 
       nelts = sals.nelts;
       sal = sals.sals[0];

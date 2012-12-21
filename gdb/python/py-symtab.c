@@ -126,7 +126,7 @@ stpy_get_objfile (PyObject *self, void *closure)
 static PyObject *
 stpy_fullname (PyObject *self, PyObject *args)
 {
-  char *fullname;
+  const char *fullname;
   struct symtab *symtab = NULL;
 
   STPY_REQUIRE_VALID (self, symtab);
@@ -235,6 +235,22 @@ salpy_get_pc (PyObject *self, void *closure)
   SALPY_REQUIRE_VALID (self, sal);
 
   return gdb_py_long_from_ulongest (sal->pc);
+}
+
+/* Implementation of the get method for the 'last' attribute of
+   gdb.Symtab_and_line.  */
+
+static PyObject *
+salpy_get_last (PyObject *self, void *closure)
+{
+  struct symtab_and_line *sal = NULL;
+
+  SALPY_REQUIRE_VALID (self, sal);
+
+  if (sal->end > 0)
+    return gdb_py_long_from_ulongest (sal->end - 1);
+  else
+    Py_RETURN_NONE;
 }
 
 static PyObject *
@@ -454,7 +470,10 @@ del_objfile_sal (struct objfile *objfile, void *datum)
     {
       sal_object *next = obj->next;
 
-      obj->symtab = NULL;
+      Py_DECREF (obj->symtab);
+      obj->symtab = (symtab_object *) Py_None;
+      Py_INCREF (Py_None);
+
       obj->next = NULL;
       obj->prev = NULL;
       xfree (obj->sal);
@@ -556,6 +575,8 @@ static PyTypeObject symtab_object_type = {
 static PyGetSetDef sal_object_getset[] = {
   { "symtab", salpy_get_symtab, NULL, "Symtab object.", NULL },
   { "pc", salpy_get_pc, NULL, "Return the symtab_and_line's pc.", NULL },
+  { "last", salpy_get_last, NULL,
+    "Return the symtab_and_line's last address.", NULL },
   { "line", salpy_get_line, NULL,
     "Return the symtab_and_line's line.", NULL },
   {NULL}  /* Sentinel */

@@ -19,7 +19,8 @@ details. */
 #include "sigproc.h"
 #include "pinfo.h"
 #include <asm/socket.h>
-#include <ddk/ntddser.h>
+#include <devioctl.h>
+#include <ntddser.h>
 #include "cygwait.h"
 
 /**********************************************************************/

@@ -162,7 +162,7 @@ quoted (char *cmd, int winshell)
     {
       char *p;
       strcpy (cmd, cmd + 1);
-      if (*(p = strechr (cmd, quote)))
+      if (*(p = strchrnul (cmd, quote)))
 	strcpy (p, p + 1);
       return p;
     }
@@ -353,7 +353,8 @@ build_argv (char *cmd, char **&argv, int &argc, int winshell)
 	}
     }
 
-  argv[argc] = NULL;
+  if (argv)
+    argv[argc] = NULL;
 
   debug_printf ("argc %d", argc);
 }
@@ -772,12 +773,6 @@ dll_crt0_0 ()
 
   user_data->threadinterface->Init ();
 
-  _cygtls::init ();
-
-  /* Initialize events */
-  events_init ();
-  tty_list::init_session ();
-
   _main_tls = &_my_tls;
 
   /* Initialize signal processing here, early, in the hopes that the creation
@@ -841,8 +836,6 @@ dll_crt0_1 (void *)
 #ifdef DEBUGGING
   strace.microseconds ();
 #endif
-
-  create_signal_arrived (); /* FIXME: move into wait_sig? */
 
   /* Initialize debug muto, if DLL is built with --enable-debugging.
      Need to do this before any helper threads start. */

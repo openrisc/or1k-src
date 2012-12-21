@@ -465,7 +465,7 @@ child_info_spawn::worker (const char *prog_arg, const char *const *argv,
 	 PCA service.  However, a process which is controlled by PCA is part
 	 of a compatibility job, which allows child processes to break away
 	 from the job.  This helps to avoid this issue.
-	 
+
 	 (*) Note that this is not mintty's fault.  It has just been observed
 	 with mintty in the first place.  See the archives for more info:
 	 http://cygwin.com/ml/cygwin-developers/2012-02/msg00018.html */
@@ -588,10 +588,16 @@ child_info_spawn::worker (const char *prog_arg, const char *const *argv,
       && (!iscygwin () || mode != _P_OVERLAY
 	  || ::cygheap->fdtab.need_fixup_before ()))
     c_flags |= CREATE_SUSPENDED;
-  /* Give non-Cygwin processes their own process group since they will be
-     dealing with CTRL-C themselves.  Not sure if this is correct for spawn*()
-     or not though.  */
-  if (!iscygwin () && fhandler_console::exists ())
+  /* If a native application should be spawned, we test here if the spawning
+     process is running in a console and, if so, if it's a foreground or
+     background process.  If it's a background process, we start the native
+     process with the CREATE_NEW_PROCESS_GROUP flag set.  This lets the native
+     process ignore Ctrl-C by default.  If we don't do that, pressing Ctrl-C
+     in a console will break native processes running in the background,
+     because the Ctrl-C event is sent to all processes in the console, unless
+     they ignore it explicitely.  CREATE_NEW_PROCESS_GROUP does that for us. */
+  if (!iscygwin () && fhandler_console::exists ()
+      && fhandler_console::tc_getpgid () != myself->pgid)
     c_flags |= CREATE_NEW_PROCESS_GROUP;
   refresh_cygheap ();
 
@@ -740,7 +746,7 @@ loop:
       /* Reset handle inheritance to default when the execution of a non-Cygwin
 	 process fails.  Only need to do this for _P_OVERLAY since the handle will
 	 be closed otherwise.  Don't need to do this for 'parent' since it will
-         be closed in every case.  See FIXME above. */
+	 be closed in every case.  See FIXME above. */
       if (!iscygwin () && mode == _P_OVERLAY)
 	SetHandleInformation (wr_proc_pipe, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
       if (wr_proc_pipe == my_wr_proc_pipe)
@@ -861,7 +867,8 @@ loop:
 	}
       else
 	{
-	  close_all_files (true);
+	  if (iscygwin ())
+	    close_all_files (true);
 	  if (!my_wr_proc_pipe
 	      && WaitForSingleObject (pi.hProcess, 0) == WAIT_TIMEOUT)
 	    wait_for_myself ();

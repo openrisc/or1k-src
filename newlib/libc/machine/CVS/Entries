@@ -1,5 +1,4 @@
 D/a29k////
-D/arc////
 D/arm////
 D/bfin////
 D/cr16////
@@ -28,7 +27,6 @@ D/mips////
 D/mn10200////
 D/mn10300////
 D/moxie////
-D/ms1////
 D/mt////
 D/necv70////
 D/powerpc////
@@ -47,8 +45,11 @@ D/xc16x////
 D/xscale////
 D/xstormy16////
 D/z8k////
-/Makefile.am/1.3/Mon May  7 21:35:08 2012/-ko/
-/Makefile.in/1.17/Mon May  7 21:35:08 2012/-ko/
-/aclocal.m4/1.29/Mon May  7 21:35:08 2012/-ko/
-/configure/1.47/Sat Jun 23 00:12:40 2012/-ko/
-/configure.in/1.20/Sat Jun 23 00:12:40 2012/-ko/
+/Makefile.am/1.3/Sat Oct 27 22:59:29 2012/-ko/
+/Makefile.in/1.17/Sat Oct 27 22:59:29 2012/-ko/
+/aclocal.m4/1.29/Sat Oct 27 22:59:29 2012/-ko/
+/configure/1.48/Thu Nov 29 07:47:24 2012/-ko/
+/configure.in/1.21/Thu Nov 29 07:47:24 2012/-ko/
+D/aarch64////
+D/arc////
+D/ms1////

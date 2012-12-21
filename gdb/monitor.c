@@ -120,7 +120,7 @@ static ptid_t monitor_ptid;
 
 static void monitor_debug (const char *fmt, ...) ATTRIBUTE_PRINTF (1, 2);
 
-static int monitor_debug_p = 0;
+static unsigned int monitor_debug_p = 0;
 
 /* NOTE: This file alternates between monitor_debug_p and remote_debug
    when determining if debug information is printed.  Perhaps this
@@ -217,11 +217,11 @@ monitor_error (char *function, char *message,
 
   if (final_char)
     error (_("%s (%s): %s: %s%c"),
-	   function, paddress (target_gdbarch, memaddr),
+	   function, paddress (target_gdbarch (), memaddr),
 	   message, safe_string, final_char);
   else
     error (_("%s (%s): %s: %s"),
-	   function, paddress (target_gdbarch, memaddr),
+	   function, paddress (target_gdbarch (), memaddr),
 	   message, safe_string);
 }
 
@@ -256,7 +256,7 @@ fromhex (int a)
 static void
 monitor_vsprintf (char *sndbuf, char *pattern, va_list args)
 {
-  int addr_bit = gdbarch_addr_bit (target_gdbarch);
+  int addr_bit = gdbarch_addr_bit (target_gdbarch ());
   char format[10];
   char fmt;
   char *p;
@@ -512,6 +512,7 @@ monitor_expect (char *string, char *buf, int buflen)
     }
 
   immediate_quit++;
+  QUIT;
   while (1)
     {
       if (buf)
@@ -1439,15 +1440,15 @@ monitor_files_info (struct target_ops *ops)
 static int
 monitor_write_memory (CORE_ADDR memaddr, char *myaddr, int len)
 {
-  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch);
+  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch ());
   unsigned int val, hostval;
   char *cmd;
   int i;
 
-  monitor_debug ("MON write %d %s\n", len, paddress (target_gdbarch, memaddr));
+  monitor_debug ("MON write %d %s\n", len, paddress (target_gdbarch (), memaddr));
 
   if (current_monitor->flags & MO_ADDR_BITS_REMOVE)
-    memaddr = gdbarch_addr_bits_remove (target_gdbarch, memaddr);
+    memaddr = gdbarch_addr_bits_remove (target_gdbarch (), memaddr);
 
   /* Use memory fill command for leading 0 bytes.  */
 
@@ -1706,7 +1707,7 @@ monitor_write_memory_block (CORE_ADDR memaddr, char *myaddr, int len)
 static int
 monitor_read_memory_single (CORE_ADDR memaddr, char *myaddr, int len)
 {
-  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch);
+  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch ());
   unsigned int val;
   char membuf[sizeof (int) * 2 + 1];
   char *p;
@@ -1851,11 +1852,11 @@ monitor_read_memory (CORE_ADDR memaddr, char *myaddr, int len)
     }
 
   monitor_debug ("MON read block ta(%s) ha(%s) %d\n",
-		 paddress (target_gdbarch, memaddr),
+		 paddress (target_gdbarch (), memaddr),
 		 host_address_to_string (myaddr), len);
 
   if (current_monitor->flags & MO_ADDR_BITS_REMOVE)
-    memaddr = gdbarch_addr_bits_remove (target_gdbarch, memaddr);
+    memaddr = gdbarch_addr_bits_remove (target_gdbarch (), memaddr);
 
   if (current_monitor->flags & MO_GETMEM_READ_SINGLE)
     return monitor_read_memory_single (memaddr, myaddr, len);
@@ -2376,14 +2377,14 @@ When enabled, a hashmark \'#\' is displayed."),
 			   NULL, /* FIXME: i18n: */
 			   &setlist, &showlist);
 
-  add_setshow_zinteger_cmd ("monitor", no_class, &monitor_debug_p, _("\
+  add_setshow_zuinteger_cmd ("monitor", no_class, &monitor_debug_p, _("\
 Set debugging of remote monitor communication."), _("\
 Show debugging of remote monitor communication."), _("\
 When enabled, communication between GDB and the remote monitor\n\
 is displayed."),
-			    NULL,
-			    NULL, /* FIXME: i18n: */
-			    &setdebuglist, &showdebuglist);
+			     NULL,
+			     NULL, /* FIXME: i18n: */
+			     &setdebuglist, &showdebuglist);
 
   /* Yes, 42000 is arbitrary.  The only sense out of it, is that it
      isn't 0.  */

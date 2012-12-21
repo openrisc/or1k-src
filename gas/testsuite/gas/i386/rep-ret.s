@@ -1,2 +1,0 @@
-	.text
-foo:	rep ret

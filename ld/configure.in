@@ -9,7 +9,7 @@ AC_CANONICAL_BUILD
 AC_ISC_POSIX
 
 changequote(,)dnl
-BFD_VERSION=`sed -n -e 's/^.._INIT_AUTOMAKE.*,[ 	]*\([^ 	]*\)[ 	]*).*/\1/p' < ${srcdir}/../bfd/configure.in`
+BFD_VERSION=`${srcdir}/../bfd/configure --version | sed -n -e '1s,.* ,,p'`
 changequote([,])dnl
 AM_INIT_AUTOMAKE(ld, ${BFD_VERSION})
 AM_MAINTAINER_MODE
@@ -128,7 +128,7 @@ AC_CONFIG_HEADERS([config.h:config.in])
 AH_VERBATIM([00_CONFIG_H_CHECK],
 [/* Check that config.h is #included before system headers
    (this works only for glibc, but that should be enough).  */
-#if defined(__GLIBC__) && !defined(__CONFIG_H__)
+#if defined(__GLIBC__) && !defined(__FreeBSD_kernel__) && !defined(__CONFIG_H__)
 #  error config.h must be #included before system headers
 #endif
 #define __CONFIG_H__ 1])
@@ -151,7 +151,7 @@ AC_PROG_INSTALL
 
 LT_INIT
 
-ALL_LINGUAS="fr sv tr es da vi zh_CN zh_TW ga fi id bg it"
+ALL_LINGUAS="fr sv tr es da vi zh_CN zh_TW ga fi id bg it uk"
 ZW_GNU_GETTEXT_SISTER_DIR
 AM_PO_SUBDIRS
 

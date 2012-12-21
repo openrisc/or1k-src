@@ -666,13 +666,15 @@ h8300_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 
   for (argument = 0; argument < nargs; argument++)
     {
+      struct cleanup *back_to;
       struct type *type = value_type (args[argument]);
       int len = TYPE_LENGTH (type);
       char *contents = (char *) value_contents (args[argument]);
 
       /* Pad the argument appropriately.  */
       int padded_len = align_up (len, wordsize);
-      gdb_byte *padded = alloca (padded_len);
+      gdb_byte *padded = xmalloc (padded_len);
+      back_to = make_cleanup (xfree, padded);
 
       memset (padded, 0, padded_len);
       memcpy (len < wordsize ? padded + padded_len - len : padded,
@@ -720,6 +722,8 @@ h8300_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 	     subsequent arguments go on the stack.  */
 	  reg = E_ARGLAST_REGNUM + 1;
 	}
+
+      do_cleanups (back_to);
     }
 
   /* Store return address.  */
@@ -781,16 +785,15 @@ h8300h_extract_return_value (struct type *type, struct regcache *regcache,
 {
   struct gdbarch *gdbarch = get_regcache_arch (regcache);
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
-  int len = TYPE_LENGTH (type);
   ULONGEST c;
 
-  switch (len)
+  switch (TYPE_LENGTH (type))
     {
     case 1:
     case 2:
     case 4:
       regcache_cooked_read_unsigned (regcache, E_RET0_REGNUM, &c);
-      store_unsigned_integer (valbuf, len, byte_order, c);
+      store_unsigned_integer (valbuf, TYPE_LENGTH (type), byte_order, c);
       break;
     case 8:			/* long long is now 8 bytes.  */
       if (TYPE_CODE (type) == TYPE_CODE_INT)
@@ -848,18 +851,17 @@ h8300_store_return_value (struct type *type, struct regcache *regcache,
 {
   struct gdbarch *gdbarch = get_regcache_arch (regcache);
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
-  int len = TYPE_LENGTH (type);
   ULONGEST val;
 
-  switch (len)
+  switch (TYPE_LENGTH (type))
     {
     case 1:
     case 2:			/* short...  */
-      val = extract_unsigned_integer (valbuf, len, byte_order);
+      val = extract_unsigned_integer (valbuf, TYPE_LENGTH (type), byte_order);
       regcache_cooked_write_unsigned (regcache, E_RET0_REGNUM, val);
       break;
     case 4:			/* long, float */
-      val = extract_unsigned_integer (valbuf, len, byte_order);
+      val = extract_unsigned_integer (valbuf, TYPE_LENGTH (type), byte_order);
       regcache_cooked_write_unsigned (regcache, E_RET0_REGNUM,
 				      (val >> 16) & 0xffff);
       regcache_cooked_write_unsigned (regcache, E_RET1_REGNUM, val & 0xffff);
@@ -878,19 +880,18 @@ h8300h_store_return_value (struct type *type, struct regcache *regcache,
 {
   struct gdbarch *gdbarch = get_regcache_arch (regcache);
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
-  int len = TYPE_LENGTH (type);
   ULONGEST val;
 
-  switch (len)
+  switch (TYPE_LENGTH (type))
     {
     case 1:
     case 2:
     case 4:			/* long, float */
-      val = extract_unsigned_integer (valbuf, len, byte_order);
+      val = extract_unsigned_integer (valbuf, TYPE_LENGTH (type), byte_order);
       regcache_cooked_write_unsigned (regcache, E_RET0_REGNUM, val);
       break;
     case 8:
-      val = extract_unsigned_integer (valbuf, len, byte_order);
+      val = extract_unsigned_integer (valbuf, TYPE_LENGTH (type), byte_order);
       regcache_cooked_write_unsigned (regcache, E_RET0_REGNUM,
 				      (val >> 32) & 0xffffffff);
       regcache_cooked_write_unsigned (regcache, E_RET1_REGNUM,
@@ -1347,7 +1348,9 @@ h8300_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   set_gdbarch_long_bit (gdbarch, 4 * TARGET_CHAR_BIT);
   set_gdbarch_long_long_bit (gdbarch, 8 * TARGET_CHAR_BIT);
   set_gdbarch_double_bit (gdbarch, 4 * TARGET_CHAR_BIT);
+  set_gdbarch_double_format (gdbarch, floatformats_ieee_single);
   set_gdbarch_long_double_bit (gdbarch, 4 * TARGET_CHAR_BIT);
+  set_gdbarch_long_double_format (gdbarch, floatformats_ieee_single);
 
   set_gdbarch_believe_pcc_promotion (gdbarch, 1);
 

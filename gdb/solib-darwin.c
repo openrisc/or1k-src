@@ -28,6 +28,7 @@
 #include "inferior.h"
 #include "regcache.h"
 #include "gdbthread.h"
+#include "gdb_bfd.h"
 
 #include "gdb_assert.h"
 
@@ -126,8 +127,8 @@ static void
 darwin_load_image_infos (struct darwin_info *info)
 {
   gdb_byte buf[24];
-  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch);
-  struct type *ptr_type = builtin_type (target_gdbarch)->builtin_data_ptr;
+  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch ());
+  struct type *ptr_type = builtin_type (target_gdbarch ())->builtin_data_ptr;
   int len;
 
   /* If the structure address is not known, don't continue.  */
@@ -244,8 +245,8 @@ open_symbol_file_object (void *from_ttyp)
 static struct so_list *
 darwin_current_sos (void)
 {
-  struct type *ptr_type = builtin_type (target_gdbarch)->builtin_data_ptr;
-  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch);
+  struct type *ptr_type = builtin_type (target_gdbarch ())->builtin_data_ptr;
+  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch ());
   int ptr_len = TYPE_LENGTH (ptr_type);
   unsigned int image_info_size;
   struct so_list *head = NULL;
@@ -347,6 +348,27 @@ darwin_special_symbol_handling (void)
 {
 }
 
+/* A wrapper for bfd_mach_o_fat_extract that handles reference
+   counting properly.  This will either return NULL, or return a new
+   reference to a BFD.  */
+
+static bfd *
+gdb_bfd_mach_o_fat_extract (bfd *abfd, bfd_format format,
+			    const bfd_arch_info_type *arch)
+{
+  bfd *result = bfd_mach_o_fat_extract (abfd, format, arch);
+
+  if (result == NULL)
+    return NULL;
+
+  if (result == abfd)
+    gdb_bfd_ref (result);
+  else
+    gdb_bfd_mark_parent (result, abfd);
+
+  return result;
+}
+
 /* Extract dyld_all_image_addr when the process was just created, assuming the
    current PC is at the entry of the dynamic linker.  */
 
@@ -356,6 +378,7 @@ darwin_solib_get_all_image_info_addr_at_init (struct darwin_info *info)
   gdb_byte *interp_name;
   CORE_ADDR load_addr = 0;
   bfd *dyld_bfd = NULL;
+  struct cleanup *cleanup;
 
   /* This method doesn't work with an attached process.  */
   if (current_inferior ()->attach_flag)
@@ -366,24 +389,30 @@ darwin_solib_get_all_image_info_addr_at_init (struct darwin_info *info)
   if (!interp_name)
     return;
 
+  cleanup = make_cleanup (null_cleanup, NULL);
+
   /* Create a bfd for the interpreter.  */
-  dyld_bfd = bfd_openr (interp_name, gnutarget);
+  dyld_bfd = gdb_bfd_open (interp_name, gnutarget, -1);
   if (dyld_bfd)
     {
       bfd *sub;
 
-      sub = bfd_mach_o_fat_extract (dyld_bfd, bfd_object,
-				    gdbarch_bfd_arch_info (target_gdbarch));
+      make_cleanup_bfd_unref (dyld_bfd);
+      sub = gdb_bfd_mach_o_fat_extract (dyld_bfd, bfd_object,
+					gdbarch_bfd_arch_info (target_gdbarch ()));
       if (sub)
-	dyld_bfd = sub;
-      else
 	{
-	  bfd_close (dyld_bfd);
-	  dyld_bfd = NULL;
+	  dyld_bfd = sub;
+	  make_cleanup_bfd_unref (sub);
 	}
+      else
+	dyld_bfd = NULL;
     }
   if (!dyld_bfd)
-    return;
+    {
+      do_cleanups (cleanup);
+      return;
+    }
 
   /* We find the dynamic linker's base address by examining
      the current pc (which should point at the entry point for the
@@ -395,7 +424,7 @@ darwin_solib_get_all_image_info_addr_at_init (struct darwin_info *info)
   info->all_image_addr =
     lookup_symbol_from_bfd (dyld_bfd, "_dyld_all_image_infos");
 
-  bfd_close (dyld_bfd);
+  do_cleanups (cleanup);
 
   if (info->all_image_addr == 0)
     return;
@@ -411,7 +440,7 @@ darwin_solib_read_all_image_info_addr (struct darwin_info *info)
 {
   gdb_byte buf[8 + 8 + 4];
   LONGEST len;
-  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch);
+  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch ());
 
   len = target_read (&current_target, TARGET_OBJECT_DARWIN_DYLD_INFO, NULL,
                      buf, 0, sizeof (buf));
@@ -441,7 +470,7 @@ darwin_solib_create_inferior_hook (int from_tty)
   darwin_load_image_infos (info);
 
   if (darwin_dyld_version_ok (info))
-    create_solib_event_breakpoint (target_gdbarch, info->all_image.notifier);
+    create_solib_event_breakpoint (target_gdbarch (), info->all_image.notifier);
 }
 
 static void
@@ -505,21 +534,16 @@ darwin_bfd_open (char *pathname)
   /* Open bfd for shared library.  */
   abfd = solib_bfd_fopen (found_pathname, found_file);
 
-  res = bfd_mach_o_fat_extract (abfd, bfd_object,
-				gdbarch_bfd_arch_info (target_gdbarch));
+  res = gdb_bfd_mach_o_fat_extract (abfd, bfd_object,
+				    gdbarch_bfd_arch_info (target_gdbarch ()));
   if (!res)
     {
-      bfd_close (abfd);
-      make_cleanup (xfree, found_pathname);
+      make_cleanup_bfd_unref (abfd);
       error (_("`%s': not a shared-library: %s"),
-	     found_pathname, bfd_errmsg (bfd_get_error ()));
+	     bfd_get_filename (abfd), bfd_errmsg (bfd_get_error ()));
     }
 
-  /* Make sure that the filename is malloc'ed.  The current filename
-     for fat-binaries BFDs is a name that was generated by BFD, usually
-     a static string containing the name of the architecture.  */
-  res->filename = xstrdup (pathname);
-
+  gdb_bfd_unref (abfd);
   return res;
 }
 
@@ -532,7 +556,8 @@ void
 _initialize_darwin_solib (void)
 {
   solib_darwin_pspace_data
-    = register_program_space_data_with_cleanup (darwin_pspace_data_cleanup);
+    = register_program_space_data_with_cleanup (NULL,
+						darwin_pspace_data_cleanup);
 
   darwin_so_ops.relocate_section_addresses = darwin_relocate_section_addresses;
   darwin_so_ops.free_so = darwin_free_so;

@@ -21,9 +21,9 @@ details. */
 
 #include <wingdi.h>
 #include <winuser.h>
-#include <netdb.h>
 #define USE_SYS_TYPES_FD_SET
 #include <winsock2.h>
+#include <netdb.h>
 #include "cygerrno.h"
 #include "security.h"
 #include "path.h"
@@ -73,7 +73,13 @@ typedef long fd_mask;
 #define UNIX_FD_ZERO(p, n) \
   memset ((caddr_t) (p), 0, sizeof_fd_set ((n)))
 
-#define allocfd_set(n) ((fd_set *) memset (alloca (sizeof_fd_set (n)), 0, sizeof_fd_set (n)))
+#define allocfd_set(n) ({\
+  size_t __sfds = sizeof_fd_set (n) + 8; \
+  void *__res = alloca (__sfds); \
+  memset (__res, 0, __sfds); \
+  (fd_set *) __res; \
+})
+
 #define copyfd_set(to, from, n) memcpy (to, from, sizeof_fd_set (n));
 
 #define set_handle_or_return_if_not_open(h, s) \
@@ -84,48 +90,61 @@ typedef long fd_mask;
       return -1; \
     }
 
-/* The main select code.
- */
+static int select (int, fd_set *, fd_set *, fd_set *, DWORD);
+
+/* The main select code.  */
 extern "C" int
 cygwin_select (int maxfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
 	       struct timeval *to)
 {
   select_printf ("select(%d, %p, %p, %p, %p)", maxfds, readfds, writefds, exceptfds, to);
 
+  pthread_testcancel ();
+  int res;
+  if (maxfds < 0)
+    {
+      set_errno (EINVAL);
+      res = -1;
+    }
+  else
+    {
+      /* Convert to milliseconds or INFINITE if to == NULL */
+      DWORD ms = to ? (to->tv_sec * 1000) + (to->tv_usec / 1000) : INFINITE;
+      if (ms == 0 && to->tv_usec)
+	ms = 1;			/* At least 1 ms granularity */
+
+      if (to)
+	select_printf ("to->tv_sec %d, to->tv_usec %d, ms %d", to->tv_sec, to->tv_usec, ms);
+      else
+	select_printf ("to NULL, ms %x", ms);
+
+      res = select (maxfds, readfds ?: allocfd_set (maxfds),
+		    writefds ?: allocfd_set (maxfds),
+		    exceptfds ?: allocfd_set (maxfds), ms);
+    }
+  syscall_printf ("%R = select(%d, %p, %p, %p, %p)", res, maxfds, readfds,
+		  writefds, exceptfds, to);
+  return res;
+}
+
+/* This function is arbitrarily split out from cygwin_select to avoid odd
+   gcc issues with the use of allocfd_set and improper constructor handling
+   for the sel variable.  */
+static int
+select (int maxfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
+	DWORD ms)
+{
+  int res = select_stuff::select_loop;
+
+  LONGLONG start_time = gtod.msecs ();	/* Record the current time for later use. */
+
   select_stuff sel;
-  fd_set *dummy_readfds = allocfd_set (maxfds);
-  fd_set *dummy_writefds = allocfd_set (maxfds);
-  fd_set *dummy_exceptfds = allocfd_set (maxfds);
+  sel.return_on_signal = 0;
 
   /* Allocate some fd_set structures using the number of fds as a guide. */
   fd_set *r = allocfd_set (maxfds);
   fd_set *w = allocfd_set (maxfds);
   fd_set *e = allocfd_set (maxfds);
-
-  if (!readfds)
-    readfds = dummy_readfds;
-  if (!writefds)
-    writefds = dummy_writefds;
-  if (!exceptfds)
-    exceptfds = dummy_exceptfds;
-
-  pthread_testcancel ();
-
-  /* Convert to milliseconds or INFINITE if to == NULL */
-  DWORD ms = to ? (to->tv_sec * 1000) + (to->tv_usec / 1000) : INFINITE;
-  if (ms == 0 && to->tv_usec)
-    ms = 1;			/* At least 1 ms granularity */
-
-  if (to)
-    select_printf ("to->tv_sec %d, to->tv_usec %d, ms %d", to->tv_sec, to->tv_usec, ms);
-  else
-    select_printf ("to NULL, ms %x", ms);
-
-  sel.return_on_signal = &_my_tls == _main_tls;
-
-  int res = select_stuff::select_loop;
-
-  LONGLONG start_time = gtod.msecs ();	/* Record the current time for later use. */
 
   while (res == select_stuff::select_loop)
     {
@@ -146,8 +165,7 @@ cygwin_select (int maxfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
 	  {
 	  case WAIT_SIGNALED:
 	    select_printf ("signal received");
-	    _my_tls.call_signal_handler ();
-	    if (!sel.return_on_signal)
+	    if (_my_tls.call_signal_handler ())
 	      res = select_stuff::select_loop;		/* Emulate linux behavior */
 	    else
 	      {
@@ -169,6 +187,7 @@ cygwin_select (int maxfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
       else
 	res = sel.wait (r, w, e, ms);			/* wait for an fd to become
 							   become active or time out */
+      select_printf ("res %d", res);
       if (res >= 0)
 	{
 	  copyfd_set (readfds, r, maxfds);
@@ -187,7 +206,10 @@ cygwin_select (int maxfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
 	  select_printf ("recalculating ms");
 	  LONGLONG now = gtod.msecs ();
 	  if (now > (start_time + ms))
-	    select_printf ("timed out after verification");
+	    {
+	      select_printf ("timed out after verification");
+	      res = 0;
+	    }
 	  else
 	    {
 	      ms -= (now - start_time);
@@ -199,8 +221,6 @@ cygwin_select (int maxfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
 
   if (res < -1)
     res = -1;
-  syscall_printf ("%R = select(%d, %p, %p, %p, %p)", res, maxfds, readfds,
-		  writefds, exceptfds, to);
   return res;
 }
 
@@ -220,11 +240,11 @@ pselect(int maxfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
       tv.tv_usec = ts->tv_nsec / 1000;
     }
   if (set)
-    set_signal_mask (*set, _my_tls.sigmask);
+    set_signal_mask (_my_tls.sigmask, *set);
   int ret = cygwin_select (maxfds, readfds, writefds, exceptfds,
 			   ts ? &tv : NULL);
   if (set)
-    set_signal_mask (oldset, _my_tls.sigmask);
+    set_signal_mask (_my_tls.sigmask, oldset);
   return ret;
 }
 
@@ -312,7 +332,7 @@ select_stuff::wait (fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
   select_record *s = &start;
   DWORD m = 0;
 
-  w4[m++] = signal_arrived;  /* Always wait for the arrival of a signal. */
+  set_signal_arrived here (w4[m++]);
   if ((w4[m] = pthread::get_cancel_event ()) != NULL)
     m++;
 
@@ -365,8 +385,7 @@ next_while:;
 	 be assured that a signal handler won't jump out of select entirely. */
       cleanup ();
       destroy ();
-      _my_tls.call_signal_handler ();
-      if (!return_on_signal)
+      if (_my_tls.call_signal_handler ())
 	res = select_loop;
       else
 	{

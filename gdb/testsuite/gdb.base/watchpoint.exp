@@ -54,11 +54,6 @@ proc initialize {} {
     global decimal
     global srcfile
 
-    # Disable hardware watchpoints if necessary.
-    if [target_info exists gdb,no_hardware_watchpoints] {
-	gdb_test_no_output "set can-use-hw-watchpoints 0" ""
-    }
-
     if [gdb_test "break marker1" "Breakpoint 1 at $hex: file .*$srcfile, line $decimal.*" "set breakpoint at marker1" ] { 
       return 0; 
     }
@@ -455,8 +450,8 @@ proc test_complex_watchpoint {} {
         gdb_test "break marker6" ".*Breakpoint.*"
         gdb_test "cont" "Continuing.*Breakpoint.*marker6 \\(\\).*" \
             "continue to marker6"
-        gdb_test "break func2" ".*Breakpoint.*"
-        gdb_test "cont" "Continuing.*func2.*"
+	gdb_breakpoint [gdb_get_line_number "func2 breakpoint here"]
+	gdb_continue_to_breakpoint "func2 breakpoint here"
 
         # Test a watch of a single stack-based variable, whose scope
         # is the function we're now in.  This should auto-delete when
@@ -464,9 +459,29 @@ proc test_complex_watchpoint {} {
         #
         gdb_test "watch local_a" ".*\[Ww\]atchpoint \[0-9\]*: local_a" "set local watch"
         gdb_test "cont" "\[Ww\]atchpoint.*local_a.*" "trigger local watch"
-        gdb_test "cont" "Continuing.*\[Ww\]atchpoint .* deleted because the program has left the block in.*which its expression is valid.*" "self-delete local watch"
 
-        gdb_test "cont" "Continuing.*func2.*"
+	set test "self-delete local watch"
+        gdb_test_multiple "cont" $test {
+	    -re "Continuing.*\[Ww\]atchpoint .* deleted because the program has left the block in.*which its expression is valid.*\r\n$gdb_prompt $" {
+		pass $test
+	    }
+	    -re "can't compute CFA for this frame.*\r\n$gdb_prompt $" {
+		global compiler_info no_hw
+
+		# GCC < 4.5.0 does not get LOCATIONS_VALID set by dwarf2read.c.
+		# Therefore epilogue unwinder gets applied which is
+		# incompatible with dwarf2_frame_cfa.
+		verbose -log "compiler_info: $compiler_info"
+		if {$no_hw && ([test_compiler_info {gcc-[0-3]-*}]
+			       || [test_compiler_info {gcc-4-[0-4]-*}])} {
+		    xfail "$test (old GCC has broken watchpoints in epilogues)"
+		    return
+		}
+		fail $test
+	    }
+	}
+
+	gdb_continue_to_breakpoint "func2 breakpoint here"
         # We should be in "func2" again now.  Test a watch of an
         # expression which includes both a stack-based local and
         # something whose scope is larger than this invocation
@@ -486,7 +501,7 @@ proc test_complex_watchpoint {} {
         # across any invocations of "func2", it should not auto-
         # delete.
         #
-        gdb_test "cont" "Continuing.*func2.*"
+	gdb_continue_to_breakpoint "func2 breakpoint here"
         gdb_test "watch static_b" ".*\[Ww\]atchpoint \[0-9\]*: static_b" \
                  "set static local watch"
         gdb_test "cont" "Continuing.*\[Ww\]atchpoint .*: static_b.*" \
@@ -603,13 +618,16 @@ proc test_watch_location {} {
 
 proc test_wide_location_1 {} {
     global no_hw
+    global gdb_prompt
 
     # This test watches two words on most 32-bit ABIs, and one word on
     # most 64-bit ABIs.
 
     # Platforms where the target can't watch such a large region
     # should clear hw_expected below.
-    if { $no_hw || [target_info exists gdb,no_hardware_watchpoints] } {
+    if { $no_hw || [target_info exists gdb,no_hardware_watchpoints]
+         || [istarget arm*-*-*]
+         || ([istarget powerpc*-*-*] && ![is_lp64_target])} {
 	set hw_expected 0
     } else {
 	set hw_expected 1
@@ -625,9 +643,21 @@ proc test_wide_location_1 {} {
 	    "continue with watch foo2"
     } else {
 	gdb_test "watch foo2" "atchpoint .*: .*" "watch foo2"
-	gdb_test "continue" \
-	    "Continuing.*\[Ww\]atchpoint .*: .*New value = \\\{val = \\\{0, 11\\\}\\\}.*" \
-	    "continue with watch foo2"
+	set test "continue with watch foo2"
+	gdb_test_multiple "cont" $test {
+	    -re "Continuing.*\[Ww\]atchpoint .*: .*New value = \\\{val = \\\{0, 11\\\}\\\}.*$gdb_prompt $" {
+		pass $test
+	    }
+	    -re "Could not insert hardware breakpoints:.*You may have requested too many hardware breakpoints/watchpoints.*$gdb_prompt $" {
+		# This may happen with remote targets that support
+		# hardware watchpoints.  We only find out the
+		# watchpoint was too large, for example, at insert
+		# time.  If GDB is ever adjusted to downgrade the
+		# watchpoint automatically in this case, this match
+		# should be removed.
+		pass $test
+	    }
+	}
     }
 
     gdb_test_no_output "delete \$bpnum" "delete watch foo2"
@@ -635,13 +665,16 @@ proc test_wide_location_1 {} {
 
 proc test_wide_location_2 {} {
     global no_hw
+    global gdb_prompt
 
     # This test watches four words on most 32-bit ABIs, and two words
     # on 64-bit ABIs.
 
     # Platforms where the target can't watch such a large region
     # should clear hw_expected below.
-    if { $no_hw || [target_info exists gdb,no_hardware_watchpoints] } {
+    if { $no_hw || [target_info exists gdb,no_hardware_watchpoints]
+         || [istarget arm*-*-*]
+         || [istarget powerpc*-*-*]} {
 	set hw_expected 0
     } else {
 	set hw_expected 1
@@ -657,9 +690,21 @@ proc test_wide_location_2 {} {
 	    "continue with watch foo4"
     } else {
 	gdb_test "watch foo4" "atchpoint .*: .*" "watch foo4"
-	gdb_test "continue" \
-	    "Continuing.*\[Ww\]atchpoint .*: .*New value = \\\{val = \\\{0, 0, 0, 33\\\}\\\}.*" \
-	    "continue with watch foo4"
+	set test "continue with watch foo4"
+	gdb_test_multiple "cont" $test {
+	    -re "Continuing.*\[Ww\]atchpoint .*: .*New value = \\\{val = \\\{0, 0, 0, 33\\\}\\\}.*$gdb_prompt $" {
+		pass $test
+	    }
+	    -re "Could not insert hardware breakpoints:.*You may have requested too many hardware breakpoints/watchpoints.*$gdb_prompt $" {
+		# This may happen with remote targets that support
+		# hardware watchpoints.  We only find out the
+		# watchpoint was too large, for example, at insert
+		# time.  If GDB is ever adjusted to downgrade the
+		# watchpoint automatically in this case, this match
+		# should be removed.
+		pass $test
+	    }
+	}
     }
 
     gdb_test_no_output "delete \$bpnum" "delete watch foo4"
@@ -841,7 +886,7 @@ proc do_tests {} {
 
     clean_restart $testfile
 
-    if {$no_hw} {
+    if {$no_hw || [target_info exists gdb,no_hardware_watchpoints]} {
 	gdb_test_no_output "set can-use-hw-watchpoints 0" ""
     }
 
@@ -860,7 +905,7 @@ proc do_tests {} {
     # `initialize' anymore.
     clean_restart $testfile
 
-    if {$no_hw} {
+    if {$no_hw || [target_info exists gdb,no_hardware_watchpoints]} {
 	gdb_test_no_output "set can-use-hw-watchpoints 0" ""
     }
 

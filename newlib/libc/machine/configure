@@ -784,6 +784,7 @@ LIBS
 CPPFLAGS
 CPP'
 ac_subdirs_all='a29k
+aarch64
 arm
 bfin
 cr16
@@ -11807,6 +11808,8 @@ if test -n "${machine_dir}"; then
 	a29k)
 
 subdirs="$subdirs a29k"
+ ;;
+	aarch64) subdirs="$subdirs aarch64"
  ;;
 	arm) subdirs="$subdirs arm"
  ;;

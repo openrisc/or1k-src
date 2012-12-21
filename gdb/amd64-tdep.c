@@ -446,12 +446,10 @@ amd64_non_pod_p (struct type *type)
 static void
 amd64_classify_aggregate (struct type *type, enum amd64_reg_class class[2])
 {
-  int len = TYPE_LENGTH (type);
-
   /* 1. If the size of an object is larger than two eightbytes, or in
         C++, is a non-POD structure or union type, or contains
         unaligned fields, it has class memory.  */
-  if (len > 16 || amd64_non_pod_p (type))
+  if (TYPE_LENGTH (type) > 16 || amd64_non_pod_p (type))
     {
       class[0] = class[1] = AMD64_MEMORY;
       return;
@@ -471,7 +469,7 @@ amd64_classify_aggregate (struct type *type, enum amd64_reg_class class[2])
 
       /* All fields in an array have the same type.  */
       amd64_classify (subtype, class);
-      if (len > 8 && class[1] == AMD64_NO_CLASS)
+      if (TYPE_LENGTH (type) > 8 && class[1] == AMD64_NO_CLASS)
 	class[1] = class[0];
     }
   else
@@ -588,6 +586,23 @@ amd64_classify (struct type *type, enum amd64_reg_class class[2])
     /* Class X87 and X87UP.  */
     class[0] = AMD64_X87, class[1] = AMD64_X87UP;
 
+  /* Arguments of complex T where T is one of the types float or
+     double get treated as if they are implemented as:
+
+     struct complexT {
+       T real;
+       T imag;
+     };  */
+  else if (code == TYPE_CODE_COMPLEX && len == 8)
+    class[0] = AMD64_SSE;
+  else if (code == TYPE_CODE_COMPLEX && len == 16)
+    class[0] = class[1] = AMD64_SSE;
+
+  /* A variable of type complex long double is classified as type
+     COMPLEX_X87.  */
+  else if (code == TYPE_CODE_COMPLEX && len == 32)
+    class[0] = AMD64_COMPLEX_X87;
+
   /* Aggregates.  */
   else if (code == TYPE_CODE_ARRAY || code == TYPE_CODE_STRUCT
 	   || code == TYPE_CODE_UNION)
@@ -636,6 +651,30 @@ amd64_return_value (struct gdbarch *gdbarch, struct value *function,
 	}
 
       return RETURN_VALUE_ABI_RETURNS_ADDRESS;
+    }
+
+  /* 8. If the class is COMPLEX_X87, the real part of the value is
+        returned in %st0 and the imaginary part in %st1.  */
+  if (class[0] == AMD64_COMPLEX_X87)
+    {
+      if (readbuf)
+	{
+	  regcache_raw_read (regcache, AMD64_ST0_REGNUM, readbuf);
+	  regcache_raw_read (regcache, AMD64_ST1_REGNUM, readbuf + 16);
+	}
+
+      if (writebuf)
+	{
+	  i387_return_value (gdbarch, regcache);
+	  regcache_raw_write (regcache, AMD64_ST0_REGNUM, writebuf);
+	  regcache_raw_write (regcache, AMD64_ST1_REGNUM, writebuf + 16);
+
+	  /* Fix up the tag word such that both %st(0) and %st(1) are
+	     marked as valid.  */
+	  regcache_raw_write_unsigned (regcache, AMD64_FTAG_REGNUM, 0xfff);
+	}
+
+      return RETURN_VALUE_REGISTER_CONVENTION;
     }
 
   gdb_assert (class[1] != AMD64_MEMORY);
@@ -839,10 +878,9 @@ amd64_push_arguments (struct regcache *regcache, int nargs,
     {
       struct type *type = value_type (stack_args[i]);
       const gdb_byte *valbuf = value_contents (stack_args[i]);
-      int len = TYPE_LENGTH (type);
       CORE_ADDR arg_addr = sp + element * 8;
 
-      write_memory (arg_addr, valbuf, len);
+      write_memory (arg_addr, valbuf, TYPE_LENGTH (type));
       if (arg_addr_regno[i] >= 0)
         {
           /* We also need to store the address of that argument in
@@ -853,7 +891,7 @@ amd64_push_arguments (struct regcache *regcache, int nargs,
           store_unsigned_integer (buf, 8, byte_order, arg_addr);
           regcache_cooked_write (regcache, arg_addr_regno[i], buf);
         }
-      element += ((len + 7) / 8);
+      element += ((TYPE_LENGTH (type) + 7) / 8);
     }
 
   /* The psABI says that "For calls that may call functions that use
@@ -1593,7 +1631,7 @@ amd64_relocate_instruction (struct gdbarch *gdbarch,
       /* Where "ret" in the original code will return to.  */
       ret_addr = oldloc + insn_length;
       push_buf[0] = 0x68; /* pushq $...  */
-      memcpy (&push_buf[1], &ret_addr, 4);
+      store_unsigned_integer (&push_buf[1], 4, byte_order, ret_addr);
       /* Push the push.  */
       append_insns (to, 5, push_buf);
 

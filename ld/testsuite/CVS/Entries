@@ -15,7 +15,6 @@ D/ld-elfcomm////
 D/ld-elfvers////
 D/ld-elfvsb////
 D/ld-elfweak////
-D/ld-empic////
 D/ld-fastcall////
 D/ld-frv////
 D/ld-gc////
@@ -27,7 +26,6 @@ D/ld-libs////
 D/ld-linkonce////
 D/ld-m68hc11////
 D/ld-m68k////
-D/ld-maxq////
 D/ld-mep////
 D/ld-mips-elf////
 D/ld-misc////
@@ -37,7 +35,6 @@ D/ld-pe////
 D/ld-pie////
 D/ld-plugin////
 D/ld-powerpc////
-D/ld-prelink////
 D/ld-s390////
 D/ld-scripts////
 D/ld-selective////
@@ -59,13 +56,18 @@ D/ld-xc16x////
 D/ld-xstormy16////
 D/ld-xtensa////
 D/lib////
-/ChangeLog/1.1568/Sat Jun 23 00:22:37 2012//
-/ChangeLog-2004/1.1/Mon May  7 21:35:07 2012//
-/ChangeLog-2005/1.1/Mon May  7 21:35:07 2012//
-/ChangeLog-2006/1.1/Mon May  7 21:35:07 2012//
-/ChangeLog-2007/1.1/Mon May  7 21:35:07 2012//
-/ChangeLog-2008/1.1/Mon May  7 21:35:07 2012//
-/ChangeLog-2009/1.1/Mon May  7 21:35:07 2012//
-/ChangeLog-2010/1.1/Mon May  7 21:35:07 2012//
-/ChangeLog-2011/1.1/Mon May  7 21:35:07 2012//
-/ChangeLog-9303/1.1/Mon May  7 21:35:07 2012//
+/ChangeLog/1.1624/Thu Nov 29 07:47:03 2012//
+/ChangeLog-2004/1.1/Sat Oct 27 22:59:28 2012//
+/ChangeLog-2005/1.1/Sat Oct 27 22:59:28 2012//
+/ChangeLog-2006/1.1/Sat Oct 27 22:59:28 2012//
+/ChangeLog-2007/1.1/Sat Oct 27 22:59:28 2012//
+/ChangeLog-2008/1.1/Sat Oct 27 22:59:28 2012//
+/ChangeLog-2009/1.1/Sat Oct 27 22:59:28 2012//
+/ChangeLog-2010/1.1/Sat Oct 27 22:59:28 2012//
+/ChangeLog-2011/1.1/Sat Oct 27 22:59:28 2012//
+/ChangeLog-9303/1.1/Sat Oct 27 22:59:28 2012//
+D/ld-aarch64////
+D/ld-empic////
+D/ld-maxq////
+D/ld-prelink////
+D/ld-vax-elf////

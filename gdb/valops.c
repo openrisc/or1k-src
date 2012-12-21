@@ -46,7 +46,7 @@
 #include "symtab.h"
 #include "exceptions.h"
 
-extern int overload_debug;
+extern unsigned int overload_debug;
 /* Local functions.  */
 
 static int typecmp (int staticp, int varargs, int nargs,
@@ -994,7 +994,6 @@ value_fetch_lazy (struct value *val)
       struct value *parent = value_parent (val);
       LONGEST offset = value_offset (val);
       LONGEST num;
-      int length = TYPE_LENGTH (type);
 
       if (!value_bits_valid (val,
 			     TARGET_CHAR_BIT * offset + value_bitpos (val),
@@ -1008,19 +1007,20 @@ value_fetch_lazy (struct value *val)
 				      value_bitsize (val), parent, &num))
 	mark_value_bytes_unavailable (val,
 				      value_embedded_offset (val),
-				      length);
+				      TYPE_LENGTH (type));
       else
-	store_signed_integer (value_contents_raw (val), length,
+	store_signed_integer (value_contents_raw (val), TYPE_LENGTH (type),
 			      byte_order, num);
     }
   else if (VALUE_LVAL (val) == lval_memory)
     {
       CORE_ADDR addr = value_address (val);
-      int length = TYPE_LENGTH (check_typedef (value_enclosing_type (val)));
+      struct type *type = check_typedef (value_enclosing_type (val));
 
-      if (length)
+      if (TYPE_LENGTH (type))
 	read_value_memory (val, 0, value_stack (val),
-			   addr, value_contents_all_raw (val), length);
+			   addr, value_contents_all_raw (val),
+			   TYPE_LENGTH (type));
     }
   else if (VALUE_LVAL (val) == lval_register)
     {
@@ -1299,9 +1299,7 @@ value_assign (struct value *toval, struct value *fromval)
 	    dest_buffer = value_contents (fromval);
 	  }
 
-	write_memory (changed_addr, dest_buffer, changed_len);
-	observer_notify_memory_changed (changed_addr, changed_len,
-					dest_buffer);
+	write_memory_with_notification (changed_addr, dest_buffer, changed_len);
       }
       break;
 
@@ -1376,7 +1374,6 @@ value_assign (struct value *toval, struct value *fromval)
 
 	if (deprecated_register_changed_hook)
 	  deprecated_register_changed_hook (-1);
-	observer_notify_target_changed (&current_target);
 	break;
       }
 
@@ -1398,7 +1395,7 @@ value_assign (struct value *toval, struct value *fromval)
 
   /* Assigning to the stack pointer, frame pointer, and other
      (architecture and calling convention specific) registers may
-     cause the frame cache to be out of date.  Assigning to memory
+     cause the frame cache and regcache to be out of date.  Assigning to memory
      also can.  We just do this on all assignments to registers or
      memory, for simplicity's sake; I doubt the slowdown matters.  */
   switch (VALUE_LVAL (toval))
@@ -1407,7 +1404,7 @@ value_assign (struct value *toval, struct value *fromval)
     case lval_register:
     case lval_computed:
 
-      reinit_frame_cache ();
+      observer_notify_target_changed (&current_target);
 
       /* Having destroyed the frame cache, restore the selected
 	 frame.  */
@@ -1841,11 +1838,11 @@ value_array (int lowbound, int highbound, struct value **elemvec)
 }
 
 struct value *
-value_cstring (char *ptr, int len, struct type *char_type)
+value_cstring (char *ptr, ssize_t len, struct type *char_type)
 {
   struct value *val;
   int lowbound = current_language->string_lower_bound;
-  int highbound = len / TYPE_LENGTH (char_type);
+  ssize_t highbound = len / TYPE_LENGTH (char_type);
   struct type *stringtype
     = lookup_array_range_type (char_type, lowbound, highbound + lowbound - 1);
 
@@ -1864,11 +1861,11 @@ value_cstring (char *ptr, int len, struct type *char_type)
    string may contain embedded null bytes.  */
 
 struct value *
-value_string (char *ptr, int len, struct type *char_type)
+value_string (char *ptr, ssize_t len, struct type *char_type)
 {
   struct value *val;
   int lowbound = current_language->string_lower_bound;
-  int highbound = len / TYPE_LENGTH (char_type);
+  ssize_t highbound = len / TYPE_LENGTH (char_type);
   struct type *stringtype
     = lookup_string_range_type (char_type, lowbound, highbound + lowbound - 1);
 
@@ -1877,19 +1874,6 @@ value_string (char *ptr, int len, struct type *char_type)
   return val;
 }
 
-struct value *
-value_bitstring (char *ptr, int len, struct type *index_type)
-{
-  struct value *val;
-  struct type *domain_type
-    = create_range_type (NULL, index_type, 0, len - 1);
-  struct type *type = create_set_type (NULL, domain_type);
-
-  TYPE_CODE (type) = TYPE_CODE_BITSTRING;
-  val = allocate_value (type);
-  memcpy (value_contents_raw (val), ptr, TYPE_LENGTH (type));
-  return val;
-}
 
 /* See if we can pass arguments in T2 to a function which takes
    arguments of types T1.  T1 is a list of NARGS arguments, and T2 is
@@ -2283,8 +2267,13 @@ search_struct_method (const char *name, struct value **arg1p,
 
 	  if (offset < 0 || offset >= TYPE_LENGTH (type))
 	    {
-	      gdb_byte *tmp = alloca (TYPE_LENGTH (baseclass));
-	      CORE_ADDR address = value_address (*arg1p);
+	      gdb_byte *tmp;
+	      struct cleanup *back_to;
+	      CORE_ADDR address;
+
+	      tmp = xmalloc (TYPE_LENGTH (baseclass));
+	      back_to = make_cleanup (xfree, tmp);
+	      address = value_address (*arg1p);
 
 	      if (target_read_memory (address + offset,
 				      tmp, TYPE_LENGTH (baseclass)) != 0)
@@ -2295,6 +2284,7 @@ search_struct_method (const char *name, struct value **arg1p,
 							  address + offset);
 	      base_valaddr = value_contents_for_printing (base_val);
 	      this_offset = 0;
+	      do_cleanups (back_to);
 	    }
 	  else
 	    {
@@ -3753,8 +3743,7 @@ value_slice (struct value *array, int lowbound, int length)
 
   array_type = check_typedef (value_type (array));
   if (TYPE_CODE (array_type) != TYPE_CODE_ARRAY
-      && TYPE_CODE (array_type) != TYPE_CODE_STRING
-      && TYPE_CODE (array_type) != TYPE_CODE_BITSTRING)
+      && TYPE_CODE (array_type) != TYPE_CODE_STRING)
     error (_("cannot take slice of non-array"));
 
   range_type = TYPE_INDEX_TYPE (array_type);
@@ -3771,38 +3760,7 @@ value_slice (struct value *array, int lowbound, int length)
 					TYPE_TARGET_TYPE (range_type),
 					lowbound, 
 					lowbound + length - 1);
-  if (TYPE_CODE (array_type) == TYPE_CODE_BITSTRING)
-    {
-      int i;
 
-      slice_type = create_set_type ((struct type *) NULL,
-				    slice_range_type);
-      TYPE_CODE (slice_type) = TYPE_CODE_BITSTRING;
-      slice = value_zero (slice_type, not_lval);
-
-      for (i = 0; i < length; i++)
-	{
-	  int element = value_bit_index (array_type,
-					 value_contents (array),
-					 lowbound + i);
-
-	  if (element < 0)
-	    error (_("internal error accessing bitstring"));
-	  else if (element > 0)
-	    {
-	      int j = i % TARGET_CHAR_BIT;
-
-	      if (gdbarch_bits_big_endian (get_type_arch (array_type)))
-		j = TARGET_CHAR_BIT - 1 - j;
-	      value_contents_raw (slice)[i / TARGET_CHAR_BIT] |= (1 << j);
-	    }
-	}
-      /* We should set the address, bitssize, and bitspos, so the
-         slice can be used on the LHS, but that may require extensions
-         to value_assign.  For now, just leave as a non_lval.
-         FIXME.  */
-    }
-  else
     {
       struct type *element_type = TYPE_TARGET_TYPE (array_type);
       LONGEST offset =

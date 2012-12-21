@@ -1,15 +1,15 @@
 D/common////
 D/config////
 D/d10v-elf////
-D/d30v-elf////
-D/fr30-elf////
 D/frv-elf////
 D/lib////
 D/m32r-elf////
 D/mips64el-elf////
 D/sim////
-/.gitignore/1.1/Tue May  8 13:53:32 2012//
-/ChangeLog/1.75/Sat Jun 23 00:25:24 2012/-ko/
-/Makefile.in/1.9/Mon May  7 21:35:10 2012/-ko/
-/configure/1.10/Sat Jun 23 00:25:24 2012/-ko/
-/configure.ac/1.2/Tue May 22 21:14:11 2012//
+/.gitignore/1.1/Sat Oct 27 22:59:31 2012//
+/ChangeLog/1.75/Sat Oct 27 22:59:31 2012/-ko/
+/Makefile.in/1.9/Sat Oct 27 22:59:31 2012/-ko/
+/configure/1.11/Thu Nov 29 07:49:09 2012/-ko/
+/configure.ac/1.2/Sat Oct 27 22:59:31 2012//
+D/d30v-elf////
+D/fr30-elf////

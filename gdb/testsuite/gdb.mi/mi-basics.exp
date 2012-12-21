@@ -33,13 +33,11 @@ if [mi_gdb_start separate-inferior-tty] {
     continue
 }
 
-set testfile "basics"
-set srcfile ${testfile}.c
-set binfile ${objdir}/${subdir}/mi-basics
+standard_testfile basics.c
 set escapedobjdir [string_to_regexp ${objdir}]
 set envirodir [string_to_regexp ${objdir}/${subdir}]
 
-if  { [gdb_compile "${srcdir}/${subdir}/${srcfile}" "${binfile}" executable {debug additional_flags=-DFAKEARGV}] != "" } {
+if  { [gdb_compile "${srcdir}/${subdir}/${srcfile}" "${binfile}" executable {debug}] != "" } {
      untested mi-basics.exp
      return -1
 }

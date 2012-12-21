@@ -198,6 +198,10 @@ struct syscall
    Space for the result is malloc'd, caller must free.  */
 extern char *target_waitstatus_to_string (const struct target_waitstatus *);
 
+/* Return a pretty printed form of TARGET_OPTIONS.
+   Space for the result is malloc'd, caller must free.  */
+extern char *target_options_to_string (int target_options);
+
 /* Possible types of events that the inferior handler will have to
    deal with.  */
 enum inferior_event_type
@@ -672,6 +676,10 @@ struct target_ops
        end?  */
     int (*to_supports_evaluation_of_breakpoint_conditions) (void);
 
+    /* Does this target support evaluation of breakpoint commands on its
+       end?  */
+    int (*to_can_run_breakpoint_commands) (void);
+
     /* Determine current architecture of thread PTID.
 
        The target is supposed to determine the architecture of the code where
@@ -679,9 +687,9 @@ struct target_ops
        to_thread_architecture would return SPU, otherwise PPC32 or PPC64).
        This is architecture used to perform decr_pc_after_break adjustment,
        and also determines the frame architecture of the innermost frame.
-       ptrace operations need to operate according to target_gdbarch.
+       ptrace operations need to operate according to target_gdbarch ().
 
-       The default implementation always returns target_gdbarch.  */
+       The default implementation always returns target_gdbarch ().  */
     struct gdbarch *(*to_thread_architecture) (struct target_ops *, ptid_t);
 
     /* Determine current address space of thread PTID.
@@ -920,10 +928,16 @@ extern void target_detach (char *, int);
 
 extern void target_disconnect (char *, int);
 
-/* Resume execution of the target process PTID.  STEP says whether to
-   single-step or to run free; SIGGNAL is the signal to be given to
-   the target, or GDB_SIGNAL_0 for no signal.  The caller may not
-   pass GDB_SIGNAL_DEFAULT.  */
+/* Resume execution of the target process PTID (or a group of
+   threads).  STEP says whether to single-step or to run free; SIGGNAL
+   is the signal to be given to the target, or GDB_SIGNAL_0 for no
+   signal.  The caller may not pass GDB_SIGNAL_DEFAULT.  A specific
+   PTID means `step/resume only this process id'.  A wildcard PTID
+   (all threads, or all threads of process) means `step/resume
+   INFERIOR_PTID, and let other threads (for which the wildcard PTID
+   matches) resume with their 'thread->suspend.stop_signal' signal
+   (usually GDB_SIGNAL_0) if it is in "pass" state, or with no signal
+   if in "no pass" state.  */
 
 extern void target_resume (ptid_t ptid, int step, enum gdb_signal signal);
 
@@ -990,6 +1004,12 @@ int target_supports_disable_randomization (void);
 
 #define target_supports_evaluation_of_breakpoint_conditions() \
   (*current_target.to_supports_evaluation_of_breakpoint_conditions) ()
+
+/* Returns true if this target can handle breakpoint commands
+   on its end.  */
+
+#define target_can_run_breakpoint_commands() \
+  (*current_target.to_can_run_breakpoint_commands) ()
 
 /* Invalidate all target dcaches.  */
 extern void target_dcache_invalidate (void);
@@ -1060,16 +1080,6 @@ enum flash_preserve_mode
 int target_write_memory_blocks (VEC(memory_write_request_s) *requests,
 				enum flash_preserve_mode preserve_flash_p,
 				void (*progress_cb) (ULONGEST, void *));
-
-/* From infrun.c.  */
-
-extern int inferior_has_forked (ptid_t pid, ptid_t *child_pid);
-
-extern int inferior_has_vforked (ptid_t pid, ptid_t *child_pid);
-
-extern int inferior_has_execd (ptid_t pid, char **execd_pathname);
-
-extern int inferior_has_called_syscall (ptid_t pid, int *syscall_number);
 
 /* Print a line about the current target.  */
 
@@ -1783,6 +1793,12 @@ struct target_section
     CORE_ADDR endaddr;		/* 1+highest address in section */
 
     struct bfd_section *the_bfd_section;
+
+    /* A given BFD may appear multiple times in the target section
+       list, so each BFD is associated with a given key.  The key is
+       just some convenient pointer that can be used to differentiate
+       the BFDs.  These are managed only by convention.  */
+    void *key;
 
     bfd *bfd;			/* BFD file pointer */
   };

@@ -25,6 +25,7 @@
 #define PARSER_DEFS_H 1
 
 #include "doublest.h"
+#include "vec.h"
 
 struct block;
 
@@ -107,6 +108,8 @@ struct objc_class_str
     int class;
   };
 
+typedef struct type *type_ptr;
+DEF_VEC_P (type_ptr);
 
 /* For parsing of complicated types.
    An array should be preceded in the list by the size of the array.  */
@@ -116,19 +119,33 @@ enum type_pieces
     tp_pointer, 
     tp_reference, 
     tp_array, 
-    tp_function, 
+    tp_function,
+    tp_function_with_arguments,
     tp_const, 
     tp_volatile, 
-    tp_space_identifier
+    tp_space_identifier,
+    tp_type_stack
   };
 /* The stack can contain either an enum type_pieces or an int.  */
 union type_stack_elt
   {
     enum type_pieces piece;
     int int_val;
+    struct type_stack *stack_val;
+    VEC (type_ptr) *typelist_val;
   };
-extern union type_stack_elt *type_stack;
-extern int type_stack_depth, type_stack_size;
+
+/* The type stack is an instance of this structure.  */
+
+struct type_stack
+{
+  /* Elements on the stack.  */
+  union type_stack_elt *elements;
+  /* Current stack depth.  */
+  int depth;
+  /* Allocated size of stack.  */
+  int size;
+};
 
 /* Helper function to initialize the expout, expout_size, expout_ptr
    trio before it is used to store expression elements created during
@@ -203,6 +220,17 @@ extern void insert_type_address_space (char *);
 extern enum type_pieces pop_type (void);
 
 extern int pop_type_int (void);
+
+extern struct type_stack *get_type_stack (void);
+
+extern struct type_stack *append_type_stack (struct type_stack *to,
+					     struct type_stack *from);
+
+extern void push_type_stack (struct type_stack *stack);
+
+extern void type_stack_cleanup (void *arg);
+
+extern void push_typelist (VEC (type_ptr) *typelist);
 
 extern int length_of_subexp (struct expression *, int);
 
@@ -307,7 +335,10 @@ struct exp_descriptor
 						void *data),
 			   void *data);
 
-    /* Name of this operator for dumping purposes.  */
+    /* Name of this operator for dumping purposes.
+       The returned value should never be NULL, even if EXP_OPCODE is
+       an unknown opcode (a string containing an image of the numeric
+       value of the opcode can be returned, for instance).  */
     char *(*op_name) (enum exp_opcode);
 
     /* Dump the rest of this (prefix) expression after the operator

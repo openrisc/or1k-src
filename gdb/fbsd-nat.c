@@ -55,7 +55,7 @@ fbsd_pid_to_exec_file (int pid)
 #endif
 
   path = xstrprintf ("/proc/%d/file", pid);
-  if (readlink (path, buf, MAXPATHLEN) == -1)
+  if (readlink (path, buf, MAXPATHLEN - 1) == -1)
     {
       xfree (buf);
       buf = NULL;
@@ -125,14 +125,15 @@ fbsd_find_memory_regions (find_memory_region_ftype func, void *obfd)
 	{
 	  fprintf_filtered (gdb_stdout, 
 			    "Save segment, %ld bytes at %s (%c%c%c)\n",
-			    size, paddress (target_gdbarch, start),
+			    size, paddress (target_gdbarch (), start),
 			    read ? 'r' : '-',
 			    write ? 'w' : '-',
 			    exec ? 'x' : '-');
 	}
 
-      /* Invoke the callback function to create the corefile segment.  */
-      func (start, size, read, write, exec, obfd);
+      /* Invoke the callback function to create the corefile segment.
+	 Pass MODIFIED as true, we do not know the real modification state.  */
+      func (start, size, read, write, exec, 1, obfd);
     }
 
   do_cleanups (cleanup);

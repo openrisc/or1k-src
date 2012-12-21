@@ -34,6 +34,7 @@
 #include "gdb_stat.h"
 #include "completer.h"
 #include "exceptions.h"
+#include "observer.h"
 
 /* Local function declarations.  */
 
@@ -202,11 +203,11 @@ memory_error (int status, CORE_ADDR memaddr)
        bounds.  */
     throw_error (MEMORY_ERROR,
 		 _("Cannot access memory at address %s"),
-		 paddress (target_gdbarch, memaddr));
+		 paddress (target_gdbarch (), memaddr));
   else
     throw_error (MEMORY_ERROR,
 		 _("Error accessing memory address %s: %s."),
-		 paddress (target_gdbarch, memaddr),
+		 paddress (target_gdbarch (), memaddr),
 		 safe_strerror (status));
 }
 
@@ -361,6 +362,16 @@ write_memory (CORE_ADDR memaddr,
     memory_error (status, memaddr);
 }
 
+/* Same as write_memory, but notify 'memory_changed' observers.  */
+
+void
+write_memory_with_notification (CORE_ADDR memaddr, const bfd_byte *myaddr,
+				ssize_t len)
+{
+  write_memory (memaddr, myaddr, len);
+  observer_notify_memory_changed (current_inferior (), memaddr, len, myaddr);
+}
+
 /* Store VALUE at ADDR in the inferior as a LEN-byte unsigned
    integer.  */
 void
@@ -445,6 +456,7 @@ Use `set gnutarget auto' to specify automatic detection."),
 				   set_gnutarget_command,
 				   show_gnutarget_string,
 				   &setlist, &showlist);
+  add_alias_cmd ("g", "gnutarget", class_files, 1, &setlist);
 
   if (getenv ("GNUTARGET"))
     set_gnutarget (getenv ("GNUTARGET"));

@@ -1,11 +1,9 @@
 D/a29khif////
 D/arc////
 D/arm////
-D/cygwin////
 D/d10v////
 D/decstation////
 D/epiphany////
-D/go32////
 D/h8300hms////
 D/h8500hms////
 D/linux////
@@ -25,8 +23,10 @@ D/sysvnecv70////
 D/tic80////
 D/w65////
 D/z8ksim////
-/Makefile.am/1.3/Mon May  7 21:35:08 2012/-ko/
-/Makefile.in/1.17/Mon May  7 21:35:08 2012/-ko/
-/aclocal.m4/1.29/Mon May  7 21:35:08 2012/-ko/
-/configure/1.37/Mon May  7 21:35:08 2012/-ko/
-/configure.in/1.10/Mon May  7 21:35:08 2012/-ko/
+/Makefile.am/1.3/Sat Oct 27 22:59:29 2012/-ko/
+/Makefile.in/1.17/Sat Oct 27 22:59:29 2012/-ko/
+/aclocal.m4/1.29/Sat Oct 27 22:59:29 2012/-ko/
+/configure/1.37/Sat Oct 27 22:59:29 2012/-ko/
+/configure.in/1.10/Sat Oct 27 22:59:29 2012/-ko/
+D/cygwin////
+D/go32////

@@ -28,6 +28,7 @@
 #include "elf/common.h"
 #include "dwarf2.h"
 #include "dwarf.h"
+#include "gdb/gdb-index.h"
 
 static const char *regname (unsigned int regno, int row);
 
@@ -61,6 +62,8 @@ int do_gdb_index;
 int do_trace_info;
 int do_trace_abbrevs;
 int do_trace_aranges;
+int do_debug_addr;
+int do_debug_cu_index;
 int do_wide;
 
 int dwarf_cutoff_level = -1;
@@ -646,11 +649,13 @@ process_abbrev_section (unsigned char *start, unsigned char *end)
 	  form = read_leb128 (start, & bytes_read, 0);
 	  start += bytes_read;
 
-	  if (attribute != 0)
-	    add_abbrev_attr (attribute, form);
+	  add_abbrev_attr (attribute, form);
 	}
       while (attribute != 0);
     }
+
+  /* Report the missing single zero which ends the section.  */
+  error (_(".debug_abbrev section not zero terminated\n"));
 
   return NULL;
 }
@@ -674,8 +679,12 @@ get_TAG_name (unsigned long tag)
 static const char *
 get_FORM_name (unsigned long form)
 {
-  const char *name = get_DW_FORM_name (form);
+  const char *name;
+  
+  if (form == 0)
+    return "DW_FORM value: 0";
 
+  name = get_DW_FORM_name (form);
   if (name == NULL)
     {
       static char buffer[100];
@@ -1184,6 +1193,11 @@ decode_location_expression (unsigned char * data,
           uvalue = read_leb128 (data, &bytes_read, 0);
           data += bytes_read;
           printf ("DW_OP_GNU_addr_index <0x%s>", dwarf_vmatoa ("x", uvalue));
+          break;
+        case DW_OP_GNU_const_index:
+          uvalue = read_leb128 (data, &bytes_read, 0);
+          data += bytes_read;
+          printf ("DW_OP_GNU_const_index <0x%s>", dwarf_vmatoa ("x", uvalue));
           break;
 
 	  /* HP extensions.  */
@@ -1859,6 +1873,9 @@ get_AT_name (unsigned long attribute)
 {
   const char *name;
 
+  if (attribute == 0)
+    return "DW_AT value: 0";
+
   /* One value is shared by the MIPS and HP extensions:  */
   if (attribute == DW_AT_MIPS_fde)
     return "DW_AT_MIPS_fde or DW_AT_HP_unmodifiable";
@@ -2160,6 +2177,10 @@ process_debug_info (struct dwarf_section *section,
 		    break;
 		}
 
+	      if (!do_loc && die_offset >= dwarf_start_die)
+		printf (_(" <%d><%lx>: Abbrev Number: 0\n"),
+			level, die_offset);
+
 	      --level;
 	      if (level < 0)
 		{
@@ -2237,7 +2258,9 @@ process_debug_info (struct dwarf_section *section,
 	      break;
 	    }
 
-	  for (attr = entry->first_attr; attr; attr = attr->next)
+	  for (attr = entry->first_attr;
+	       attr && attr->attribute;
+	       attr = attr->next)
 	    {
 	      debug_info *arg;
 
@@ -2292,7 +2315,7 @@ load_debug_info (void * file)
   warned_about_missing_comp_units = FALSE;
 
   /* If we have already tried and failed to load the .debug_info
-     section then do not bother to repear the task.  */
+     section then do not bother to repeat the task.  */
   if (num_debug_info_entries == DEBUG_INFO_UNAVAILABLE)
     return 0;
 
@@ -5676,23 +5699,19 @@ display_gdb_index (struct dwarf_section *section,
 
   /* Prior versions are obsolete, and future versions may not be
      backwards compatible.  */
-  switch (version)
+  if (version < 3 || version > 7)
     {
-    case 3:
-      warn (_("The address table data in version 3 may be wrong.\n"));
-      break;
-    case 4:
-      warn (_("Version 4 does not support case insensitive lookups.\n"));
-      break;
-    case 5:
-      warn (_("Version 5 does not include inlined functions.\n"));
-      break;
-    case 6:
-      break;
-    default:
       warn (_("Unsupported version %lu.\n"), (unsigned long) version);
       return 0;
     }
+  if (version < 4)
+    warn (_("The address table data in version 3 may be wrong.\n"));
+  if (version < 5)
+    warn (_("Version 4 does not support case insensitive lookups.\n"));
+  if (version < 6)
+    warn (_("Version 5 does not include inlined functions.\n"));
+  if (version < 7)
+      warn (_("Version 6 does not include symbol attributes.\n"));
 
   cu_list_offset = byte_get_little_endian (start + 4, 4);
   tu_list_offset = byte_get_little_endian (start + 8, 4);
@@ -5772,20 +5791,259 @@ display_gdb_index (struct dwarf_section *section,
 
 	  printf ("[%3u] %s:", i, constant_pool + name_offset);
 	  num_cus = byte_get_little_endian (constant_pool + cu_vector_offset, 4);
+	  if (num_cus > 1)
+	    printf ("\n");
 	  for (j = 0; j < num_cus; ++j)
 	    {
+	      int is_static;
+	      gdb_index_symbol_kind kind;
+
 	      cu = byte_get_little_endian (constant_pool + cu_vector_offset + 4 + j * 4, 4);
+	      is_static = GDB_INDEX_SYMBOL_STATIC_VALUE (cu);
+	      kind = GDB_INDEX_SYMBOL_KIND_VALUE (cu);
+	      cu = GDB_INDEX_CU_VALUE (cu);
 	      /* Convert to TU number if it's for a type unit.  */
 	      if (cu >= cu_list_elements / 2)
-		printf (" T%lu", (unsigned long) (cu - cu_list_elements / 2));
+		printf ("%cT%lu", num_cus > 1 ? '\t' : ' ',
+			(unsigned long) (cu - cu_list_elements / 2));
 	      else
-		printf (" %lu", (unsigned long) cu);
+		printf ("%c%lu", num_cus > 1 ? '\t' : ' ', (unsigned long) cu);
+
+	      switch (kind)
+		{
+		case GDB_INDEX_SYMBOL_KIND_NONE:
+		  printf (_(" [no symbol information]"));
+		  break;
+		case GDB_INDEX_SYMBOL_KIND_TYPE:
+		  printf (is_static
+			  ? _(" [static type]")
+			  : _(" [global type]"));
+		  break;
+		case GDB_INDEX_SYMBOL_KIND_VARIABLE:
+		  printf (is_static
+			  ? _(" [static variable]")
+			  : _(" [global variable]"));
+		  break;
+		case GDB_INDEX_SYMBOL_KIND_FUNCTION:
+		  printf (is_static
+			  ? _(" [static function]")
+			  : _(" [global function]"));
+		  break;
+		case GDB_INDEX_SYMBOL_KIND_OTHER:
+		  printf (is_static
+			  ? _(" [static other]")
+			  : _(" [global other]"));
+		  break;
+		default:
+		  printf (is_static
+			  ? _(" [static unknown: %d]")
+			  : _(" [global unknown: %d]"),
+			  kind);
+		  break;
+		}
+	      if (num_cus > 1)
+		printf ("\n");
 	    }
-	  printf ("\n");
+	  if (num_cus <= 1)
+	    printf ("\n");
 	}
     }
 
   return 1;
+}
+
+/* Collection of CU/TU section sets from .debug_cu_index and .debug_tu_index
+   sections.  Each set is stored in SHNDX_POOL as a zero-terminated list of
+   section indexes comprising one set of debug sections from a .dwo file.  */
+
+int cu_tu_indexes_read = 0;
+unsigned int *shndx_pool = NULL;
+unsigned int shndx_pool_size = 0;
+unsigned int shndx_pool_used = 0;
+
+/* Pre-allocate enough space for the CU/TU sets needed.  */
+
+static void
+prealloc_cu_tu_list (unsigned int nshndx)
+{
+  if (shndx_pool == NULL)
+    {
+      shndx_pool_size = nshndx;
+      shndx_pool_used = 0;
+      shndx_pool = (unsigned int *) xcmalloc (shndx_pool_size,
+					      sizeof (unsigned int));
+    }
+  else
+    {
+      shndx_pool_size = shndx_pool_used + nshndx;
+      shndx_pool = (unsigned int *) xcrealloc (shndx_pool, shndx_pool_size,
+					       sizeof (unsigned int));
+    }
+}
+
+static void
+add_shndx_to_cu_tu_entry (unsigned int shndx)
+{
+  if (shndx_pool_used >= shndx_pool_size)
+    {
+      error (_("Internal error: out of space in the shndx pool.\n"));
+      return;
+    }
+  shndx_pool [shndx_pool_used++] = shndx;
+}
+
+static void
+end_cu_tu_entry (void)
+{
+  if (shndx_pool_used >= shndx_pool_size)
+    {
+      error (_("Internal error: out of space in the shndx pool.\n"));
+      return;
+    }
+  shndx_pool [shndx_pool_used++] = 0;
+}
+
+/* Process a CU or TU index.  If DO_DISPLAY is true, print the contents.  */
+
+static int
+process_cu_tu_index (struct dwarf_section *section, int do_display)
+{
+  unsigned char *phdr = section->start;
+  unsigned char *limit = phdr + section->size;
+  unsigned char *phash;
+  unsigned char *pindex;
+  unsigned char *ppool;
+  unsigned int version;
+  unsigned int nused;
+  unsigned int nslots;
+  unsigned int i;
+
+  version = byte_get (phdr, 4);
+  nused = byte_get (phdr + 8, 4);
+  nslots = byte_get (phdr + 12, 4);
+  phash = phdr + 16;
+  pindex = phash + nslots * 8;
+  ppool = pindex + nslots * 4;
+
+  if (!do_display)
+    prealloc_cu_tu_list((limit - ppool) / 4);
+
+  if (do_display)
+    {
+      printf (_("Contents of the %s section:\n\n"), section->name);
+      printf (_("  Version:                 %d\n"), version);
+      printf (_("  Number of used entries:  %d\n"), nused);
+      printf (_("  Number of slots:         %d\n\n"), nslots);
+    }
+
+  if (ppool > limit)
+    {
+      warn (_("Section %s too small for %d hash table entries\n"),
+	    section->name, nslots);
+      return 0;
+    }
+
+  for (i = 0; i < nslots; i++)
+    {
+      dwarf_vma signature_high;
+      dwarf_vma signature_low;
+      unsigned int j;
+      unsigned char *shndx_list;
+      unsigned int shndx;
+      char buf[64];
+
+      byte_get_64 (phash, &signature_high, &signature_low);
+      if (signature_high != 0 || signature_low != 0)
+	{
+	  j = byte_get (pindex, 4);
+	  shndx_list = ppool + j * 4;
+	  if (do_display)
+	    printf (_("  [%3d] Signature:  0x%s  Sections: "),
+		    i, dwarf_vmatoa64 (signature_high, signature_low,
+				       buf, sizeof (buf)));
+	  for (;;)
+	    {
+	      if (shndx_list >= limit)
+		{
+		  warn (_("Section %s too small for shndx pool\n"),
+			section->name);
+		  return 0;
+		}
+	      shndx = byte_get (shndx_list, 4);
+	      if (shndx == 0)
+		break;
+	      if (do_display)
+		printf (" %d", shndx);
+	      else
+		add_shndx_to_cu_tu_entry (shndx);
+	      shndx_list += 4;
+	    }
+	  if (do_display)
+	    printf ("\n");
+	  else
+	    end_cu_tu_entry ();
+	}
+      phash += 8;
+      pindex += 4;
+    }
+
+  if (do_display)
+      printf ("\n");
+
+  return 1;
+}
+
+/* Load the CU and TU indexes if present.  This will build a list of
+   section sets that we can use to associate a .debug_info.dwo section
+   with its associated .debug_abbrev.dwo section in a .dwp file.  */
+
+static void
+load_cu_tu_indexes (void *file)
+{
+  /* If we have already loaded (or tried to load) the CU and TU indexes
+     then do not bother to repeat the task.  */
+  if (cu_tu_indexes_read)
+    return;
+
+  if (load_debug_section (dwp_cu_index, file))
+    process_cu_tu_index (&debug_displays [dwp_cu_index].section, 0);
+
+  if (load_debug_section (dwp_tu_index, file))
+    process_cu_tu_index (&debug_displays [dwp_tu_index].section, 0);
+
+  cu_tu_indexes_read = 1;
+}
+
+/* Find the set of sections that includes section SHNDX.  */
+
+unsigned int *
+find_cu_tu_set (void *file, unsigned int shndx)
+{
+  unsigned int i;
+
+  load_cu_tu_indexes (file);
+
+  /* Find SHNDX in the shndx pool.  */
+  for (i = 0; i < shndx_pool_used; i++)
+    if (shndx_pool [i] == shndx)
+      break;
+
+  if (i >= shndx_pool_used)
+    return NULL;
+
+  /* Now backup to find the first entry in the set.  */
+  while (i > 0 && shndx_pool [i - 1] != 0)
+    i--;
+
+  return shndx_pool + i;
+}
+
+/* Display a .debug_cu_index or .debug_tu_index section.  */
+
+static int
+display_cu_index (struct dwarf_section *section, void *file ATTRIBUTE_UNUSED)
+{
+  return process_cu_tu_index (section, 1);
 }
 
 static int
@@ -5876,13 +6134,16 @@ dwarf_select_sections_by_names (const char *names)
       /* Please keep this table alpha- sorted.  */
       { "Ranges", & do_debug_ranges, 1 },
       { "abbrev", & do_debug_abbrevs, 1 },
+      { "addr", & do_debug_addr, 1 },
       { "aranges", & do_debug_aranges, 1 },
+      { "cu_index", & do_debug_cu_index, 1 },
+      { "decodedline", & do_debug_lines, FLAG_DEBUG_LINES_DECODED },
       { "frames", & do_debug_frames, 1 },
       { "frames-interp", & do_debug_frames_interp, 1 },
+      /* The special .gdb_index section.  */
+      { "gdb_index", & do_gdb_index, 1 },
       { "info", & do_debug_info, 1 },
       { "line", & do_debug_lines, FLAG_DEBUG_LINES_RAW }, /* For backwards compatibility.  */
-      { "rawline", & do_debug_lines, FLAG_DEBUG_LINES_RAW },
-      { "decodedline", & do_debug_lines, FLAG_DEBUG_LINES_DECODED },
       { "loc",  & do_debug_loc, 1 },
       { "macro", & do_debug_macinfo, 1 },
       { "pubnames", & do_debug_pubnames, 1 },
@@ -5890,9 +6151,8 @@ dwarf_select_sections_by_names (const char *names)
       /* This entry is for compatability
 	 with earlier versions of readelf.  */
       { "ranges", & do_debug_aranges, 1 },
+      { "rawline", & do_debug_lines, FLAG_DEBUG_LINES_RAW },
       { "str", & do_debug_str, 1 },
-      /* The special .gdb_index section.  */
-      { "gdb_index", & do_gdb_index, 1 },
       /* These trace_* sections are used by Itanium VMS.  */
       { "trace_abbrev", & do_trace_abbrevs, 1 },
       { "trace_aranges", & do_trace_aranges, 1 },
@@ -6021,73 +6281,78 @@ dwarf_select_sections_all (void)
   do_trace_info = 1;
   do_trace_abbrevs = 1;
   do_trace_aranges = 1;
+  do_debug_addr = 1;
+  do_debug_cu_index = 1;
 }
 
 struct dwarf_section_display debug_displays[] =
 {
-  { { ".debug_abbrev",	    ".zdebug_abbrev",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_abbrev",	    ".zdebug_abbrev",	NULL, NULL, 0, 0, 0 },
     display_debug_abbrev,   &do_debug_abbrevs,	0 },
-  { { ".debug_aranges",	    ".zdebug_aranges",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_aranges",	    ".zdebug_aranges",	NULL, NULL, 0, 0, 0 },
     display_debug_aranges,  &do_debug_aranges,	1 },
-  { { ".debug_frame",       ".zdebug_frame",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_frame",       ".zdebug_frame",	NULL, NULL, 0, 0, 0 },
     display_debug_frames,   &do_debug_frames,	1 },
   { { ".debug_info",	    ".zdebug_info",	NULL, NULL, 0, 0, abbrev },
     display_debug_info,	    &do_debug_info,	1 },
-  { { ".debug_line",	    ".zdebug_line",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_line",	    ".zdebug_line",	NULL, NULL, 0, 0, 0 },
     display_debug_lines,    &do_debug_lines,	1 },
-  { { ".debug_pubnames",    ".zdebug_pubnames",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_pubnames",    ".zdebug_pubnames",	NULL, NULL, 0, 0, 0 },
     display_debug_pubnames, &do_debug_pubnames,	0 },
-  { { ".eh_frame",	    "",			NULL, NULL, 0, 0, abbrev },
+  { { ".eh_frame",	    "",			NULL, NULL, 0, 0, 0 },
     display_debug_frames,   &do_debug_frames,	1 },
-  { { ".debug_macinfo",	    ".zdebug_macinfo",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_macinfo",	    ".zdebug_macinfo",	NULL, NULL, 0, 0, 0 },
     display_debug_macinfo,  &do_debug_macinfo,	0 },
-  { { ".debug_macro",	    ".zdebug_macro",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_macro",	    ".zdebug_macro",	NULL, NULL, 0, 0, 0 },
     display_debug_macro,    &do_debug_macinfo,	1 },
-  { { ".debug_str",	    ".zdebug_str",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_str",	    ".zdebug_str",	NULL, NULL, 0, 0, 0 },
     display_debug_str,	    &do_debug_str,	0 },
-  { { ".debug_loc",	    ".zdebug_loc",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_loc",	    ".zdebug_loc",	NULL, NULL, 0, 0, 0 },
     display_debug_loc,	    &do_debug_loc,	1 },
-  { { ".debug_pubtypes",    ".zdebug_pubtypes",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_pubtypes",    ".zdebug_pubtypes",	NULL, NULL, 0, 0, 0 },
     display_debug_pubnames, &do_debug_pubtypes,	0 },
-  { { ".debug_ranges",	    ".zdebug_ranges",	NULL, NULL, 0, 0, abbrev },
+  { { ".debug_ranges",	    ".zdebug_ranges",	NULL, NULL, 0, 0, 0 },
     display_debug_ranges,   &do_debug_ranges,	1 },
-  { { ".debug_static_func", ".zdebug_static_func", NULL, NULL, 0, 0, abbrev },
+  { { ".debug_static_func", ".zdebug_static_func", NULL, NULL, 0, 0, 0 },
     display_debug_not_supported, NULL,		0 },
-  { { ".debug_static_vars", ".zdebug_static_vars", NULL, NULL, 0, 0, abbrev },
+  { { ".debug_static_vars", ".zdebug_static_vars", NULL, NULL, 0, 0, 0 },
     display_debug_not_supported, NULL,		0 },
   { { ".debug_types",	    ".zdebug_types",	NULL, NULL, 0, 0, abbrev },
     display_debug_types,    &do_debug_info,	1 },
-  { { ".debug_weaknames",   ".zdebug_weaknames", NULL, NULL, 0, 0, abbrev },
+  { { ".debug_weaknames",   ".zdebug_weaknames", NULL, NULL, 0, 0, 0 },
     display_debug_not_supported, NULL,		0 },
-  { { ".gdb_index",	    "",	                NULL, NULL, 0, 0, abbrev },
-    display_gdb_index,			&do_gdb_index,		0 },
+  { { ".gdb_index",	    "",	                NULL, NULL, 0, 0, 0 },
+    display_gdb_index,      &do_gdb_index,	0 },
   { { ".trace_info",	    "",			NULL, NULL, 0, 0, trace_abbrev },
-    display_trace_info,			&do_trace_info,		1 },
-  { { ".trace_abbrev",	    "",			NULL, NULL, 0, 0, abbrev },
-    display_debug_abbrev,		&do_trace_abbrevs,	0 },
-  { { ".trace_aranges",	    "",			NULL, NULL, 0, 0, abbrev },
-    display_debug_aranges,		&do_trace_aranges,	0 },
+    display_trace_info,	    &do_trace_info,	1 },
+  { { ".trace_abbrev",	    "",			NULL, NULL, 0, 0, 0 },
+    display_debug_abbrev,   &do_trace_abbrevs,	0 },
+  { { ".trace_aranges",	    "",			NULL, NULL, 0, 0, 0 },
+    display_debug_aranges,  &do_trace_aranges,	0 },
   { { ".debug_info.dwo",    ".zdebug_info.dwo",	NULL, NULL, 0, 0, abbrev_dwo },
-    display_debug_info,			&do_debug_info,		1 },
-  { { ".debug_abbrev.dwo",  ".zdebug_abbrev.dwo", NULL, NULL, 0, 0, abbrev_dwo },
-    display_debug_abbrev,		&do_debug_abbrevs,	0 },
+    display_debug_info,	    &do_debug_info,	1 },
+  { { ".debug_abbrev.dwo",  ".zdebug_abbrev.dwo", NULL, NULL, 0, 0, 0 },
+    display_debug_abbrev,   &do_debug_abbrevs,	0 },
   { { ".debug_types.dwo",   ".zdebug_types.dwo", NULL, NULL, 0, 0, abbrev_dwo },
-    display_debug_types,		&do_debug_info,		1 },
-  { { ".debug_line.dwo",   ".zdebug_line.dwo", NULL, NULL, 0, 0, abbrev_dwo },
-    display_debug_lines,   &do_debug_lines,	1 },
-  { { ".debug_loc.dwo",	    ".zdebug_loc.dwo",	NULL, NULL, 0, 0, abbrev_dwo },
+    display_debug_types,    &do_debug_info,	1 },
+  { { ".debug_line.dwo",    ".zdebug_line.dwo", NULL, NULL, 0, 0, 0 },
+    display_debug_lines,    &do_debug_lines,	1 },
+  { { ".debug_loc.dwo",	    ".zdebug_loc.dwo",	NULL, NULL, 0, 0, 0 },
     display_debug_loc,	    &do_debug_loc,	1 },
-  { { ".debug_macro.dwo",   ".zdebug_macro.dwo",NULL, NULL, 0, 0, abbrev },
+  { { ".debug_macro.dwo",   ".zdebug_macro.dwo", NULL, NULL, 0, 0, 0 },
     display_debug_macro,    &do_debug_macinfo,	1 },
-  { { ".debug_macinfo.dwo", ".zdebug_macinfo.dwo",NULL, NULL, 0, 0, abbrev },
+  { { ".debug_macinfo.dwo", ".zdebug_macinfo.dwo", NULL, NULL, 0, 0, 0 },
     display_debug_macinfo,  &do_debug_macinfo,	0 },
-  { { ".debug_str.dwo",   ".zdebug_str.dwo", NULL, NULL, 0, 0, str_dwo },
-    display_debug_str,     &do_debug_str,	        1 },
-  { { ".debug_str_offsets",".zdebug_str_offsets", NULL, NULL, 0, 0, abbrev },
+  { { ".debug_str.dwo",     ".zdebug_str.dwo",  NULL, NULL, 0, 0, 0 },
+    display_debug_str,      &do_debug_str,	1 },
+  { { ".debug_str_offsets", ".zdebug_str_offsets", NULL, NULL, 0, 0, 0 },
     display_debug_str_offsets, NULL,		0 },
-  { { ".debug_str_offsets.dwo",".zdebug_str_offsets.dwo", NULL, NULL, 0, 0,
-      abbrev },
+  { { ".debug_str_offsets.dwo", ".zdebug_str_offsets.dwo", NULL, NULL, 0, 0, 0 },
     display_debug_str_offsets, NULL,		0 },
-  { { ".debug_addr",".zdebug_addr",             NULL, NULL, 0, 0, debug_addr },
-    display_debug_addr, NULL,		1 },
+  { { ".debug_addr",	    ".zdebug_addr",     NULL, NULL, 0, 0, 0 },
+    display_debug_addr,     &do_debug_addr,	1 },
+  { { ".debug_cu_index",    "",			NULL, NULL, 0, 0, 0 },
+    display_cu_index,       &do_debug_cu_index,	0 },
+  { { ".debug_tu_index",    "",			NULL, NULL, 0, 0, 0 },
+    display_cu_index,       &do_debug_cu_index,	0 },
 };

@@ -402,7 +402,7 @@ cat <<EOF
 
     ${RELOCATING+${INIT_START}}
     ${RELOCATING+KEEP (*(.init.literal))}
-    ${RELOCATING+KEEP (*(.init))}
+    ${RELOCATING+KEEP (*(SORT_NONE(.init)))}
     ${RELOCATING+${INIT_END}}
 
     ${RELOCATING+${TEXT_START_SYMBOLS}}
@@ -413,7 +413,7 @@ cat <<EOF
 
     ${RELOCATING+${FINI_START}}
     ${RELOCATING+KEEP (*(.fini.literal))}
-    ${RELOCATING+KEEP (*(.fini))}
+    ${RELOCATING+KEEP (*(SORT_NONE(.fini)))}
     ${RELOCATING+${FINI_END}}
   } =${NOP-0}
 
@@ -574,6 +574,9 @@ cat <<EOF
   .debug_pubtypes 0 : { *(.debug_pubtypes) }
   .debug_ranges   0 : { *(.debug_ranges) }
 
+  /* DWARF Extension.  */
+  .debug_macro    0 : { *(.debug_macro) } 
+  
   ${TINY_DATA_SECTION}
   ${TINY_BSS_SECTION}
 

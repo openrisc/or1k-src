@@ -1,4 +1,5 @@
-/* *INDENT-OFF* */ /* THIS FILE IS GENERATED */
+/* *INDENT-OFF* */ /* THIS FILE IS GENERATED -*- buffer-read-only: t -*- */
+/* vi:set ro: */
 
 /* Dynamic architecture support for GDB, the GNU debugger.
 
@@ -57,17 +58,25 @@ struct agent_expr;
 struct axs_value;
 struct stap_parse_info;
 
-/* The architecture associated with the connection to the target.
- 
-   The architecture vector provides some information that is really
-   a property of the target: The layout of certain packets, for instance;
-   or the solib_ops vector.  Etc.  To differentiate architecture accesses
-   to per-target properties from per-thread/per-frame/per-objfile properties,
-   accesses to per-target properties should be made through target_gdbarch.
+/* The architecture associated with the inferior through the
+   connection to the target.
 
-   Eventually, when support for multiple targets is implemented in
-   GDB, this global should be made target-specific.  */
-extern struct gdbarch *target_gdbarch;
+   The architecture vector provides some information that is really a
+   property of the inferior, accessed through a particular target:
+   ptrace operations; the layout of certain RSP packets; the solib_ops
+   vector; etc.  To differentiate architecture accesses to
+   per-inferior/target properties from
+   per-thread/per-frame/per-objfile properties, accesses to
+   per-inferior/target properties should be made through this
+   gdbarch.  */
+
+/* This is a convenience wrapper for 'current_inferior ()->gdbarch'.  */
+extern struct gdbarch *target_gdbarch (void);
+
+/* The initial, default architecture.  It uses host values (for want of a better
+   choice).  */
+extern struct gdbarch startup_gdbarch;
+
 
 /* Callback type for the 'iterate_over_objfiles_in_search_order'
    gdbarch  method.  */
@@ -590,13 +599,6 @@ extern void set_gdbarch_convert_from_func_ptr_addr (struct gdbarch *gdbarch, gdb
 typedef CORE_ADDR (gdbarch_addr_bits_remove_ftype) (struct gdbarch *gdbarch, CORE_ADDR addr);
 extern CORE_ADDR gdbarch_addr_bits_remove (struct gdbarch *gdbarch, CORE_ADDR addr);
 extern void set_gdbarch_addr_bits_remove (struct gdbarch *gdbarch, gdbarch_addr_bits_remove_ftype *addr_bits_remove);
-
-/* It is not at all clear why gdbarch_smash_text_address is not folded into
-   gdbarch_addr_bits_remove. */
-
-typedef CORE_ADDR (gdbarch_smash_text_address_ftype) (struct gdbarch *gdbarch, CORE_ADDR addr);
-extern CORE_ADDR gdbarch_smash_text_address (struct gdbarch *gdbarch, CORE_ADDR addr);
-extern void set_gdbarch_smash_text_address (struct gdbarch *gdbarch, gdbarch_smash_text_address_ftype *smash_text_address);
 
 /* FIXME/cagney/2001-01-18: This should be split in two.  A target method that
    indicates if the target needs software single step.  An ISA method to
@@ -1373,15 +1375,9 @@ extern int gdbarch_update_p (struct gdbarch_info info);
 extern struct gdbarch *gdbarch_find_by_info (struct gdbarch_info info);
 
 
-/* Helper function.  Set the global "target_gdbarch" to "gdbarch".
+/* Helper function.  Set the target gdbarch to "gdbarch".  */
 
-   FIXME: kettenis/20031124: Of the functions that follow, only
-   gdbarch_from_bfd is supposed to survive.  The others will
-   dissappear since in the future GDB will (hopefully) be truly
-   multi-arch.  However, for now we're still stuck with the concept of
-   a single active architecture.  */
-
-extern void deprecated_target_gdbarch_select_hack (struct gdbarch *gdbarch);
+extern void set_target_gdbarch (struct gdbarch *gdbarch);
 
 
 /* Register per-architecture data-pointer.
@@ -1426,7 +1422,7 @@ extern void set_gdbarch_from_file (bfd *);
 extern void initialize_current_architecture (void);
 
 /* gdbarch trace variable */
-extern int gdbarch_debug;
+extern unsigned int gdbarch_debug;
 
 extern void gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file);
 

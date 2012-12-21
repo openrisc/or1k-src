@@ -11,67 +11,13 @@ details. */
 #ifndef _WINBASE2_H
 #define _WINBASE2_H
 
-/* For some unknown reason, InterlockedAdd is only supported on Itanium
-   when using the Windows headers.  Fortunately we're not restricted to the
-   Windows headers :) */
-extern __inline__ long
-ilockadd (volatile long *m, long value)
-{
-  register int __res;
-  __asm__ __volatile__ ("\n\
-	movl	%3,%0\n\
-	lock	xadd %0,%1\n\
-	addl	%3,%0\n\
-	": "=&r" (__res), "=m" (*m): "m" (*m), "r" (value): "cc");
-  return __res;
-}
-
-extern __inline__ long
-ilockincr (volatile long *m)
-{
-  register int __res;
-  __asm__ __volatile__ ("\n\
-	movl	$1,%0\n\
-	lock	xadd %0,%1\n\
-	inc	%0\n\
-	": "=&r" (__res), "=m" (*m): "m" (*m): "cc");
-  return __res;
-}
-
-extern __inline__ long
-ilockdecr (volatile long *m)
-{
-  register int __res;
-  __asm__ __volatile__ ("\n\
-	movl	$0xffffffff,%0\n\
-	lock	xadd %0,%1\n\
-	dec	%0\n\
-	": "=&r" (__res), "=m" (*m): "m" (*m): "cc");
-  return __res;
-}
-
-extern __inline__ long
-ilockexch (volatile long *t, long v)
+#ifndef __x86_64__
+extern __inline__ LONG
+ilockcmpexch (volatile LONG *t, LONG v, LONG c)
 {
   return
   ({
-    register long ret __asm ("%eax");
-    __asm __volatile ("\n"
-	"1:	lock cmpxchgl %2, %1\n"
-	"	jne  1b\n"
-	: "=a" (ret), "=m" (*t)
-	: "r" (v), "m" (*t), "0" (*t)
-	: "memory");
-    ret;
-  });
-}
-
-extern __inline__ long
-ilockcmpexch (volatile long *t, long v, long c)
-{
-  return
-  ({
-    register long ret __asm ("%eax");
+    register LONG ret __asm ("%eax");
     __asm __volatile ("lock cmpxchgl %2, %1"
 	: "=a" (ret), "=m" (*t)
 	: "r" (v), "m" (*t), "0" (c)
@@ -80,14 +26,10 @@ ilockcmpexch (volatile long *t, long v, long c)
   });
 }
 
-#undef InterlockedAdd
-#define InterlockedAdd ilockadd
-#undef InterlockedIncrement
-#define InterlockedIncrement ilockincr
-#undef InterlockedDecrement
-#define InterlockedDecrement ilockdecr
-#undef InterlockedExchange
-#define InterlockedExchange ilockexch
 #undef InterlockedCompareExchange
 #define InterlockedCompareExchange ilockcmpexch
+#undef InterlockedCompareExchangePointer
+#define InterlockedCompareExchangePointer(d,e,c) \
+    (PVOID)InterlockedCompareExchange((LONG volatile *)(d),(LONG)(e),(LONG)(c))
+#endif /* !__x86_64 */
 #endif /*_WINBASE2_H*/

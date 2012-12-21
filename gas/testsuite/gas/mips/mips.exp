@@ -458,7 +458,7 @@ if { [istarget mips*-*-vxworks*] } {
     set ecoff [expr [istarget *-*-ecoff*] || [istarget *-*-ultrix*] || [istarget *-*-irix\[1-4\]*] ]
     set aout [expr [istarget *-*-bsd*] || [istarget *-*-openbsd*] ]
     set addr32 [expr [istarget mipstx39*-*-*] || [istarget mips-*-linux*] || [istarget mipsel-*-linux*] || [istarget mips*-*-ecoff]]
-    set has_newabi [expr [istarget *-*-irix6*] || [istarget mips64*-*-linux*]]
+    set has_newabi [expr [istarget *-*-irix6*] || [istarget mips*-*-linux*] || [istarget mips*-sde-elf*]]
     set no_mips16 [expr !$elf]
     set no_micromips [expr !$elf]
 
@@ -478,7 +478,8 @@ if { [istarget mips*-*-vxworks*] } {
     if { $no_micromips } {
 	mips_arch_destroy micromips
     }
-    
+
+    run_dump_test_arches "dot-1"	[mips_arch_list_matching mips1]
     run_dump_test_arches "abs"		[mips_arch_list_matching mips1]
     run_dump_test_arches "add"		[mips_arch_list_matching mips1]
     run_dump_test_arches "and"		[mips_arch_list_matching mips1]
@@ -505,6 +506,20 @@ if { [istarget mips*-*-vxworks*] } {
     run_dump_test_arches "branch-misc-2pic-64" [mips_arch_list_matching mips3]
     run_dump_test "branch-misc-3"
     run_dump_test "branch-swap"
+
+    if $elf {
+	# Sweep a range of branch offsets so that it hits a position where
+	# it is at the beginning of a frag and then swapped with a 16-bit
+	# instruction from the preceding frag.  The offset will be somewhere
+	# close below 4096 as this is the default obstack size limit that
+	# we use and some space will have been already consumed.  The exact
+	# amount depends on the host's programming model.
+	for { set count 960 } { $count <= 1024 } { incr count } {
+	    run_list_test "branch-swap-2" "--defsym count=$count" \
+		"MIPS branch swapping ($count)"
+	}
+    }
+
     run_dump_test "div"
 
     if { !$addr32 } {
@@ -902,7 +917,9 @@ if { [istarget mips*-*-vxworks*] } {
 	if $has_newabi {
 	    run_dump_test "elf-rel28-n32"
 	    run_dump_test "elf-rel28-n64"
+	    run_dump_test_arches "elf-rel29" [mips_arch_list_matching mips3]
 	}
+	run_list_test_arches "elf-rel30" "-32" [mips_arch_list_all]
 
 	if { !$no_mips16 } {
 	    run_dump_test "${tmips}mips${el}16-e"
@@ -1023,8 +1040,10 @@ if { [istarget mips*-*-vxworks*] } {
     run_dump_test_arches "octeon2"	[mips_arch_list_matching octeon2]
 
     run_dump_test "smartmips"
-    run_dump_test "mips32-dsp"
-    run_dump_test "mips32-dspr2"
+    run_dump_test_arches "mips32-dsp"	[mips_arch_list_matching mips32r2 \
+					    !octeon]
+    run_dump_test_arches "mips32-dspr2"	[mips_arch_list_matching mips32r2 \
+					    !octeon]
     run_dump_test "mips64-dsp"
     run_dump_test "mips32-mt"
 
@@ -1094,8 +1113,22 @@ if { [istarget mips*-*-vxworks*] } {
 	run_dump_test "micromips-branch-relax"
 	run_dump_test "micromips-branch-relax-pic"
 	run_dump_test "micromips-branch-delay"
+	run_dump_test "micromips-warn-branch-delay"
+	run_dump_test "micromips-warn-branch-delay-1"
+	run_dump_test "micromips-b16"
     }
 
     run_dump_test_arches "mcu"		[mips_arch_list_matching mips32r2 \
 					    !octeon]
+    run_dump_test_arches "hilo-diff-eb"	[mips_arch_list_all]
+    run_dump_test_arches "hilo-diff-el"	[mips_arch_list_all]
+    if $has_newabi {
+	run_dump_test_arches "hilo-diff-eb-n32" [mips_arch_list_matching mips3]
+	run_dump_test_arches "hilo-diff-el-n32" [mips_arch_list_matching mips3]
+	run_dump_test_arches "hilo-diff-eb-n64" [mips_arch_list_matching mips3]
+	run_dump_test_arches "hilo-diff-el-n64" [mips_arch_list_matching mips3]
+    }
+    run_dump_test_arches "lui"		[mips_arch_list_matching mips1]
+    run_list_test_arches "lui-1" "-32"	[mips_arch_list_matching mips1]
+    run_list_test_arches "lui-2" "-32"	[mips_arch_list_matching mips1]
 }

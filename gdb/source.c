@@ -243,7 +243,8 @@ select_source_symtab (struct symtab *s)
      if one exists.  */
   if (lookup_symbol (main_name (), 0, VAR_DOMAIN, 0))
     {
-      sals = decode_line_spec (main_name (), DECODE_LINE_FUNFIRSTLINE);
+      sals = decode_line_with_current_source (main_name (),
+					      DECODE_LINE_FUNFIRSTLINE);
       sal = sals.sals[0];
       xfree (sals.sals);
       current_source_pspace = sal.pspace;
@@ -383,7 +384,7 @@ init_source_path (void)
 {
   char buf[20];
 
-  sprintf (buf, "$cdir%c$cwd", DIRNAME_SEPARATOR);
+  xsnprintf (buf, sizeof (buf), "$cdir%c$cwd", DIRNAME_SEPARATOR);
   source_path = xstrdup (buf);
   forget_cached_source_info ();
 }
@@ -1080,7 +1081,7 @@ open_source_file (struct symtab *s)
    If this function fails to find the file that this symtab represents,
    NULL will be returned and s->fullname will be set to NULL.  */
 
-char *
+const char *
 symtab_to_fullname (struct symtab *s)
 {
   int r;
@@ -1244,10 +1245,9 @@ identify_source_line (struct symtab *s, int line, int mid_statement,
 /* Print source lines from the file of symtab S,
    starting with line number LINE and stopping before line number STOPLINE.  */
 
-static void print_source_lines_base (struct symtab *s, int line, int stopline,
-				     int noerror);
 static void
-print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
+print_source_lines_base (struct symtab *s, int line, int stopline,
+			 enum print_source_lines_flags flags)
 {
   int c;
   int desc;
@@ -1275,13 +1275,13 @@ print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
       else
 	{
 	  desc = last_source_error;
-	  noerror = 1;
+	  flags |= PRINT_SOURCE_LINES_NOERROR;
 	}
     }
   else
     {
       desc = last_source_error;
-      noerror = 1;
+	  flags |= PRINT_SOURCE_LINES_NOERROR;
       noprint = 1;
     }
 
@@ -1289,10 +1289,12 @@ print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
     {
       last_source_error = desc;
 
-      if (!noerror)
+      if (!(flags & PRINT_SOURCE_LINES_NOERROR))
 	{
-	  char *name = alloca (strlen (s->filename) + 100);
-	  sprintf (name, "%d\t%s", line, s->filename);
+	  int len = strlen (s->filename) + 100;
+	  char *name = alloca (len);
+
+	  xsnprintf (name, len, "%d\t%s", line, s->filename);
 	  print_sys_errmsg (name, errno);
 	}
       else
@@ -1300,6 +1302,13 @@ print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
 	  ui_out_field_int (uiout, "line", line);
 	  ui_out_text (uiout, "\tin ");
 	  ui_out_field_string (uiout, "file", s->filename);
+	  if (ui_out_is_mi_like_p (uiout))
+	    {
+	      const char *fullname = symtab_to_fullname (s);
+
+	      if (fullname != NULL)
+		ui_out_field_string (uiout, "fullname", fullname);
+	    }
 	  ui_out_text (uiout, "\n");
 	}
 
@@ -1336,13 +1345,18 @@ print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
       if (c == EOF)
 	break;
       last_line_listed = current_source_line;
-      sprintf (buf, "%d\t", current_source_line++);
+      if (flags & PRINT_SOURCE_LINES_FILENAME)
+        {
+          ui_out_text (uiout, s->filename);
+          ui_out_text (uiout, ":");
+        }
+      xsnprintf (buf, sizeof (buf), "%d\t", current_source_line++);
       ui_out_text (uiout, buf);
       do
 	{
 	  if (c < 040 && c != '\t' && c != '\n' && c != '\r')
 	    {
-	      sprintf (buf, "^%c", c + 0100);
+	      xsnprintf (buf, sizeof (buf), "^%c", c + 0100);
 	      ui_out_text (uiout, buf);
 	    }
 	  else if (c == 0177)
@@ -1359,7 +1373,7 @@ print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
 	    }
 	  else
 	    {
-	      sprintf (buf, "%c", c);
+	      xsnprintf (buf, sizeof (buf), "%c", c);
 	      ui_out_text (uiout, buf);
 	    }
 	}
@@ -1375,9 +1389,10 @@ print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
    window otherwise it is simply printed.  */
 
 void
-print_source_lines (struct symtab *s, int line, int stopline, int noerror)
+print_source_lines (struct symtab *s, int line, int stopline,
+		    enum print_source_lines_flags flags)
 {
-  print_source_lines_base (s, line, stopline, noerror);
+  print_source_lines_base (s, line, stopline, flags);
 }
 
 /* Print info on range of pc's in a specified line.  */
@@ -1405,7 +1420,7 @@ line_info (char *arg, int from_tty)
     }
   else
     {
-      sals = decode_line_spec_1 (arg, DECODE_LINE_LIST_MODE);
+      sals = decode_line_with_last_displayed (arg, DECODE_LINE_LIST_MODE);
 
       dont_repeat ();
     }
@@ -1952,6 +1967,7 @@ The address is also stored as the value of \"$_\"."));
 Search for regular expression (see regex(3)) from last line listed.\n\
 The matching line number is also stored as the value of \"$_\"."));
   add_com_alias ("search", "forward-search", class_files, 0);
+  add_com_alias ("fo", "forward-search", class_files, 1);
 
   add_com ("reverse-search", class_files, reverse_search_command, _("\
 Search backward for regular expression (see regex(3)) from last line listed.\n\
@@ -1964,12 +1980,12 @@ The matching line number is also stored as the value of \"$_\"."));
       add_com_alias ("?", "reverse-search", class_files, 0);
     }
 
-  add_setshow_integer_cmd ("listsize", class_support, &lines_to_list, _("\
+  add_setshow_zuinteger_unlimited_cmd ("listsize", class_support,
+				       &lines_to_list, _("\
 Set number of source lines gdb will list by default."), _("\
 Show number of source lines gdb will list by default."), NULL,
-			    NULL,
-			    show_lines_to_list,
-			    &setlist, &showlist);
+				       NULL, show_lines_to_list,
+				       &setlist, &showlist);
 
   add_cmd ("substitute-path", class_files, set_substitute_path_command,
            _("\

@@ -23,6 +23,8 @@
 typedef uint16_t in_port_t;
 typedef uint32_t in_addr_t;
 
+#ifndef __INSIDE_CYGWIN_NET__
+
 /* Standard well-defined IP protocols.  If you ever add one here, don't
    forget to define it below. */
 enum
@@ -110,11 +112,15 @@ enum
   IPPORT_USERRESERVED = 5000
 };
 
+/* Avoid collision with Mingw64 headers. */
+#ifndef s_addr
 /* Internet address. */
 struct in_addr
 {
   in_addr_t s_addr;
 };
+#define s_addr s_addr
+#endif
 
 /* Request struct for IPv4 multicast socket ops */
 
@@ -260,4 +266,6 @@ struct sockaddr_in
 #ifdef AF_INET6
 #include <cygwin/in6.h>
 #endif
+#endif
+
 #endif	/* _CYGWIN_IN_H */

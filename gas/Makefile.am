@@ -107,6 +107,7 @@ HFILES = \
 # CPU files in config.
 
 TARGET_CPU_CFILES = \
+	config/tc-aarch64.c \
 	config/tc-alpha.c \
 	config/tc-arc.c \
 	config/tc-arm.c \
@@ -175,6 +176,7 @@ TARGET_CPU_CFILES = \
 	config/xtensa-relax.c
 
 TARGET_CPU_HFILES = \
+	config/tc-aarch64.h \
 	config/tc-alpha.h \
 	config/tc-arc.h \
 	config/tc-arm.h \
@@ -597,7 +599,7 @@ install-exec-tooldir: install-exec-bindir $(noinst_PROGRAMS)
 
 .PHONY: bootstrap bootstrap2 bootstrap3 stage1 stage2 stage3 comparison
 
-bootstrap: as-new
+bootstrap: as-new$(EXEEXT)
 	$(MAKE) stage1
 	rm -f stage && ln -s stage1 stage
 	$(MAKE) CC="$(CC)" CFLAGS="-O -Bstage/ $(CFLAGS)" libdir=$(libdir) ALLOCA= $(noinst_PROGRAMS)

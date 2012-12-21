@@ -107,6 +107,8 @@ _bfd_new_bfd (void)
   return nbfd;
 }
 
+static const struct bfd_iovec opncls_iovec;
+
 /* Allocate a new BFD as a member of archive OBFD.  */
 
 bfd *
@@ -119,6 +121,8 @@ _bfd_new_bfd_contained_in (bfd *obfd)
     return NULL;
   nbfd->xvec = obfd->xvec;
   nbfd->iovec = obfd->iovec;
+  if (obfd->iovec == &opncls_iovec)
+    nbfd->iostream = obfd->iostream;
   nbfd->my_archive = obfd;
   nbfd->direction = read_direction;
   nbfd->target_defaulted = obfd->target_defaulted;
@@ -127,7 +131,7 @@ _bfd_new_bfd_contained_in (bfd *obfd)
 
 /* Delete a BFD.  */
 
-void
+static void
 _bfd_delete_bfd (bfd *abfd)
 {
   if (abfd->memory)
@@ -135,6 +139,8 @@ _bfd_delete_bfd (bfd *abfd)
       bfd_hash_table_free (&abfd->section_htab);
       objalloc_free ((struct objalloc *) abfd->memory);
     }
+
+  free (abfd->arelt_data);
   free (abfd);
 }
 
@@ -502,7 +508,7 @@ opncls_bwrite (struct bfd *abfd ATTRIBUTE_UNUSED,
   return -1;
 }
 
-static int
+static bfd_boolean
 opncls_bclose (struct bfd *abfd)
 {
   struct opncls *vec = (struct opncls *) abfd->iostream;
@@ -512,7 +518,7 @@ opncls_bclose (struct bfd *abfd)
   if (vec->close != NULL)
     status = (vec->close) (abfd, vec->stream);
   abfd->iostream = NULL;
-  return status;
+  return status == 0;
 }
 
 static int
@@ -707,20 +713,11 @@ bfd_boolean
 bfd_close (bfd *abfd)
 {
   bfd_boolean ret;
-  bfd *nbfd;
-  bfd *next;
 
   if (bfd_write_p (abfd))
     {
       if (! BFD_SEND_FMT (abfd, _bfd_write_contents, (abfd)))
 	return FALSE;
-    }
-
-  /* Close nested archives (if this bfd is a thin archive).  */
-  for (nbfd = abfd->nested_archives; nbfd; nbfd = next)
-    {
-      next = nbfd->archive_next;
-      bfd_close (nbfd);
     }
 
   if (! BFD_SEND (abfd, _close_and_cleanup, (abfd)))
@@ -1138,7 +1135,7 @@ bfd_calc_gnu_debuglink_crc32 (unsigned long crc,
   crc = ~crc & 0xffffffff;
   for (end = buf + len; buf < end; ++ buf)
     crc = crc32_table[(crc ^ *buf) & 0xff] ^ (crc >> 8);
-  return ~crc & 0xffffffff;;
+  return ~crc & 0xffffffff;
 }
 
 

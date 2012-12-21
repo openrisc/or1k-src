@@ -685,7 +685,7 @@ mt_registers_info (struct gdbarch *gdbarch,
 	  buff = alloca (regsize);
 	  bytes = alloca (regsize * sizeof (*bytes));
 
-	  frame_register_read (frame, regnum, buff);
+	  deprecated_frame_register_read (frame, regnum, buff);
 
 	  fputs_filtered (gdbarch_register_name
 			  (gdbarch, regnum), file);
@@ -710,7 +710,7 @@ mt_registers_info (struct gdbarch *gdbarch,
 	  struct value_print_options opts;
 
 	  buf = alloca (register_size (gdbarch, MT_COPRO_REGNUM));
-	  frame_register_read (frame, MT_COPRO_REGNUM, buf);
+	  deprecated_frame_register_read (frame, MT_COPRO_REGNUM, buf);
 	  /* And print.  */
 	  regnum = MT_COPRO_PSEUDOREG_REGNUM;
 	  fputs_filtered (gdbarch_register_name (gdbarch, regnum),
@@ -731,13 +731,13 @@ mt_registers_info (struct gdbarch *gdbarch,
 	  gdb_byte buf[3 * sizeof (LONGEST)];
 
 	  /* Get the two "real" mac registers.  */
-	  frame_register_read (frame, MT_MAC_REGNUM, buf);
+	  deprecated_frame_register_read (frame, MT_MAC_REGNUM, buf);
 	  oldmac = extract_unsigned_integer
 	    (buf, register_size (gdbarch, MT_MAC_REGNUM), byte_order);
 	  if (gdbarch_bfd_arch_info (gdbarch)->mach == bfd_mach_mrisc2
 	      || gdbarch_bfd_arch_info (gdbarch)->mach == bfd_mach_ms2)
 	    {
-	      frame_register_read (frame, MT_EXMAC_REGNUM, buf);
+	      deprecated_frame_register_read (frame, MT_EXMAC_REGNUM, buf);
 	      ext_mac = extract_unsigned_integer
 		(buf, register_size (gdbarch, MT_EXMAC_REGNUM), byte_order);
 	    }
@@ -845,16 +845,20 @@ mt_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
   for (j = nargs - 1; j >= i; j--)
     {
       gdb_byte *val;
+      struct cleanup *back_to;
+      const gdb_byte *contents = value_contents (args[j]);
       
       /* Right-justify the value in an aligned-length buffer.  */
       typelen = TYPE_LENGTH (value_type (args[j]));
       slacklen = (wordsize - (typelen % wordsize)) % wordsize;
-      val = alloca (typelen + slacklen);
-      memcpy (val, value_contents (args[j]), typelen);
+      val = xmalloc (typelen + slacklen);
+      back_to = make_cleanup (xfree, val);
+      memcpy (val, contents, typelen);
       memset (val + typelen, 0, slacklen);
       /* Now write this data to the stack.  */
       stack_dest -= typelen + slacklen;
       write_memory (stack_dest, val, typelen + slacklen);
+      do_cleanups (back_to);
     }
 
   /* Finally, if a param needs to be split between registers and stack, 

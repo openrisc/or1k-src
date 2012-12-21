@@ -235,6 +235,9 @@ extern int ppc_fix_adjustable (struct fix *);
 #define tc_frob_file_before_adjust ppc_frob_file_before_adjust
 extern void ppc_frob_file_before_adjust (void);
 
+#define tc_adjust_symtab() ppc_elf_adjust_symtab ()
+extern void ppc_elf_adjust_symtab (void);
+
 #endif /* OBJ_ELF */
 
 #if defined (OBJ_ELF) || defined (OBJ_XCOFF)
@@ -270,6 +273,8 @@ extern int tc_ppc_regname_to_dw2regnum (char *);
 
 extern int ppc_cie_data_alignment;
 
-#define DWARF2_LINE_MIN_INSN_LENGTH     4
+extern int ppc_dwarf2_line_min_insn_length;
+
+#define DWARF2_LINE_MIN_INSN_LENGTH     ppc_dwarf2_line_min_insn_length
 #define DWARF2_DEFAULT_RETURN_COLUMN    0x41
 #define DWARF2_CIE_DATA_ALIGNMENT       ppc_cie_data_alignment

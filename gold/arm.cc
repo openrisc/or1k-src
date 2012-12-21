@@ -2286,20 +2286,21 @@ class Target_arm : public Sized_target<32, big_endian>
 			  const unsigned char* plocal_symbols,
 			  Relocatable_relocs*);
 
-  // Relocate a section during a relocatable link.
+  // Emit relocations for a section.
   void
-  relocate_for_relocatable(const Relocate_info<32, big_endian>*,
-			   unsigned int sh_type,
-			   const unsigned char* prelocs,
-			   size_t reloc_count,
-			   Output_section* output_section,
-			   off_t offset_in_output_section,
-			   const Relocatable_relocs*,
-			   unsigned char* view,
-			   Arm_address view_address,
-			   section_size_type view_size,
-			   unsigned char* reloc_view,
-			   section_size_type reloc_view_size);
+  relocate_relocs(const Relocate_info<32, big_endian>*,
+		  unsigned int sh_type,
+		  const unsigned char* prelocs,
+		  size_t reloc_count,
+		  Output_section* output_section,
+		  typename elfcpp::Elf_types<32>::Elf_Off
+                    offset_in_output_section,
+		  const Relocatable_relocs*,
+		  unsigned char* view,
+		  Arm_address view_address,
+		  section_size_type view_size,
+		  unsigned char* reloc_view,
+		  section_size_type reloc_view_size);
 
   // Perform target-specific processing in a relocatable link.  This is
   // only used if we use the relocation strategy RELOC_SPECIAL.
@@ -2309,7 +2310,8 @@ class Target_arm : public Sized_target<32, big_endian>
 			       const unsigned char* preloc_in,
 			       size_t relnum,
 			       Output_section* output_section,
-			       off_t offset_in_output_section,
+			       typename elfcpp::Elf_types<32>::Elf_Off
+                                 offset_in_output_section,
 			       unsigned char* view,
 			       typename elfcpp::Elf_types<32>::Elf_Addr
 				 view_address,
@@ -2476,7 +2478,7 @@ class Target_arm : public Sized_target<32, big_endian>
   { return new Arm_output_section<big_endian>(name, type, flags); }
 
   void
-  do_adjust_elf_header(unsigned char* view, int len) const;
+  do_adjust_elf_header(unsigned char* view, int len);
 
   // We only need to generate stubs, and hence perform relaxation if we are
   // not doing relocatable linking.
@@ -2551,7 +2553,8 @@ class Target_arm : public Sized_target<32, big_endian>
 	  unsigned int data_shndx,
 	  Output_section* output_section,
 	  const elfcpp::Rel<32, big_endian>& reloc, unsigned int r_type,
-	  const elfcpp::Sym<32, big_endian>& lsym);
+	  const elfcpp::Sym<32, big_endian>& lsym,
+	  bool is_discarded);
 
     inline void
     global(Symbol_table* symtab, Layout* layout, Target_arm* target,
@@ -3253,7 +3256,6 @@ class Arm_relocate_functions : public Relocate_functions<32, big_endian>
 	const Symbol_value<32>* psymval)
   {
     typedef typename elfcpp::Swap_unaligned<16, big_endian>::Valtype Valtype;
-    typedef typename elfcpp::Swap<32, big_endian>::Valtype Reltype;
     Valtype val = elfcpp::Swap_unaligned<16, big_endian>::readval(view);
     int32_t addend = Bits<16>::sign_extend32(val);
     Arm_address x = psymval->value(object, addend);
@@ -5208,8 +5210,6 @@ Arm_exidx_cantunwind::do_fixed_endian_write(Output_file* of)
   off_t offset = this->offset();
   const section_size_type oview_size = 8;
   unsigned char* const oview = of->get_output_view(offset, oview_size);
-
-  typedef typename elfcpp::Swap_unaligned<32, big_endian>::Valtype Valtype;
 
   Output_section* os = this->relobj_->output_section(this->shndx_);
   gold_assert(os != NULL);
@@ -7860,8 +7860,12 @@ Target_arm<big_endian>::Scan::local(Symbol_table* symtab,
 				    Output_section* output_section,
 				    const elfcpp::Rel<32, big_endian>& reloc,
 				    unsigned int r_type,
-				    const elfcpp::Sym<32, big_endian>& lsym)
+				    const elfcpp::Sym<32, big_endian>& lsym,
+				    bool is_discarded)
 {
+  if (is_discarded)
+    return;
+
   r_type = get_real_reloc_type(r_type);
   switch (r_type)
     {
@@ -8071,7 +8075,7 @@ Target_arm<big_endian>::Scan::local(Symbol_table* symtab,
 		  got->add_local_pair_with_rel(object, r_sym, shndx,
 					       GOT_TYPE_TLS_PAIR,
 					       target->rel_dyn_section(layout),
-					       elfcpp::R_ARM_TLS_DTPMOD32, 0);
+					       elfcpp::R_ARM_TLS_DTPMOD32);
 		else
 		  got->add_tls_gd32_with_static_reloc(GOT_TYPE_TLS_PAIR,
 						      object, r_sym);
@@ -9516,7 +9520,7 @@ Target_arm<big_endian>::relocate_section(
     }
 
   gold::relocate_section<32, big_endian, Target_arm, elfcpp::SHT_REL,
-			 Arm_relocate>(
+			 Arm_relocate, gold::Default_comdat_behavior>(
     relinfo,
     this,
     prelocs,
@@ -9591,17 +9595,17 @@ Target_arm<big_endian>::scan_relocatable_relocs(
     rr);
 }
 
-// Relocate a section during a relocatable link.
+// Emit relocations for a section.
 
 template<bool big_endian>
 void
-Target_arm<big_endian>::relocate_for_relocatable(
+Target_arm<big_endian>::relocate_relocs(
     const Relocate_info<32, big_endian>* relinfo,
     unsigned int sh_type,
     const unsigned char* prelocs,
     size_t reloc_count,
     Output_section* output_section,
-    off_t offset_in_output_section,
+    typename elfcpp::Elf_types<32>::Elf_Off offset_in_output_section,
     const Relocatable_relocs* rr,
     unsigned char* view,
     Arm_address view_address,
@@ -9611,7 +9615,7 @@ Target_arm<big_endian>::relocate_for_relocatable(
 {
   gold_assert(sh_type == elfcpp::SHT_REL);
 
-  gold::relocate_for_relocatable<32, big_endian, elfcpp::SHT_REL>(
+  gold::relocate_relocs<32, big_endian, elfcpp::SHT_REL>(
     relinfo,
     prelocs,
     reloc_count,
@@ -9636,7 +9640,7 @@ Target_arm<big_endian>::relocate_special_relocatable(
     const unsigned char* preloc_in,
     size_t relnum,
     Output_section* output_section,
-    off_t offset_in_output_section,
+    typename elfcpp::Elf_types<32>::Elf_Off offset_in_output_section,
     unsigned char* view,
     elfcpp::Elf_types<32>::Elf_Addr view_address,
     section_size_type,
@@ -10014,15 +10018,16 @@ template<bool big_endian>
 void
 Target_arm<big_endian>::do_adjust_elf_header(
     unsigned char* view,
-    int len) const
+    int len)
 {
   gold_assert(len == elfcpp::Elf_sizes<32>::ehdr_size);
 
   elfcpp::Ehdr<32, big_endian> ehdr(view);
+  elfcpp::Elf_Word flags = this->processor_specific_flags();
   unsigned char e_ident[elfcpp::EI_NIDENT];
   memcpy(e_ident, ehdr.get_e_ident(), elfcpp::EI_NIDENT);
 
-  if (elfcpp::arm_eabi_version(this->processor_specific_flags())
+  if (elfcpp::arm_eabi_version(flags)
       == elfcpp::EF_ARM_EABI_UNKNOWN)
     e_ident[elfcpp::EI_OSABI] = elfcpp::ELFOSABI_ARM;
   else
@@ -10031,6 +10036,21 @@ Target_arm<big_endian>::do_adjust_elf_header(
 
   // FIXME: Do EF_ARM_BE8 adjustment.
 
+  // If we're working in EABI_VER5, set the hard/soft float ABI flags
+  // as appropriate.
+  if (elfcpp::arm_eabi_version(flags) == elfcpp::EF_ARM_EABI_VER5)
+  {
+    elfcpp::Elf_Half type = ehdr.get_e_type();
+    if (type == elfcpp::ET_EXEC || type == elfcpp::ET_DYN)
+      {
+	Object_attribute* attr = this->get_aeabi_object_attribute(elfcpp::Tag_ABI_VFP_args);
+	if (attr->int_value())
+	  flags |= elfcpp::EF_ARM_ABI_FLOAT_HARD;
+	else
+	  flags |= elfcpp::EF_ARM_ABI_FLOAT_SOFT;
+	this->set_processor_specific_flags(flags);
+      }
+  }
   elfcpp::Ehdr_write<32, big_endian> oehdr(view);
   oehdr.put_e_ident(e_ident);
 }
@@ -10990,8 +11010,6 @@ Target_arm<big_endian>::scan_reloc_for_stub(
     elfcpp::Elf_types<32>::Elf_Swxword addend,
     Arm_address address)
 {
-  typedef typename Target_arm<big_endian>::Relocate Relocate;
-
   const Arm_relobj<big_endian>* arm_relobj =
     Arm_relobj<big_endian>::as_arm_relobj(relinfo->object);
 
@@ -11150,6 +11168,7 @@ Target_arm<big_endian>::scan_reloc_section_for_stubs(
     Arm_relobj<big_endian>::as_arm_relobj(relinfo->object);
   unsigned int local_count = arm_object->local_symbol_count();
 
+  gold::Default_comdat_behavior default_comdat_behavior;
   Comdat_behavior comdat_behavior = CB_UNDETERMINED;
 
   for (size_t i = 0; i < reloc_count; ++i, prelocs += reloc_size)
@@ -11323,7 +11342,7 @@ Target_arm<big_endian>::scan_reloc_section_for_stubs(
 	  if (comdat_behavior == CB_UNDETERMINED)
 	    {
 	      std::string name = arm_object->section_name(relinfo->data_shndx);
-	      comdat_behavior = get_comdat_behavior(name.c_str());
+ 	      comdat_behavior = default_comdat_behavior.get(name.c_str());
 	    }
 	  if (comdat_behavior == CB_PRETEND)
 	    {
@@ -12199,7 +12218,7 @@ const uint32_t Output_data_plt_arm_nacl<big_endian>::first_plt_entry[16] =
   0xe08cc00f,                           // add	ip, ip, pc
   0xe52dc008,                           // str	ip, [sp, #-8]!
   // Second bundle:
-  0xe7dfcf1f,                           // bfc	ip, #30, #2
+  0xe3ccc103,                           // bic	ip, ip, #0xc0000000
   0xe59cc000,                           // ldr	ip, [ip]
   0xe3ccc13f,                           // bic	ip, ip, #0xc000000f
   0xe12fff1c,                           // bx	ip
@@ -12210,7 +12229,7 @@ const uint32_t Output_data_plt_arm_nacl<big_endian>::first_plt_entry[16] =
   // .Lplt_tail:
   0xe50dc004,                           // str	ip, [sp, #-4]
   // Fourth bundle:
-  0xe7dfcf1f,                           // bfc	ip, #30, #2
+  0xe3ccc103,                           // bic	ip, ip, #0xc0000000
   0xe59cc000,                           // ldr	ip, [ip]
   0xe3ccc13f,                           // bic	ip, ip, #0xc000000f
   0xe12fff1c,                           // bx	ip

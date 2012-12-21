@@ -9,6 +9,7 @@ gdb \- The GNU Debugger
 .TP
 .B gdb
 .RB "[\|" \-help "\|]"
+.RB "[\|" \-nh "\|]"
 .RB "[\|" \-nx "\|]"
 .RB "[\|" \-q "\|]"
 .RB "[\|" \-batch "\|]"
@@ -283,14 +284,16 @@ Add \c
 .PP
 
 .TP
+.B \-nh
+Do not execute commands from ~/.gdbinit.
+
+.TP
 .B \-nx
 .TP
 .B \-n
 Do not execute commands from any `\|\c
 .B .gdbinit\c
 \&\|' initialization files.
-Normally, the commands in these files are executed after all the
-command options and arguments have been processed.
 
 
 .TP
@@ -365,10 +368,19 @@ Run using \c
 .PP
 
 .SH "SEE ALSO"
-.RB "`\|" gdb "\|'"
-entry in
-.B info\c
-\&;
+The full documentation for
+.B gdb
+is maintained as a Texinfo manual.  If the
+.B info
+and
+.B gdb
+programs and GDB's Texinfo documentation are properly installed at
+your site, the command
+.IP
+.B info gdb
+.PP
+should give you access to the complete manual.
+
 .I 
 Using GDB: A Guide to the GNU Source-Level Debugger\c
 , Richard M. Stallman and Roland H. Pesch, July 1991.

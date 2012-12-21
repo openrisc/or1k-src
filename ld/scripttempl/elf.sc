@@ -335,7 +335,7 @@ SECTIONS
   /* Read-only sections, merged into text segment: */
   ${CREATE_SHLIB-${CREATE_PIE-${RELOCATING+PROVIDE (__executable_start = ${TEXT_START_ADDR}); . = ${TEXT_BASE_ADDRESS};}}}
   ${CREATE_SHLIB+${RELOCATING+. = ${SHLIB_TEXT_START_ADDR}${SIZEOF_HEADERS_CODE};}}
-  ${CREATE_PIE+${RELOCATING+. = ${SHLIB_TEXT_START_ADDR}${SIZEOF_HEADERS_CODE};}}
+  ${CREATE_PIE+${RELOCATING+PROVIDE (__executable_start = ${SHLIB_TEXT_START_ADDR}); . = ${SHLIB_TEXT_START_ADDR}${SIZEOF_HEADERS_CODE};}}
 EOF
 
 emit_early_ro()
@@ -462,7 +462,7 @@ cat <<EOF
   .init         ${RELOCATING-0} :
   {
     ${RELOCATING+${INIT_START}}
-    KEEP (*(.init))
+    KEEP (*(SORT_NONE(.init)))
     ${RELOCATING+${INIT_END}}
   } ${FILL}
 
@@ -483,7 +483,7 @@ cat <<EOF
   .fini         ${RELOCATING-0} :
   {
     ${RELOCATING+${FINI_START}}
-    KEEP (*(.fini))
+    KEEP (*(SORT_NONE(.fini)))
     ${RELOCATING+${FINI_END}}
   } ${FILL}
   ${RELOCATING+PROVIDE (__${ETEXT_NAME} = .);}
@@ -649,6 +649,9 @@ cat <<EOF
   .debug_pubtypes 0 : { *(.debug_pubtypes) }
   .debug_ranges   0 : { *(.debug_ranges) }
 
+  /* DWARF Extension.  */
+  .debug_macro    0 : { *(.debug_macro) } 
+  
   ${TINY_DATA_SECTION}
   ${TINY_BSS_SECTION}
 

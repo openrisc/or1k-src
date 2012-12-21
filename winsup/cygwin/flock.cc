@@ -164,7 +164,7 @@ allow_others_to_sync ()
      at this point because this gets called during initialization when the tls
      is not really available.  */
 #define MAX_PROCESS_SD_SIZE	3072
-  PSECURITY_DESCRIPTOR sd = (PSECURITY_DESCRIPTOR) alloca (MAX_PROCESS_SD_SIZE);
+  PISECURITY_DESCRIPTOR sd = (PISECURITY_DESCRIPTOR) alloca (MAX_PROCESS_SD_SIZE);
   status = NtQuerySecurityObject (NtCurrentProcess (),
 				  DACL_SECURITY_INFORMATION, sd,
 				  MAX_PROCESS_SD_SIZE, &len);
@@ -250,7 +250,7 @@ class lockf_t
     uint16_t	    lf_type;  /* Lock type: F_RDLCK, F_WRLCK */
     _off64_t	    lf_start; /* Byte # of the start of the lock */
     _off64_t	    lf_end;   /* Byte # of the end of the lock (-1=EOF) */
-    int64_t         lf_id;    /* Cygwin PID for POSIX locks, a unique id per
+    int64_t	    lf_id;    /* Cygwin PID for POSIX locks, a unique id per
 				 file table entry for BSD flock locks. */
     DWORD	    lf_wid;   /* Win PID of the resource holding the lock */
     uint16_t	    lf_ver;   /* Version number of the lock.  If a released
@@ -1247,7 +1247,7 @@ lf_setlock (lockf_t *lock, inode_t *node, lockf_t **clean, HANDLE fhdl)
 	timeout = 100L;
 
       DWORD WAIT_SIGNAL_ARRIVED = WAIT_OBJECT_0 + wait_count;
-      w4[wait_count++] = signal_arrived;
+      set_signal_arrived here (w4[wait_count++]);
 
       DWORD WAIT_THREAD_CANCELED = WAIT_TIMEOUT + 1;
       HANDLE cancel_event = pthread::get_cancel_event ();

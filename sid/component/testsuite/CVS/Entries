@@ -7,9 +7,7 @@ D/sidcomp.cfgroot////
 D/sidcomp.cgen-cpu////
 D/sidcomp.cgen-cpu.arm7t////
 D/sidcomp.cgen-cpu.mep////
-D/sidcomp.cgen-cpu.ms1////
 D/sidcomp.cgen-cpu.mt////
-D/sidcomp.cgen-cpu.sh////
 D/sidcomp.cgen-cpu.xstormy16////
 D/sidcomp.consoles////
 D/sidcomp.families.mep////
@@ -23,12 +21,14 @@ D/sidcomp.mapper////
 D/sidcomp.memory////
 D/sidcomp.mmu////
 D/sidcomp.parport////
-D/sidcomp.pcmcia////
 D/sidcomp.profiling////
 D/sidcomp.rtc////
 D/sidcomp.sched////
 D/sidcomp.timers////
 D/sidcomp.uart////
-/ChangeLog/1.65/Mon May  7 21:35:09 2012//
-/Makefile.am/1.2/Mon May  7 21:35:09 2012//
-/Makefile.in/1.10/Mon May  7 21:35:09 2012//
+/ChangeLog/1.65/Sat Oct 27 22:59:30 2012//
+/Makefile.am/1.2/Sat Oct 27 22:59:30 2012//
+/Makefile.in/1.10/Sat Oct 27 22:59:30 2012//
+D/sidcomp.cgen-cpu.ms1////
+D/sidcomp.cgen-cpu.sh////
+D/sidcomp.pcmcia////

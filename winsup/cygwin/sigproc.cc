@@ -43,14 +43,10 @@ int __sp_ln;
 
 char NO_COPY myself_nowait_dummy[1] = {'0'};// Flag to sig_send that signal goes to
 					//  current process but no wait is required
-HANDLE NO_COPY signal_arrived;		// Event signaled when a signal has
-					//  resulted in a user-specified
-					//  function call
 
 #define Static static NO_COPY
 
-HANDLE NO_COPY sigCONT;			// Used to "STOP" a process
-
+Static HANDLE sig_hold;			// Used to stop signal processing
 Static bool sigheld;			// True if holding signals
 
 Static int nprocs;			// Number of deceased children
@@ -185,7 +181,6 @@ proc_subproc (DWORD what, DWORD val)
 {
   int rc = 1;
   int potential_match;
-  _pinfo *child;
   int clearing;
   waitq *w;
 
@@ -251,9 +246,7 @@ proc_subproc (DWORD what, DWORD val)
     case PROC_WAIT:
       wval->ev = NULL;		// Don't know event flag yet
 
-      if (wval->pid == -1 || !wval->pid)
-	child = NULL;		// Not looking for a specific pid
-      else if (!mychild (wval->pid))
+      if (wval->pid != -1 && wval->pid && !mychild (wval->pid))
 	goto out;		// invalid pid.  flag no such child
 
       wval->status = 0;		// Don't know status yet
@@ -518,17 +511,6 @@ sig_dispatch_pending (bool fast)
     sig_send (myself, fast ? __SIGFLUSHFAST : __SIGFLUSH);
 }
 
-void __stdcall
-create_signal_arrived ()
-{
-  if (signal_arrived)
-    return;
-  /* local event signaled when main thread has been dispatched
-     to a signal handler function. */
-  signal_arrived = CreateEvent (&sec_none_nih, false, false, NULL);
-  ProtectHandle (signal_arrived);
-}
-
 /* Signal thread initialization.  Called from dll_crt0_1.
    This routine starts the signal handling thread.  */
 void __stdcall
@@ -582,7 +564,7 @@ sig_send (_pinfo *p, int sig)
     return 0;
   else if (sig == __SIGNOHOLD || sig == __SIGEXIT)
     {
-      SetEvent (sigCONT);
+      SetEvent (sig_hold);
       sigheld = false;
     }
   else if (&_my_tls == _main_tls)
@@ -1233,7 +1215,7 @@ stopped_or_terminated (waitq *parent_w, _pinfo *child)
   int might_match;
   waitq *w = parent_w->next;
 
-  sigproc_printf ("considering pid %d", child->pid);
+  sigproc_printf ("considering pid %d, pgid %d, w->pid %d", child->pid, child->pgid, w->pid);
   if (w->pid == -1)
     might_match = 1;
   else if (w->pid == 0)
@@ -1359,7 +1341,7 @@ static void WINAPI
 wait_sig (VOID *)
 {
   _sig_tls = &_my_tls;
-  sigCONT = CreateEvent (&sec_none_nih, FALSE, FALSE, NULL);
+  sig_hold = CreateEvent (&sec_none_nih, FALSE, FALSE, NULL);
 
   sigproc_printf ("entering ReadFile loop, my_readsig %p, my_sendsig %p",
 		  my_readsig, my_sendsig);
@@ -1369,7 +1351,7 @@ wait_sig (VOID *)
   for (;;)
     {
       if (pack.si.si_signo == __SIGHOLD)
-	WaitForSingleObject (sigCONT, INFINITE);
+	WaitForSingleObject (sig_hold, INFINITE);
       DWORD nb;
       pack.tls = NULL;
       if (!ReadFile (my_readsig, &pack, sizeof (pack), &nb, NULL))

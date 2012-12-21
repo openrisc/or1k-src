@@ -44,6 +44,7 @@
 #include "gdbthread.h"
 #include "regcache.h"
 #include "bcache.h"
+#include "gdb_bfd.h"
 
 extern void _initialize_elfread (void);
 
@@ -204,7 +205,7 @@ record_minimal_symbol (const char *name, int name_len, int copy_name,
 
   if (ms_type == mst_text || ms_type == mst_file_text
       || ms_type == mst_text_gnu_ifunc)
-    address = gdbarch_smash_text_address (gdbarch, address);
+    address = gdbarch_addr_bits_remove (gdbarch, address);
 
   return prim_record_minimal_symbol_full (name, name_len, copy_name, address,
 					  ms_type, bfd_section->index,
@@ -352,7 +353,7 @@ elf_symtab_read (struct objfile *objfile, int type,
 	    }
 	  filesym = sym;
 	  filesymname = bcache (filesym->name, strlen (filesym->name) + 1,
-				objfile->filename_cache);
+				objfile->per_bfd->filename_cache);
 	}
       else if (sym->flags & BSF_SECTION_SYM)
 	continue;
@@ -569,7 +570,7 @@ elf_symtab_read (struct objfile *objfile, int type,
 		elf_sym = (elf_symbol_type *) sym->udata.p;
 
 	      if (elf_sym)
-		MSYMBOL_SIZE(msym) = elf_sym->internal_elf_sym.st_size;
+		SET_MSYMBOL_SIZE (msym, elf_sym->internal_elf_sym.st_size);
 
 	      msym->filename = filesymname;
 	      gdbarch_elf_make_msymbol_special (gdbarch, sym, msym);
@@ -593,7 +594,7 @@ elf_symtab_read (struct objfile *objfile, int type,
 						  sym->section, objfile);
 		  if (mtramp)
 		    {
-		      MSYMBOL_SIZE (mtramp) = MSYMBOL_SIZE (msym);
+		      SET_MSYMBOL_SIZE (mtramp, MSYMBOL_SIZE (msym));
 		      mtramp->created_by_gdb = 1;
 		      mtramp->filename = filesymname;
 		      gdbarch_elf_make_msymbol_special (gdbarch, sym, mtramp);
@@ -688,7 +689,7 @@ elf_rel_plt_read (struct objfile *objfile, asymbol **dyn_symbol_table)
                                     1, address, mst_slot_got_plt, got_plt,
 				    objfile);
       if (msym)
-	MSYMBOL_SIZE (msym) = ptr_size;
+	SET_MSYMBOL_SIZE (msym, ptr_size);
     }
 
   do_cleanups (back_to);
@@ -1108,7 +1109,7 @@ build_id_verify (const char *filename, struct build_id *check)
   int retval = 0;
 
   /* We expect to be silent on the non-existing files.  */
-  abfd = bfd_open_maybe_remote (filename);
+  abfd = gdb_bfd_open_maybe_remote (filename);
   if (abfd == NULL)
     return 0;
 
@@ -1123,7 +1124,7 @@ build_id_verify (const char *filename, struct build_id *check)
   else
     retval = 1;
 
-  gdb_bfd_close_or_warn (abfd);
+  gdb_bfd_unref (abfd);
 
   xfree (found);
 
@@ -1250,6 +1251,13 @@ elf_symfile_read (struct objfile *objfile, int symfile_flags)
   long symcount = 0, dynsymcount = 0, synthcount, storage_needed;
   asymbol **symbol_table = NULL, **dyn_symbol_table = NULL;
   asymbol *synthsyms;
+
+  if (symtab_create_debug)
+    {
+      fprintf_unfiltered (gdb_stdlog,
+			  "Reading minimal symbols of objfile %s ...\n",
+			  objfile->name);
+    }
 
   init_minimal_symbol_collection ();
   back_to = make_cleanup_discard_minimal_symbols ();
@@ -1437,12 +1445,17 @@ elf_symfile_read (struct objfile *objfile, int symfile_flags)
 
       if (debugfile)
 	{
+	  struct cleanup *cleanup = make_cleanup (xfree, debugfile);
 	  bfd *abfd = symfile_bfd_open (debugfile);
 
+	  make_cleanup_bfd_unref (abfd);
 	  symbol_file_add_separate (abfd, symfile_flags, objfile);
-	  xfree (debugfile);
+	  do_cleanups (cleanup);
 	}
     }
+
+  if (symtab_create_debug)
+    fprintf_unfiltered (gdb_stdlog, "Done reading minimal symbols.\n");
 }
 
 /* Callback to lazily read psymtabs.  */
@@ -1625,33 +1638,29 @@ elf_get_probes (struct objfile *objfile)
    symfile.h.  */
 
 static unsigned
-elf_get_probe_argument_count (struct objfile *objfile,
-			      struct probe *probe)
+elf_get_probe_argument_count (struct probe *probe)
 {
-  return probe->pops->get_probe_argument_count (probe, objfile);
+  return probe->pops->get_probe_argument_count (probe);
 }
 
 /* Implementation of `sym_evaluate_probe_argument', as documented in
    symfile.h.  */
 
 static struct value *
-elf_evaluate_probe_argument (struct objfile *objfile,
-			     struct probe *probe,
-			     unsigned n)
+elf_evaluate_probe_argument (struct probe *probe, unsigned n)
 {
-  return probe->pops->evaluate_probe_argument (probe, objfile, n);
+  return probe->pops->evaluate_probe_argument (probe, n);
 }
 
 /* Implementation of `sym_compile_to_ax', as documented in symfile.h.  */
 
 static void
-elf_compile_to_ax (struct objfile *objfile,
-		   struct probe *probe,
+elf_compile_to_ax (struct probe *probe,
 		   struct agent_expr *expr,
 		   struct axs_value *value,
 		   unsigned n)
 {
-  probe->pops->compile_to_ax (probe, objfile, expr, value, n);
+  probe->pops->compile_to_ax (probe, expr, value, n);
 }
 
 /* Implementation of `sym_relocate_probe', as documented in symfile.h.  */

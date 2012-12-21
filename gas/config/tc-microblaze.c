@@ -35,6 +35,9 @@
 #define streq(a,b) (strcmp (a, b) == 0)
 #endif
 
+#define OPTION_EB (OPTION_MD_BASE + 0)
+#define OPTION_EL (OPTION_MD_BASE + 1)
+
 void microblaze_generate_symbol (char *sym);
 static bfd_boolean check_spl_reg (unsigned *);
 
@@ -528,6 +531,17 @@ parse_reg (char * s, unsigned * reg)
 	}
       return s;
     }
+  /* Stack protection registers.  */
+  else if (strncasecmp (s, "rshr", 4) == 0)
+    {
+      *reg = REG_SHR;
+      return s + 4;
+    }
+  else if (strncasecmp (s, "rslr", 4) == 0)
+    {
+      *reg = REG_SLR;
+      return s + 4;
+    }
   else
     {
       if (TOLOWER (s[0]) == 'r')
@@ -757,6 +771,7 @@ check_spl_reg (unsigned * reg)
       || (*reg == REG_PID)   || (*reg == REG_ZPR)
       || (*reg == REG_TLBX)  || (*reg == REG_TLBLO)
       || (*reg == REG_TLBHI) || (*reg == REG_TLBSX)
+      || (*reg == REG_SHR)   || (*reg == REG_SLR)
       || (*reg >= REG_PVR+MIN_PVR_REGNUM && *reg <= REG_PVR+MAX_PVR_REGNUM))
     return TRUE;
 
@@ -1198,9 +1213,6 @@ md_assemble (char * str)
           as_fatal (_("Error in statement syntax"));
           immed = 0;
         }
-      /* Check for spl registers.  */
-      if (check_spl_reg (&reg1))
-        as_fatal (_("Cannot use special register with this instruction"));
       inst |= (immed << IMM_LOW) & RFSL_MASK;
       output = frag_more (isize);
       break;
@@ -1280,6 +1292,10 @@ md_assemble (char * str)
         immed = opcode->immval_mask | REG_TLBLO_MASK;
       else if (reg2 == REG_TLBHI)
         immed = opcode->immval_mask | REG_TLBHI_MASK;
+      else if (reg2 == REG_SHR)
+        immed = opcode->immval_mask | REG_SHR_MASK;
+      else if (reg2 == REG_SLR)
+        immed = opcode->immval_mask | REG_SLR_MASK;
       else if (reg2 >= (REG_PVR+MIN_PVR_REGNUM) && reg2 <= (REG_PVR+MAX_PVR_REGNUM))
 	immed = opcode->immval_mask | REG_PVR_MASK | reg2;
       else
@@ -1331,6 +1347,10 @@ md_assemble (char * str)
         immed = opcode->immval_mask | REG_TLBHI_MASK;
       else if (reg1 == REG_TLBSX)
         immed = opcode->immval_mask | REG_TLBSX_MASK;
+      else if (reg1 == REG_SHR)
+        immed = opcode->immval_mask | REG_SHR_MASK;
+      else if (reg1 == REG_SLR)
+        immed = opcode->immval_mask | REG_SLR_MASK;
       else
         as_fatal (_("invalid value for special purpose register"));
       inst |= (reg2 << RA_LOW) & RA_MASK;
@@ -1605,6 +1625,24 @@ md_assemble (char * str)
       output = frag_more (isize);
       break;
 
+    case INST_TYPE_IMM5:
+      if (strcmp(op_end, ""))
+        op_end = parse_imm (op_end + 1, & exp, MIN_IMM5, MAX_IMM5);
+      else
+        as_fatal(_("Error in statement syntax"));
+      if (exp.X_op != O_constant) {
+        as_warn(_("Symbol used as immediate for mbar instruction"));
+      } else {
+        output = frag_more (isize);
+        immed = exp.X_add_number;
+      }
+      if (immed != (immed % 32)) {
+        as_warn(_("Immediate value for mbar > 32. using <value %% 32>"));
+        immed = immed % 32;
+      }
+      inst |= (immed << IMM_MBAR);
+      break;
+
     default:
       as_fatal (_("unimplemented opcode \"%s\""), name);
     }
@@ -1710,6 +1748,8 @@ const char * md_shortopts = "";
 
 struct option md_longopts[] =
 {
+  {"EB", no_argument, NULL, OPTION_EB},
+  {"EL", no_argument, NULL, OPTION_EL},
   { NULL,          no_argument, NULL, 0}
 };
 
@@ -2065,7 +2105,8 @@ md_estimate_size_before_relax (fragS * fragP,
           as_bad (_("Absolute PC-relative value in relaxation code.  Assembler error....."));
           abort ();
         }
-      else if ((S_GET_SEGMENT (fragP->fr_symbol) == segment_type))
+      else if (S_GET_SEGMENT (fragP->fr_symbol) == segment_type &&
+               !S_IS_WEAK (fragP->fr_symbol))
         {
           fragP->fr_subtype = DEFINED_PC_OFFSET;
           /* Don't know now whether we need an imm instruction.  */
@@ -2306,6 +2347,12 @@ md_parse_option (int c, char * arg ATTRIBUTE_UNUSED)
 {
   switch (c)
     {
+    case OPTION_EB:
+      target_big_endian = 1;
+      break;
+    case OPTION_EL:
+      target_big_endian = 0;
+      break;
     default:
       return 0;
     }

@@ -1,13 +1,12 @@
 /* cygtls.h
 
-   Copyright 2003, 2004, 2005, 2008, 2009, 2010, 2011 Red Hat, Inc.
+   Copyright 2003, 2004, 2005, 2008, 2009, 2010, 2011, 2012 Red Hat, Inc.
 
 This software is a copyrighted work licensed under the terms of the
 Cygwin license.  Please consult the file "CYGWIN_LICENSE" for
 details. */
 
-#ifndef _CYGTLS_H
-#define _CYGTLS_H
+#pragma once
 
 #include <signal.h>
 #include <pwd.h>
@@ -158,6 +157,7 @@ typedef struct struct_waitq
 
 /*gentls_offsets*/
 #include "cygerrno.h"
+#include "security.h"
 
 extern "C" int __sjfault (jmp_buf);
 extern "C" int __ljfault (jmp_buf, int);
@@ -169,27 +169,29 @@ typedef __uint32_t __stack_t;
 class _cygtls
 {
 public:
-  void (*func) /*gentls_offsets*/(int)/*gentls_offsets*/;
-  int saved_errno;
-  int sa_flags;
-  sigset_t oldmask;
-  sigset_t deltamask;
-  HANDLE event;
-  int *errno_addr;
-  sigset_t sigmask;
-  sigset_t sigwait_mask;
-  siginfo_t *sigwait_info;
-  struct ucontext thread_context;
-  DWORD thread_id;
-  unsigned threadkill;
-  siginfo_t infodata;
-  struct pthread *tid;
+  /* Please keep these two declarations first */
+  struct _local_storage locals;
   union
   {
     struct _reent local_clib;
     char __dontuse[8 * ((sizeof(struct _reent) + 4) / 8)];
   };
-  struct _local_storage locals;
+  /**/
+  void (*func) /*gentls_offsets*/(int)/*gentls_offsets*/;
+  int saved_errno;
+  int sa_flags;
+  sigset_t oldmask;
+  sigset_t deltamask;
+  int *errno_addr;
+  sigset_t sigmask;
+  sigset_t sigwait_mask;
+  siginfo_t *sigwait_info;
+  HANDLE signal_arrived;
+  bool signal_waiting;
+  struct ucontext thread_context;
+  DWORD thread_id;
+  siginfo_t infodata;
+  struct pthread *tid;
   class cygthread *_ctinfo;
   class san *andreas;
   waitq wq;
@@ -202,22 +204,19 @@ public:
   unsigned initialized;
 
   /*gentls_offsets*/
-  static void init ();
   void init_thread (void *, DWORD (*) (void *, void *));
   static void call (DWORD (*) (void *, void *), void *);
-  static struct _cygtls *find_tls (int sig);
   void remove (DWORD);
-  void push (__stack_t) __attribute__ ((regparm (2)));
+  void push (__stack_t addr) {*stackptr++ = (__stack_t) addr;}
   __stack_t pop () __attribute__ ((regparm (1)));
   __stack_t retaddr () {return stackptr[-1];}
   bool isinitialized () const
   {
     return initialized == CYGTLS_INITIALIZED;
   }
-  bool interrupt_now (CONTEXT *, int, void *, struct sigaction&)
+  bool interrupt_now (CONTEXT *, siginfo_t&, void *, struct sigaction&)
     __attribute__((regparm(3)));
-  void __stdcall interrupt_setup (int sig, void *handler,
-				  struct sigaction& siga)
+  void __stdcall interrupt_setup (siginfo_t&, void *, struct sigaction&)
     __attribute__((regparm(3)));
 
   bool inside_kernel (CONTEXT *);
@@ -226,17 +225,35 @@ public:
   void signal_debugger (int) __attribute__ ((regparm(2)));
 
 #ifdef CYGTLS_HANDLE
-  operator HANDLE () const {return tid->win32_obj_id;}
+  operator HANDLE () const {return tid ? tid->win32_obj_id : NULL;}
 #endif
-  void set_siginfo (struct sigpacket *) __attribute__ ((regparm (3)));
-  void set_threadkill () {threadkill = true;}
-  void reset_threadkill () {threadkill = false;}
   int call_signal_handler () __attribute__ ((regparm (1)));
   void remove_wq (DWORD) __attribute__ ((regparm (1)));
   void fixup_after_fork () __attribute__ ((regparm (1)));
   void lock () __attribute__ ((regparm (1)));
   void unlock () __attribute__ ((regparm (1)));
   bool locked () __attribute__ ((regparm (1)));
+  void create_signal_arrived ()
+  {
+    signal_arrived = CreateEvent (&sec_none_nih, false, false, NULL);
+  }
+  void set_signal_arrived (bool setit, HANDLE& h)
+  {
+    if (!setit)
+      signal_waiting = false;
+    else
+      {
+	if (!signal_arrived)
+	  {
+	    lock ();
+	    create_signal_arrived ();
+	    unlock ();
+	  }
+	h = signal_arrived;
+	signal_waiting = true;
+      }
+  }
+  void reset_signal_arrived () { signal_waiting = false; }
 private:
   void call2 (DWORD (*) (void *, void *), void *, void *) __attribute__ ((regparm (3)));
   /*gentls_offsets*/
@@ -304,6 +321,15 @@ public:
   }
 };
 
-#define __getreent() (&_my_tls.local_clib)
+class set_signal_arrived
+{
+public:
+  set_signal_arrived (bool setit, HANDLE& h) { _my_tls.set_signal_arrived (setit, h); }
+  set_signal_arrived (HANDLE& h) { _my_tls.set_signal_arrived (true, h); }
 
-#endif /*_CYGTLS_H*/ /*gentls_offsets*/
+  operator int () const {return _my_tls.signal_waiting;}
+  ~set_signal_arrived () { _my_tls.reset_signal_arrived (); }
+};
+
+#define __getreent() (&_my_tls.local_clib)
+/*gentls_offsets*/

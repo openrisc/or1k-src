@@ -13,6 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+if {[skip_shlib_tests]} {
+    return -1
+}
+
 set executable ctxobj-m
 
 # The sources used to build two shared libraries (SO).  We use the exact
@@ -51,6 +55,7 @@ if { [gdb_compile "${srcdir}/${subdir}/${executable}.c" \
 }
 
 clean_restart $executable
+gdb_load_shlibs $libobj1 $libobj2
 
 if ![runto_main] {
     untested "could not run to main"

@@ -354,14 +354,15 @@ read_frame_arg (struct symbol *sym, struct frame_info *frame,
 
 	  if (val && entryval && !ui_out_is_mi_like_p (current_uiout))
 	    {
-	      unsigned len = TYPE_LENGTH (value_type (val));
+	      struct type *type = value_type (val);
 
 	      if (!value_optimized_out (val) && value_lazy (val))
 		value_fetch_lazy (val);
 	      if (!value_optimized_out (val) && value_lazy (entryval))
 		value_fetch_lazy (entryval);
 	      if (!value_optimized_out (val)
-		  && value_available_contents_eq (val, 0, entryval, 0, len))
+		  && value_available_contents_eq (val, 0, entryval, 0,
+						  TYPE_LENGTH (type)))
 		{
 		  /* Initialize it just to avoid a GCC false warning.  */
 		  struct value *val_deref = NULL, *entryval_deref;
@@ -373,12 +374,12 @@ read_frame_arg (struct symbol *sym, struct frame_info *frame,
 
 		  TRY_CATCH (except, RETURN_MASK_ERROR)
 		    {
-		      unsigned len_deref;
+		      struct type *type_deref;
 
 		      val_deref = coerce_ref (val);
 		      if (value_lazy (val_deref))
 			value_fetch_lazy (val_deref);
-		      len_deref = TYPE_LENGTH (value_type (val_deref));
+		      type_deref = value_type (val_deref);
 
 		      entryval_deref = coerce_ref (entryval);
 		      if (value_lazy (entryval_deref))
@@ -389,7 +390,7 @@ read_frame_arg (struct symbol *sym, struct frame_info *frame,
 		      if (val != val_deref
 			  && value_available_contents_eq (val_deref, 0,
 							  entryval_deref, 0,
-							  len_deref))
+						      TYPE_LENGTH (type_deref)))
 			val_equal = 1;
 		    }
 
@@ -1727,7 +1728,20 @@ backtrace_command_1 (char *count_exp, int show_locals, int from_tty)
          the frame->prev field gets set to NULL in that case).  */
       print_frame_info (fi, 1, LOCATION, 1);
       if (show_locals)
-	print_frame_local_vars (fi, 1, gdb_stdout);
+	{
+	  struct frame_id frame_id = get_frame_id (fi);
+
+	  print_frame_local_vars (fi, 1, gdb_stdout);
+
+	  /* print_frame_local_vars invalidates FI.  */
+	  fi = frame_find_by_id (frame_id);
+	  if (fi == NULL)
+	    {
+	      trailing = NULL;
+	      warning (_("Unable to restore previously selected frame."));
+	      break;
+	    }
+	}
 
       /* Save the last frame to check for error conditions.  */
       trailing = fi;
@@ -1834,6 +1848,8 @@ iterate_over_block_locals (struct block *b,
 	case LOC_COMPUTED:
 	  if (SYMBOL_IS_ARGUMENT (sym))
 	    break;
+	  if (SYMBOL_DOMAIN (sym) == COMMON_BLOCK_DOMAIN)
+	    break;
 	  (*cb) (SYMBOL_PRINT_NAME (sym), sym, cb_data);
 	  break;
 
@@ -1919,7 +1935,7 @@ iterate_over_block_local_vars (struct block *block,
 
 struct print_variable_and_value_data
 {
-  struct frame_info *frame;
+  struct frame_id frame_id;
   int num_tabs;
   struct ui_file *stream;
   int values_printed;
@@ -1933,11 +1949,27 @@ do_print_variable_and_value (const char *print_name,
 			     void *cb_data)
 {
   struct print_variable_and_value_data *p = cb_data;
+  struct frame_info *frame;
 
-  print_variable_and_value (print_name, sym,
-			    p->frame, p->stream, p->num_tabs);
+  frame = frame_find_by_id (p->frame_id);
+  if (frame == NULL)
+    {
+      warning (_("Unable to restore previously selected frame."));
+      return;
+    }
+
+  print_variable_and_value (print_name, sym, frame, p->stream, p->num_tabs);
+
+  /* print_variable_and_value invalidates FRAME.  */
+  frame = NULL;
+
   p->values_printed = 1;
 }
+
+/* Print all variables from the innermost up to the function block of FRAME.
+   Print them with values to STREAM indented by NUM_TABS.
+
+   This function will invalidate FRAME.  */
 
 static void
 print_frame_local_vars (struct frame_info *frame, int num_tabs,
@@ -1961,7 +1993,7 @@ print_frame_local_vars (struct frame_info *frame, int num_tabs,
       return;
     }
 
-  cb_data.frame = frame;
+  cb_data.frame_id = get_frame_id (frame);
   cb_data.num_tabs = 4 * num_tabs;
   cb_data.stream = stream;
   cb_data.values_printed = 0;
@@ -1969,6 +2001,9 @@ print_frame_local_vars (struct frame_info *frame, int num_tabs,
   iterate_over_block_local_vars (block,
 				 do_print_variable_and_value,
 				 &cb_data);
+
+  /* do_print_variable_and_value invalidates FRAME.  */
+  frame = NULL;
 
   if (!cb_data.values_printed)
     fprintf_filtered (stream, _("No locals.\n"));
@@ -2016,6 +2051,11 @@ iterate_over_block_arg_vars (struct block *b,
     }
 }
 
+/* Print all argument variables of the function of FRAME.
+   Print them with values to STREAM.
+
+   This function will invalidate FRAME.  */
+
 static void
 print_frame_arg_vars (struct frame_info *frame, struct ui_file *stream)
 {
@@ -2036,13 +2076,16 @@ print_frame_arg_vars (struct frame_info *frame, struct ui_file *stream)
       return;
     }
 
-  cb_data.frame = frame;
+  cb_data.frame_id = get_frame_id (frame);
   cb_data.num_tabs = 0;
   cb_data.stream = gdb_stdout;
   cb_data.values_printed = 0;
 
   iterate_over_block_arg_vars (SYMBOL_BLOCK_VALUE (func),
 			       do_print_variable_and_value, &cb_data);
+
+  /* do_print_variable_and_value invalidates FRAME.  */
+  frame = NULL;
 
   if (!cb_data.values_printed)
     fprintf_filtered (stream, _("No arguments.\n"));
@@ -2268,7 +2311,8 @@ return_command (char *retval_exp, int from_tty)
 	return_type = TYPE_TARGET_TYPE (SYMBOL_TYPE (thisfun));
       if (return_type == NULL)
       	{
-	  if (retval_expr->elts[0].opcode != UNOP_CAST)
+	  if (retval_expr->elts[0].opcode != UNOP_CAST
+	      && retval_expr->elts[0].opcode != UNOP_CAST_TYPE)
 	    error (_("Return value type not available for selected "
 		     "stack frame.\n"
 		     "Please use an explicit cast of the value to return."));
@@ -2373,7 +2417,7 @@ func_command (char *arg, int from_tty)
     return;
 
   frame = parse_frame_specification ("0");
-  sals = decode_line_spec (arg, DECODE_LINE_FUNFIRSTLINE);
+  sals = decode_line_with_current_source (arg, DECODE_LINE_FUNFIRSTLINE);
   cleanups = make_cleanup (xfree, sals.sals);
   func_bounds = (struct function_bounds *) xmalloc (
 			      sizeof (struct function_bounds) * sals.nelts);

@@ -25,23 +25,15 @@ set vhn "\\$\[0-9\]+"
 if { [skip_cplus_tests] } { continue }
 
 
-set testfile "member-ptr"
-set srcfile ${testfile}.cc
-set binfile ${objdir}/${subdir}/${testfile}
+standard_testfile .cc
 
 if [get_compiler_info "c++"] {
     return -1
 }
 
-if  { [gdb_compile "${srcdir}/${subdir}/${srcfile}" "${binfile}" executable {debug c++}] != "" } {
-     untested member-ptr.exp
-     return -1
+if {[prepare_for_testing $testfile.exp $testfile $srcfile {debug c++}]} {
+    return -1
 }
-
-gdb_exit
-gdb_start
-gdb_reinitialize_dir $srcdir/$subdir
-gdb_load ${binfile}
 
 if ![runto_main] then {
     perror "couldn't run to breakpoint"
@@ -384,6 +376,33 @@ gdb_test_multiple "print ((int) pmi) == ((char *) &a.j - (char *) & a)" $name {
     }
 }
 
+# Check pointers to data members, which are themselves pointers to
+# functions.  These behave like data members, not like pointers to
+# member functions.
+
+gdb_test "ptype diamond_pfunc_ptr" \
+    "type = int \\(\\*Diamond::\\*\\)\\(int\\)"
+
+gdb_test "ptype diamond.*diamond_pfunc_ptr" \
+    "type = int \\(\\*\\)\\(int\\)"
+
+# This one is invalid; () binds more tightly than .*, so it tries to
+# call the member pointer as a normal pointer-to-function.
+
+gdb_test "print diamond.*diamond_pfunc_ptr (20)" \
+    "Invalid data type for function to be called."
+
+# With parentheses, it is valid.
+
+gdb_test "print (diamond.*diamond_pfunc_ptr) (20)" \
+    "$vhn = 39"
+
+# Make sure that we do not interpret this as either a member pointer
+# call or a member function call.
+
+gdb_test "print diamond.func_ptr (20)" \
+    "$vhn = 39"
+
 # ==========================
 # pointer to member function
 # ==========================
@@ -603,6 +622,7 @@ gdb_test_multiple "print (a.*pmf)(3)" $name {
 }
 
 gdb_test "ptype a.*pmf" "type = int \\(A \\*( const)?, int\\)"
+gdb_test "ptype (a.*pmf)(3)" "type = int"
 
 # Print out a pointer to data member which requires looking into
 # a base class.

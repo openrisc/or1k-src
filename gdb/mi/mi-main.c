@@ -1648,7 +1648,7 @@ mi_cmd_data_write_memory (char *command, char **argv, int argc)
   old_chain = make_cleanup (xfree, buffer);
   store_signed_integer (buffer, word_size, byte_order, value);
   /* Write it down to memory.  */
-  write_memory (addr, buffer, word_size);
+  write_memory_with_notification (addr, buffer, word_size);
   /* Free the buffer.  */
   do_cleanups (old_chain);
 }
@@ -1656,7 +1656,8 @@ mi_cmd_data_write_memory (char *command, char **argv, int argc)
 /* Implementation of the -data-write-memory-bytes command.
 
    ADDR: start address
-   DATA: string of bytes to write at that address.  */
+   DATA: string of bytes to write at that address
+   COUNT: number of bytes to be filled (decimal integer).  */
 
 void
 mi_cmd_data_write_memory_bytes (char *command, char **argv, int argc)
@@ -1664,29 +1665,60 @@ mi_cmd_data_write_memory_bytes (char *command, char **argv, int argc)
   CORE_ADDR addr;
   char *cdata;
   gdb_byte *data;
-  int len, r, i;
+  gdb_byte *databuf;
+  size_t len, r, i, steps, remainder;
+  long int count, j;
   struct cleanup *back_to;
 
-  if (argc != 2)
-    error (_("Usage: ADDR DATA."));
+  if (argc != 2 && argc != 3)
+    error (_("Usage: ADDR DATA [COUNT]."));
 
   addr = parse_and_eval_address (argv[0]);
   cdata = argv[1];
-  len = strlen (cdata)/2;
+  if (strlen (cdata) % 2)
+    error (_("Hex-encoded '%s' must have an even number of characters."),
+	   cdata);
 
-  data = xmalloc (len);
-  back_to = make_cleanup (xfree, data);
+  len = strlen (cdata)/2;
+  if (argc == 3)
+    count = strtoul (argv[2], NULL, 10);
+  else
+    count = len;
+
+  databuf = xmalloc (len * sizeof (gdb_byte));
+  back_to = make_cleanup (xfree, databuf);
 
   for (i = 0; i < len; ++i)
     {
       int x;
-      sscanf (cdata + i * 2, "%02x", &x);
-      data[i] = (gdb_byte) x;
+      if (sscanf (cdata + i * 2, "%02x", &x) != 1)
+        error (_("Invalid argument"));
+      databuf[i] = (gdb_byte) x;
     }
 
-  r = target_write_memory (addr, data, len);
-  if (r != 0)
-    error (_("Could not write memory"));
+  if (len < count)
+    {
+      /* Pattern is made of less bytes than count: 
+         repeat pattern to fill memory.  */
+      data = xmalloc (count);
+      make_cleanup (xfree, data);
+    
+      steps = count / len;
+      remainder = count % len;
+      for (j = 0; j < steps; j++)
+        memcpy (data + j * len, databuf, len);
+
+      if (remainder > 0)
+        memcpy (data + steps * len, databuf, remainder);
+    }
+  else 
+    {
+      /* Pattern is longer than or equal to count: 
+         just copy len bytes.  */
+      data = databuf;
+    }
+
+  write_memory_with_notification (addr, data, count);
 
   do_cleanups (back_to);
 }
@@ -2097,10 +2129,10 @@ mi_cmd_execute (struct mi_parse *parse)
 
   current_context = parse;
 
-  if (strncmp (parse->command, "break-", sizeof ("break-") - 1 ) == 0)
+  if (parse->cmd->suppress_notification != NULL)
     {
-      make_cleanup_restore_integer (&mi_suppress_breakpoint_notifications);
-      mi_suppress_breakpoint_notifications = 1;
+      make_cleanup_restore_integer (parse->cmd->suppress_notification);
+      *parse->cmd->suppress_notification = 1;
     }
 
   if (parse->cmd->argv_func != NULL)
@@ -2436,7 +2468,8 @@ mi_cmd_trace_find (char *command, char **argv, int argc)
       if (argc != 2)
 	error (_("Line is required"));
 
-      sals = decode_line_spec (argv[1], DECODE_LINE_FUNFIRSTLINE);
+      sals = decode_line_with_current_source (argv[1],
+					      DECODE_LINE_FUNFIRSTLINE);
       back_to = make_cleanup (xfree, sals.sals);
 
       sal = sals.sals[0];

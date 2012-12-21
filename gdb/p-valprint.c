@@ -334,7 +334,6 @@ pascal_val_print (struct type *type, const gdb_byte *valaddr,
 	}
       break;
 
-    case TYPE_CODE_BITSTRING:
     case TYPE_CODE_SET:
       elttype = TYPE_INDEX_TYPE (type);
       CHECK_TYPEDEF (elttype);
@@ -349,13 +348,9 @@ pascal_val_print (struct type *type, const gdb_byte *valaddr,
 	  struct type *range = elttype;
 	  LONGEST low_bound, high_bound;
 	  int i;
-	  int is_bitstring = TYPE_CODE (type) == TYPE_CODE_BITSTRING;
 	  int need_comma = 0;
 
-	  if (is_bitstring)
-	    fputs_filtered ("B'", stream);
-	  else
-	    fputs_filtered ("[", stream);
+	  fputs_filtered ("[", stream);
 
 	  i = get_discrete_bounds (range, &low_bound, &high_bound);
 	  if (low_bound == 0 && high_bound == -1 && TYPE_LENGTH (type) > 0)
@@ -383,9 +378,7 @@ pascal_val_print (struct type *type, const gdb_byte *valaddr,
 		  i = element;
 		  goto maybe_bad_bstring;
 		}
-	      if (is_bitstring)
-		fprintf_filtered (stream, "%d", element);
-	      else if (element)
+	      if (element)
 		{
 		  if (need_comma)
 		    fputs_filtered (", ", stream);
@@ -409,10 +402,7 @@ pascal_val_print (struct type *type, const gdb_byte *valaddr,
 		}
 	    }
 	done:
-	  if (is_bitstring)
-	    fputs_filtered ("'", stream);
-	  else
-	    fputs_filtered ("]", stream);
+	  fputs_filtered ("]", stream);
 	}
       break;
 
@@ -797,8 +787,11 @@ pascal_object_print_value (struct type *type, const gdb_byte *valaddr,
 
 	  if (boffset < 0 || boffset >= TYPE_LENGTH (type))
 	    {
-	      /* FIXME (alloc): not safe is baseclass is really really big. */
-	      gdb_byte *buf = alloca (TYPE_LENGTH (baseclass));
+	      gdb_byte *buf;
+	      struct cleanup *back_to;
+
+	      buf = xmalloc (TYPE_LENGTH (baseclass));
+	      back_to = make_cleanup (xfree, buf);
 
 	      base_valaddr = buf;
 	      if (target_read_memory (address + boffset, buf,
@@ -807,6 +800,7 @@ pascal_object_print_value (struct type *type, const gdb_byte *valaddr,
 	      address = address + boffset;
 	      thisoffset = 0;
 	      boffset = 0;
+	      do_cleanups (back_to);
 	    }
 	  else
 	    base_valaddr = valaddr;

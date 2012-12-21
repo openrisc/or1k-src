@@ -128,6 +128,7 @@ proc gdb_version { } {
 
 #
 # gdb_unload -- unload a file if one is loaded
+# Return 0 on success, -1 on error.
 #
 
 proc gdb_unload {} {
@@ -148,10 +149,11 @@ proc gdb_unload {} {
 	}
 	-re "$gdb_prompt $" {}
 	timeout {
-	    perror "couldn't unload file in $GDB (timed out)."
+	    perror "couldn't unload file in $GDB (timeout)."
 	    return -1
 	}
     }
+    return 0
 }
 
 # Many of the tests depend on setting breakpoints at various places and
@@ -334,28 +336,43 @@ proc gdb_start_cmd {args} {
 
 # Set a breakpoint at FUNCTION.  If there is an additional argument it is
 # a list of options; the supported options are allow-pending, temporary,
-# and no-message.
+# message, no-message, and passfail.
+# The result is 1 for success, 0 for failure.
+#
+# Note: The handling of message vs no-message is messed up, but it's based
+# on historical usage.  By default this function does not print passes,
+# only fails.
+# no-message: turns off printing of fails (and passes, but they're already off)
+# message: turns on printing of passes (and fails, but they're already on)
 
 proc gdb_breakpoint { function args } {
     global gdb_prompt
     global decimal
 
     set pending_response n
-    if {[lsearch -exact [lindex $args 0] allow-pending] != -1} {
+    if {[lsearch -exact $args allow-pending] != -1} {
 	set pending_response y
     }
 
     set break_command "break"
     set break_message "Breakpoint"
-    if {[lsearch -exact [lindex $args 0] temporary] != -1} {
+    if {[lsearch -exact $args temporary] != -1} {
 	set break_command "tbreak"
 	set break_message "Temporary breakpoint"
     }
 
-    set no_message 0
-    if {[lsearch -exact [lindex $args 0] no-message] != -1} {
-	set no_message 1
+    set print_pass 0
+    set print_fail 1
+    set no_message_loc [lsearch -exact $args no-message]
+    set message_loc [lsearch -exact $args message]
+    # The last one to appear in args wins.
+    if { $no_message_loc > $message_loc } {
+	set print_fail 0
+    } elseif { $message_loc > $no_message_loc } {
+	set print_pass 1
     }
+
+    set test_name "setting breakpoint at $function"
 
     send_gdb "$break_command $function\n"
     # The first two regexps are what we get with -g, the third is without -g.
@@ -365,8 +382,8 @@ proc gdb_breakpoint { function args } {
 	-re "$break_message \[0-9\]* at .*$gdb_prompt $" {}
 	-re "$break_message \[0-9\]* \\(.*\\) pending.*$gdb_prompt $" {
 		if {$pending_response == "n"} {
-			if { $no_message == 0 } {
-				fail "setting breakpoint at $function"
+			if { $print_fail } {
+				fail $test_name
 			}
 			return 0
 		}
@@ -376,22 +393,33 @@ proc gdb_breakpoint { function args } {
 		exp_continue
 	}
 	-re "A problem internal to GDB has been detected" {
-		fail "setting breakpoint at $function in runto (GDB internal error)"
+		if { $print_fail } {
+		    fail "$test_name (GDB internal error)"
+		}
 		gdb_internal_error_resync
 		return 0
 	}
 	-re "$gdb_prompt $" {
-		if { $no_message == 0 } {
-			fail "setting breakpoint at $function"
+		if { $print_fail } {
+			fail $test_name
+		}
+		return 0
+	}
+	eof {
+		if { $print_fail } {
+			fail "$test_name (eof)"
 		}
 		return 0
 	}
 	timeout {
-		if { $no_message == 0 } {
-			fail "setting breakpoint at $function (timeout)"
+		if { $print_fail } {
+			fail "$test_name (timeout)"
 		}
 		return 0
 	}
+    }
+    if { $print_pass } {
+	pass $test_name
     }
     return 1;
 }    
@@ -400,8 +428,15 @@ proc gdb_breakpoint { function args } {
 # Since this is the only breakpoint that will be set, if it stops
 # at a breakpoint, we will assume it is the one we want.  We can't
 # just compare to "function" because it might be a fully qualified,
-# single quoted C++ function specifier.  If there's an additional argument,
-# pass it to gdb_breakpoint.
+# single quoted C++ function specifier.
+#
+# If there are additional arguments, pass them to gdb_breakpoint.
+# We recognize no-message/message ourselves.
+# The default is no-message.
+# no-message is messed up here, like gdb_breakpoint: to preserve
+# historical usage fails are always printed by default.
+# no-message: turns off printing of fails (and passes, but they're already off)
+# message: turns on printing of passes (and fails, but they're already on)
 
 proc runto { function args } {
     global gdb_prompt
@@ -409,7 +444,28 @@ proc runto { function args } {
 
     delete_breakpoints
 
-    if ![gdb_breakpoint $function [lindex $args 0]] {
+    # Default to "no-message".
+    set args "no-message $args"
+
+    set print_pass 0
+    set print_fail 1
+    set no_message_loc [lsearch -exact $args no-message]
+    set message_loc [lsearch -exact $args message]
+    # The last one to appear in args wins.
+    if { $no_message_loc > $message_loc } {
+	set print_fail 0
+    } elseif { $message_loc > $no_message_loc } {
+	set print_pass 1
+    }
+
+    set test_name "running to $function in runto"
+
+    # We need to use eval here to pass our varargs args to gdb_breakpoint
+    # which is also a varargs function.
+    # But we also have to be careful because $function may have multiple
+    # elements, and we don't want Tcl to move the remaining elements after
+    # the first to $args.  That is why $function is wrapped in {}.
+    if ![eval gdb_breakpoint {$function} $args] {
 	return 0;
     }
 
@@ -419,32 +475,51 @@ proc runto { function args } {
     # the "in func" output we get without -g.
     gdb_expect 30 {
 	-re "Break.* at .*:$decimal.*$gdb_prompt $" {
+	    if { $print_pass } {
+		pass $test_name
+	    }
 	    return 1
 	}
 	-re "Breakpoint \[0-9\]*, \[0-9xa-f\]* in .*$gdb_prompt $" { 
+	    if { $print_pass } {
+		pass $test_name
+	    }
 	    return 1
 	}
 	-re "The target does not support running in non-stop mode.\r\n$gdb_prompt $" {
-	    unsupported "Non-stop mode not supported"
+	    if { $print_fail } {
+		unsupported "Non-stop mode not supported"
+	    }
 	    return 0
 	}
 	-re ".*A problem internal to GDB has been detected" {
-	    fail "running to $function in runto (GDB internal error)"
+	    if { $print_fail } {
+		fail "$test_name (GDB internal error)"
+	    }
 	    gdb_internal_error_resync
 	    return 0
 	}
 	-re "$gdb_prompt $" { 
-	    fail "running to $function in runto"
+	    if { $print_fail } {
+		fail $test_name
+	    }
 	    return 0
 	}
 	eof { 
-	    fail "running to $function in runto (end of file)"
+	    if { $print_fail } {
+		fail "$test_name (eof)"
+	    }
 	    return 0
 	}
 	timeout { 
-	    fail "running to $function in runto (timeout)"
+	    if { $print_fail } {
+		fail "$test_name (timeout)"
+	    }
 	    return 0
 	}
+    }
+    if { $print_pass } {
+	pass $test_name
     }
     return 1
 }
@@ -455,7 +530,7 @@ proc runto { function args } {
 # If you don't want that, use gdb_start_cmd.
 
 proc runto_main { } {
-    return [runto main]
+    return [runto main no-message]
 }
 
 ### Continue, and expect to hit a breakpoint.
@@ -469,7 +544,7 @@ proc gdb_continue_to_breakpoint {name {location_pattern .*}} {
 
     send_gdb "continue\n"
     gdb_expect {
-	-re "Breakpoint .* (at|in) $location_pattern\r\n$gdb_prompt $" {
+	-re "(?:Breakpoint|Temporary breakpoint) .* (at|in) $location_pattern\r\n$gdb_prompt $" {
 	    pass $full_name
 	}
 	-re ".*$gdb_prompt $" {
@@ -507,6 +582,8 @@ proc gdb_continue_to_breakpoint {name {location_pattern .*}} {
 #
 proc gdb_internal_error_resync {} {
     global gdb_prompt
+
+    verbose -log "Resyncing due to internal error."
 
     set count 0
     while {$count < 10} {
@@ -1203,6 +1280,8 @@ proc default_gdb_exit {} {
 #
 #   debug    file was loaded successfully and has debug information
 #   nodebug  file was loaded successfully and has no debug information
+#   lzma     file was loaded, .gnu_debugdata found, but no LZMA support
+#            compiled in
 #   fail     file was not loaded
 #
 # I tried returning this information as part of the return value,
@@ -1218,6 +1297,7 @@ proc gdb_file_cmd { arg } {
     global GDB
     global last_loaded_file
 
+    # Save this for the benefit of gdbserver-support.exp.
     set last_loaded_file $arg
 
     # Set whether debug info was found.
@@ -1249,13 +1329,18 @@ proc gdb_file_cmd { arg } {
 
     send_gdb "file $arg\n"
     gdb_expect 120 {
+	-re "Reading symbols from.*LZMA support was disabled.*done.*$gdb_prompt $" {
+	    verbose "\t\tLoaded $arg into $GDB; .gnu_debugdata found but no LZMA available"
+	    set gdb_file_cmd_debug_info "lzma"
+	    return 0
+	}
 	-re "Reading symbols from.*no debugging symbols found.*done.*$gdb_prompt $" {
-	    verbose "\t\tLoaded $arg into the $GDB with no debugging symbols"
+	    verbose "\t\tLoaded $arg into $GDB with no debugging symbols"
 	    set gdb_file_cmd_debug_info "nodebug"
 	    return 0
 	}
         -re "Reading symbols from.*done.*$gdb_prompt $" {
-            verbose "\t\tLoaded $arg into the $GDB"
+            verbose "\t\tLoaded $arg into $GDB"
 	    set gdb_file_cmd_debug_info "debug"
 	    return 0
         }
@@ -1268,28 +1353,37 @@ proc gdb_file_cmd { arg } {
 		    return 0
                 }
                 timeout {
-                    perror "(timeout) Couldn't load $arg, other program already loaded."
+                    perror "Couldn't load $arg, other program already loaded (timeout)."
 		    return -1
                 }
+		eof {
+		    perror "Couldn't load $arg, other program already loaded (eof)."
+		    return -1
+		}
             }
 	}
         -re "No such file or directory.*$gdb_prompt $" {
             perror "($arg) No such file or directory"
 	    return -1
         }
+	-re "A problem internal to GDB has been detected" {
+	    fail "($arg) (GDB internal error)"
+	    gdb_internal_error_resync
+	    return -1
+	}
         -re "$gdb_prompt $" {
-            perror "couldn't load $arg into $GDB."
+            perror "Couldn't load $arg into $GDB."
 	    return -1
             }
         timeout {
-            perror "couldn't load $arg into $GDB (timed out)."
+            perror "Couldn't load $arg into $GDB (timeout)."
 	    return -1
         }
         eof {
             # This is an attempt to detect a core dump, but seems not to
             # work.  Perhaps we need to match .* followed by eof, in which
             # gdb_expect does not seem to have a way to do that.
-            perror "couldn't load $arg into $GDB (end of file)."
+            perror "Couldn't load $arg into $GDB (eof)."
 	    return -1
         }
     }
@@ -2091,6 +2185,36 @@ proc skip_hw_watchpoint_access_tests {} {
     }
 
     return 0
+}
+
+# Return 1 if we should skip tests that require the runtime unwinder
+# hook.  This must be invoked while gdb is running, after shared
+# libraries have been loaded.  This is needed because otherwise a
+# shared libgcc won't be visible.
+
+proc skip_unwinder_tests {} {
+    global gdb_prompt
+
+    set ok 0
+    gdb_test_multiple "print _Unwind_DebugHook" "check for unwinder hook" {
+	-re "= .*no debug info.*_Unwind_DebugHook.*\r\n$gdb_prompt $" {
+	}
+	-re "= .*_Unwind_DebugHook.*\r\n$gdb_prompt $" {
+	    set ok 1
+	}
+	-re "No symbol .* in current context.\r\n$gdb_prompt $" {
+	}
+    }
+    if {!$ok} {
+	gdb_test_multiple "info probe" "check for stap probe in unwinder" {
+	    -re ".*libgcc.*unwind.*\r\n$gdb_prompt $" {
+		set ok 1
+	    }
+	    -re "\r\n$gdb_prompt $" {
+	    }
+	}
+    }
+    return $ok
 }
 
 set compiler_info		"unknown"
@@ -2911,6 +3035,36 @@ proc gdb_load_cmd { args } {
     return -1
 }
 
+# Invoke "gcore".  CORE is the name of the core file to write.  TEST
+# is the name of the test case.  This will return 1 if the core file
+# was created, 0 otherwise.  If this fails to make a core file because
+# this configuration of gdb does not support making core files, it
+# will call "unsupported", not "fail".  However, if this fails to make
+# a core file for some other reason, then it will call "fail".
+
+proc gdb_gcore_cmd {core test} {
+    global gdb_prompt
+
+    set result 0
+    gdb_test_multiple "gcore $core" $test {
+	-re "Saved corefile .*\[\r\n\]+$gdb_prompt $" {
+	    pass $test
+	    set result 1
+	}
+
+	-re "Undefined command.*$gdb_prompt $" {
+	    unsupported $test
+	    verbose -log "'gcore' command undefined in gdb_gcore_cmd"
+	}
+
+	-re "Can't create a corefile\[\r\n\]+$gdb_prompt $" {
+	    unsupported $test
+	}
+    }
+
+    return $result
+}
+
 # Return the filename to download to the target and load on the target
 # for this shared library.  Normally just LIBNAME, unless shared libraries
 # for this target have separate link and load images.
@@ -3067,12 +3221,13 @@ proc default_gdb_init { args } {
 }
 
 # Turn BASENAME into a full file name in the standard output
-# directory.
+# directory.  It is ok if BASENAME is the empty string; in this case
+# the directory is returned.
 
 proc standard_output_file {basename} {
     global objdir subdir
 
-    return $objdir/$subdir/$basename
+    return [file join $objdir $subdir $basename]
 }
 
 # Set 'testfile', 'srcfile', and 'binfile'.
@@ -3096,7 +3251,8 @@ proc standard_output_file {basename} {
 
 proc standard_testfile {args} {
     global gdb_test_file_name
-    global objdir subdir
+    global subdir
+    global gdb_test_file_last_vars
 
     # Outputs.
     global testfile binfile
@@ -3107,6 +3263,17 @@ proc standard_testfile {args} {
     if {[llength $args] == 0} {
 	set args .c
     }
+
+    # Unset our previous output variables.
+    # This can help catch hidden bugs.
+    if {[info exists gdb_test_file_last_vars]} {
+	foreach varname $gdb_test_file_last_vars {
+	    global $varname
+	    catch {unset $varname}
+	}
+    }
+    # 'executable' is often set by tests.
+    set gdb_test_file_last_vars {executable}
 
     set suffix ""
     foreach arg $args {
@@ -3121,6 +3288,7 @@ proc standard_testfile {args} {
 	}
 
 	set $varname $arg
+	lappend gdb_test_file_last_vars $varname
 
 	if {$suffix == ""} {
 	    set suffix 2
@@ -3272,7 +3440,7 @@ proc get_debug_format { } {
 	    return 1;
 	}
 	timeout {
-	    warning "couldn't check debug format (timed out)."
+	    warning "couldn't check debug format (timeout)."
 	    return 1;
 	}
     }
@@ -3303,14 +3471,6 @@ proc setup_xfail_format { format } {
 	setup_xfail "*-*-*"
     }
     return $ret;
-}
-
-# Like setup_kfail, but only call setup_kfail conditionally if
-# istarget[TARGET] returns true.
-proc setup_kfail_for_target { PR target } {
-    if { [istarget $target] } {
-	setup_kfail $PR $target
-    }
 }
 
 # gdb_get_line_number TEXT [FILE]
@@ -3720,29 +3880,31 @@ proc test_prefix_command_help { command_list expected_initial_lines args } {
     }
 }
 
-# Build executable named EXECUTABLE, from SOURCES.  If SOURCES are not
-# provided, uses $EXECUTABLE.c.  The TESTNAME paramer is the name of test
-# to pass to untested, if something is wrong.  OPTIONS are passed
-# to gdb_compile directly.
-proc build_executable { testname executable {sources ""} {options {debug}} } {
-
-    global objdir
+# Build executable named EXECUTABLE from specifications that allow
+# different options to be passed to different sub-compilations.
+# TESTNAME is the name of the test; this is passed to 'untested' if
+# something fails.
+# OPTIONS is passed to the final link, using gdb_compile.
+# ARGS is a flat list of source specifications, of the form:
+#    { SOURCE1 OPTIONS1 [ SOURCE2 OPTIONS2 ]... }
+# Each SOURCE is compiled to an object file using its OPTIONS,
+# using gdb_compile.
+# Returns 0 on success, -1 on failure.
+proc build_executable_from_specs {testname executable options args} {
     global subdir
     global srcdir
-    if {[llength $sources]==0} {
-        set sources ${executable}.c
-    }
 
     set binfile [standard_output_file $executable]
 
     set objects {}
-    for {set i 0} "\$i<[llength $sources]" {incr i} {
-        set s [lindex $sources $i]
-        if  { [gdb_compile "${srcdir}/${subdir}/${s}" "${binfile}${i}.o" object $options] != "" } {
+    set i 0
+    foreach {s local_options} $args {
+        if  { [gdb_compile "${srcdir}/${subdir}/${s}" "${binfile}${i}.o" object $local_options] != "" } {
             untested $testname
             return -1
         }
         lappend objects "${binfile}${i}.o"
+	incr i
     }
     
     if  { [gdb_compile $objects "${binfile}" executable $options] != "" } {
@@ -3760,11 +3922,27 @@ proc build_executable { testname executable {sources ""} {options {debug}} } {
     return 0
 }
 
+# Build executable named EXECUTABLE, from SOURCES.  If SOURCES are not
+# provided, uses $EXECUTABLE.c.  The TESTNAME paramer is the name of test
+# to pass to untested, if something is wrong.  OPTIONS are passed
+# to gdb_compile directly.
+proc build_executable { testname executable {sources ""} {options {debug}} } {
+    if {[llength $sources]==0} {
+        set sources ${executable}.c
+    }
+
+    set arglist [list $testname $executable $options]
+    foreach source $sources {
+	lappend arglist $source $options
+    }
+
+    return [eval build_executable_from_specs $arglist]
+}
+
 # Starts fresh GDB binary and loads EXECUTABLE into GDB. EXECUTABLE is
 # the basename of the binary.
 proc clean_restart { executable } {
     global srcdir
-    global objdir
     global subdir
     set binfile [standard_output_file ${executable}]
 
@@ -3772,6 +3950,25 @@ proc clean_restart { executable } {
     gdb_start
     gdb_reinitialize_dir $srcdir/$subdir
     gdb_load ${binfile}
+}
+
+# Prepares for testing by calling build_executable_full, then
+# clean_restart.
+# TESTNAME is the name of the test.
+# Each element in ARGS is a list of the form
+#    { EXECUTABLE OPTIONS SOURCE_SPEC... }
+# These are passed to build_executable_from_specs, which see.
+# The last EXECUTABLE is passed to clean_restart.
+# Returns 0 on success, non-zero on failure.
+proc prepare_for_testing_full {testname args} {
+    foreach spec $args {
+	if {[eval build_executable_from_specs [list $testname] $spec] == -1} {
+	    return -1
+	}
+	set executable [lindex $spec 0]
+    }
+    clean_restart $executable
+    return 0
 }
 
 # Prepares for testing, by calling build_executable, and then clean_restart.
@@ -3935,7 +4132,7 @@ proc core_find {binfile {deletefiles {}} {arg ""}} {
     # could have many core files lying around, and it may be difficult to
     # tell which one is ours, so let's run the program in a subdirectory.
     set found 0
-    set coredir "${objdir}/${subdir}/coredir.[getpid]"
+    set coredir [standard_output_file coredir.[getpid]]
     file mkdir $coredir
     catch "system \"(cd ${coredir}; ulimit -c unlimited; ${binfile} ${arg}; true) >/dev/null 2>&1\""
     #      remote_exec host "${binfile}"

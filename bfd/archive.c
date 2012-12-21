@@ -42,11 +42,17 @@ DESCRIPTION
 	have to read the entire archive if you don't want
 	to!  Read it until you find what you want.
 
+	A BFD returned by <<bfd_openr_next_archived_file>> can be
+	closed manually with <<bfd_close>>.  If you do not close it,
+	then a second iteration through the members of an archive may
+	return the same BFD.  If you close the archive BFD, then all
+	the member BFDs will automatically be closed as well.
+
 	Archive contents of output BFDs are chained through the
-	<<next>> pointer in a BFD.  The first one is findable through
-	the <<archive_head>> slot of the archive.  Set it with
-	<<bfd_set_archive_head>> (q.v.).  A given BFD may be in only one
-	open output archive at a time.
+	<<archive_next>> pointer in a BFD.  The first one is findable
+	through the <<archive_head>> slot of the archive.  Set it with
+	<<bfd_set_archive_head>> (q.v.).  A given BFD may be in only
+	one open output archive at a time.
 
 	As expected, the BFD archive code is more general than the
 	archive code of any given environment.  BFD archives may
@@ -147,7 +153,8 @@ extern int errno;
    it's generally short enough to search linearly.
    Note that the pointers here point to the front of the ar_hdr, not
    to the front of the contents!  */
-struct ar_cache {
+struct ar_cache
+{
   file_ptr ptr;
   bfd *arbfd;
 };
@@ -168,6 +175,7 @@ _bfd_ar_spacepad (char *p, size_t n, const char *fmt, long val)
 {
   static char buf[20];
   size_t len;
+
   snprintf (buf, sizeof (buf), fmt, val);
   len = strlen (buf);
   if (len < n)
@@ -296,6 +304,7 @@ _bfd_look_for_bfd_in_cache (bfd *arch_bfd, file_ptr filepos)
 {
   htab_t hash_table = bfd_ardata (arch_bfd)->cache;
   struct ar_cache m;
+
   m.ptr = filepos;
 
   if (hash_table)
@@ -311,7 +320,7 @@ _bfd_look_for_bfd_in_cache (bfd *arch_bfd, file_ptr filepos)
 }
 
 static hashval_t
-hash_file_ptr (const PTR p)
+hash_file_ptr (const void * p)
 {
   return (hashval_t) (((struct ar_cache *) p)->ptr);
 }
@@ -319,7 +328,7 @@ hash_file_ptr (const PTR p)
 /* Returns non-zero if P1 and P2 are equal.  */
 
 static int
-eq_file_ptr (const PTR p1, const PTR p2)
+eq_file_ptr (const void * p1, const void * p2)
 {
   struct ar_cache *arc1 = (struct ar_cache *) p1;
   struct ar_cache *arc2 = (struct ar_cache *) p2;
@@ -358,6 +367,10 @@ _bfd_add_bfd_to_archive_cache (bfd *arch_bfd, file_ptr filepos, bfd *new_elt)
   cache->ptr = filepos;
   cache->arbfd = new_elt;
   *htab_find_slot (hash_table, (const void *) cache, INSERT) = cache;
+
+  /* Provide a means of accessing this from child.  */
+  arch_eltdata (new_elt)->parent_cache = hash_table;
+  arch_eltdata (new_elt)->key = filepos;
 
   return TRUE;
 }
@@ -504,7 +517,7 @@ _bfd_generic_read_ar_hdr_mag (bfd *abfd, const char *mag)
       parsed_size -= namelen;
       extra_size = namelen;
 
-      allocptr = (char *) bfd_zalloc (abfd, allocsize);
+      allocptr = (char *) bfd_zmalloc (allocsize);
       if (allocptr == NULL)
 	return NULL;
       filename = (allocptr
@@ -512,6 +525,7 @@ _bfd_generic_read_ar_hdr_mag (bfd *abfd, const char *mag)
 		  + sizeof (struct ar_hdr));
       if (bfd_bread (filename, namelen, abfd) != namelen)
 	{
+	  free (allocptr);
 	  if (bfd_get_error () != bfd_error_system_call)
 	    bfd_set_error (bfd_error_no_more_archived_files);
 	  return NULL;
@@ -547,7 +561,7 @@ _bfd_generic_read_ar_hdr_mag (bfd *abfd, const char *mag)
 
   if (!allocptr)
     {
-      allocptr = (char *) bfd_zalloc (abfd, allocsize);
+      allocptr = (char *) bfd_zmalloc (allocsize);
       if (allocptr == NULL)
 	return NULL;
     }
@@ -630,7 +644,10 @@ _bfd_get_elt_at_filepos (bfd *archive, file_ptr filepos)
 	{
 	  filename = _bfd_append_relative_path (archive, filename);
 	  if (filename == NULL)
-	    return NULL;
+	    {
+	      free (new_areldata);
+	      return NULL;
+	    }
 	}
 
       if (new_areldata->origin > 0)
@@ -642,13 +659,13 @@ _bfd_get_elt_at_filepos (bfd *archive, file_ptr filepos)
 	  if (ext_arch == NULL
 	      || ! bfd_check_format (ext_arch, bfd_archive))
 	    {
-	      bfd_release (archive, new_areldata);
+	      free (new_areldata);
 	      return NULL;
 	    }
 	  n_nfd = _bfd_get_elt_at_filepos (ext_arch, new_areldata->origin);
 	  if (n_nfd == NULL)
 	    {
-	      bfd_release (archive, new_areldata);
+	      free (new_areldata);
 	      return NULL;
 	    }
 	  n_nfd->proxy_origin = bfd_tell (archive);
@@ -670,7 +687,7 @@ _bfd_get_elt_at_filepos (bfd *archive, file_ptr filepos)
 
   if (n_nfd == NULL)
     {
-      bfd_release (archive, new_areldata);
+      free (new_areldata);
       return NULL;
     }
 
@@ -694,7 +711,8 @@ _bfd_get_elt_at_filepos (bfd *archive, file_ptr filepos)
   if (_bfd_add_bfd_to_archive_cache (archive, filepos, n_nfd))
     return n_nfd;
 
-  bfd_release (archive, new_areldata);
+  free (new_areldata);
+  n_nfd->arelt_data = NULL;
   return NULL;
 }
 
@@ -881,7 +899,7 @@ do_slurp_bsd_armap (bfd *abfd)
   if (mapdata == NULL)
     return FALSE;
   parsed_size = mapdata->parsed_size;
-  bfd_release (abfd, mapdata);	/* Don't need it any more.  */
+  free (mapdata);
 
   raw_armap = (bfd_byte *) bfd_zalloc (abfd, parsed_size);
   if (raw_armap == NULL)
@@ -957,7 +975,7 @@ do_slurp_coff_armap (bfd *abfd)
   if (mapdata == NULL)
     return FALSE;
   parsed_size = mapdata->parsed_size;
-  bfd_release (abfd, mapdata);	/* Don't need it any more.  */
+  free (mapdata);
 
   if (bfd_bread (int_buf, 4, abfd) != 4)
     {
@@ -1050,7 +1068,7 @@ do_slurp_coff_armap (bfd *abfd)
 	    ardata->first_file_filepos +=
 	      (tmp->parsed_size + sizeof (struct ar_hdr) + 1) & ~(unsigned) 1;
 	  }
-	bfd_release (abfd, tmp);
+	free (tmp);
       }
   }
 
@@ -1167,15 +1185,17 @@ bfd_slurp_bsd_armap_f2 (bfd *abfd)
 
   if (mapdata->parsed_size < HPUX_SYMDEF_COUNT_SIZE + BSD_STRING_COUNT_SIZE)
     {
+      free (mapdata);
     wrong_format:
       bfd_set_error (bfd_error_wrong_format);
     byebye:
-      bfd_release (abfd, mapdata);
       return FALSE;
     }
   left = mapdata->parsed_size - HPUX_SYMDEF_COUNT_SIZE - BSD_STRING_COUNT_SIZE;
 
   amt = mapdata->parsed_size;
+  free (mapdata);
+
   raw_armap = (bfd_byte *) bfd_zalloc (abfd, amt);
   if (raw_armap == NULL)
     goto byebye;
@@ -1277,7 +1297,7 @@ _bfd_slurp_extended_name_table (bfd *abfd)
       if (bfd_ardata (abfd)->extended_names == NULL)
 	{
 	byebye:
-	  bfd_release (abfd, namedata);
+	  free (namedata);
 	  return FALSE;
 	}
 
@@ -1314,8 +1334,7 @@ _bfd_slurp_extended_name_table (bfd *abfd)
       bfd_ardata (abfd)->first_file_filepos +=
 	(bfd_ardata (abfd)->first_file_filepos) % 2;
 
-      /* FIXME, we can't release namedata here because it was allocated
-	 below extended_names on the objalloc...  */
+      free (namedata);
     }
   return TRUE;
 }
@@ -1883,7 +1902,7 @@ bfd_ar_hdr_from_filesystem (bfd *abfd, const char *filename, bfd *member)
     }
 
   amt = sizeof (struct ar_hdr) + sizeof (struct areltdata);
-  ared = (struct areltdata *) bfd_zalloc (abfd, amt);
+  ared = (struct areltdata *) bfd_zmalloc (amt);
   if (ared == NULL)
     return NULL;
   hdr = (struct ar_hdr *) (((char *) ared) + sizeof (struct areltdata));
@@ -2314,10 +2333,10 @@ _bfd_compute_and_write_armap (bfd *arch, unsigned int elength)
 		  flagword flags = (syms[src_count])->flags;
 		  asection *sec = syms[src_count]->section;
 
-		  if ((flags & BSF_GLOBAL
-		       || flags & BSF_WEAK
-		       || flags & BSF_INDIRECT
-		       || flags & BSF_GNU_UNIQUE
+		  if (((flags & (BSF_GLOBAL
+				 | BSF_WEAK
+				 | BSF_INDIRECT
+				 | BSF_GNU_UNIQUE)) != 0
 		       || bfd_is_com_section (sec))
 		      && ! bfd_is_und_section (sec))
 		    {
@@ -2405,6 +2424,9 @@ bsd_write_armap (bfd *arch,
   unsigned int count;
   struct ar_hdr hdr;
   long uid, gid;
+  file_ptr max_first_real = 1;
+
+  max_first_real <<= 31;
 
   firstreal = mapsize + elength + sizeof (struct ar_hdr) + SARMAG;
 
@@ -2463,6 +2485,15 @@ bsd_write_armap (bfd *arch,
 	  while (current != map[count].u.abfd);
 	}
 
+      /* The archive file format only has 4 bytes to store the offset
+	 of the member.  Check to make sure that firstreal has not grown
+	 too big.  */
+      if (firstreal >= max_first_real)
+	{
+	  bfd_set_error (bfd_error_file_truncated);
+	  return FALSE;
+	}
+      
       last_elt = current;
       H_PUT_32 (arch, map[count].namidx, buf);
       H_PUT_32 (arch, firstreal, buf + BSD_SYMDEF_OFFSET_SIZE);
@@ -2574,7 +2605,7 @@ coff_write_armap (bfd *arch,
   unsigned int ranlibsize = (symbol_count * 4) + 4;
   unsigned int stringsize = stridx;
   unsigned int mapsize = stringsize + ranlibsize;
-  unsigned int archive_member_file_ptr;
+  file_ptr archive_member_file_ptr;
   bfd *current = arch->archive_head;
   unsigned int count;
   struct ar_hdr hdr;
@@ -2625,7 +2656,15 @@ coff_write_armap (bfd *arch,
 
       while (count < symbol_count && map[count].u.abfd == current)
 	{
-	  if (!bfd_write_bigendian_4byte_int (arch, archive_member_file_ptr))
+	  unsigned int offset = (unsigned int) archive_member_file_ptr;
+
+	  /* Catch an attempt to grow an archive past its 4Gb limit.  */
+	  if (archive_member_file_ptr != (file_ptr) offset)
+	    {
+	      bfd_set_error (bfd_error_file_truncated);
+	      return FALSE;
+	    }
+	  if (!bfd_write_bigendian_4byte_int (arch, offset))
 	    return FALSE;
 	  count++;
 	}
@@ -2657,5 +2696,60 @@ coff_write_armap (bfd *arch,
 	return FALSE;
     }
 
+  return TRUE;
+}
+
+static int
+archive_close_worker (void **slot, void *inf ATTRIBUTE_UNUSED)
+{
+  struct ar_cache *ent = (struct ar_cache *) *slot;
+
+  bfd_close_all_done (ent->arbfd);
+  return 1;
+}
+
+bfd_boolean
+_bfd_archive_close_and_cleanup (bfd *abfd)
+{
+  if (bfd_read_p (abfd) && abfd->format == bfd_archive)
+    {
+      bfd *nbfd;
+      bfd *next;
+      htab_t htab;
+
+      /* Close nested archives (if this bfd is a thin archive).  */
+      for (nbfd = abfd->nested_archives; nbfd; nbfd = next)
+	{
+	  next = nbfd->archive_next;
+	  bfd_close (nbfd);
+	}
+
+      htab = bfd_ardata (abfd)->cache;
+      if (htab)
+	{
+	  htab_traverse_noresize (htab, archive_close_worker, NULL);
+	  htab_delete (htab);
+	  bfd_ardata (abfd)->cache = NULL;
+	}
+    }
+  else if (arch_eltdata (abfd) != NULL)
+    {
+      struct areltdata *ared = arch_eltdata (abfd);
+      htab_t htab = (htab_t) ared->parent_cache;
+
+      if (htab)
+	{
+	  struct ar_cache ent;
+	  void **slot;
+
+	  ent.ptr = ared->key;
+	  slot = htab_find_slot (htab, &ent, NO_INSERT);
+	  if (slot != NULL)
+	    {
+	      BFD_ASSERT (((struct ar_cache *) *slot)->arbfd == abfd);
+	      htab_clear_slot (htab, slot);
+	    }
+	}
+    }
   return TRUE;
 }

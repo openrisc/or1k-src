@@ -1,4 +1,5 @@
-/* *INDENT-OFF* */ /* THIS FILE IS GENERATED */
+/* *INDENT-OFF* */ /* THIS FILE IS GENERATED -*- buffer-read-only: t -*- */
+/* vi:set ro: */
 
 /* Dynamic architecture support for GDB, the GNU debugger.
 
@@ -60,7 +61,7 @@ static void alloc_gdbarch_data (struct gdbarch *);
 #ifndef GDBARCH_DEBUG
 #define GDBARCH_DEBUG 0
 #endif
-int gdbarch_debug = GDBARCH_DEBUG;
+unsigned int gdbarch_debug = GDBARCH_DEBUG;
 static void
 show_gdbarch_debug (struct ui_file *file, int from_tty,
                     struct cmd_list_element *c, const char *value)
@@ -111,9 +112,6 @@ struct gdbarch
   /* per-architecture data-pointers.  */
   unsigned nr_data;
   void **data;
-
-  /* per-architecture swap-regions.  */
-  struct gdbarch_swap *swap;
 
   /* Multi-arch values.
 
@@ -222,7 +220,6 @@ struct gdbarch
   int frame_red_zone_size;
   gdbarch_convert_from_func_ptr_addr_ftype *convert_from_func_ptr_addr;
   gdbarch_addr_bits_remove_ftype *addr_bits_remove;
-  gdbarch_smash_text_address_ftype *smash_text_address;
   gdbarch_software_single_step_ftype *software_single_step;
   gdbarch_single_step_through_delay_ftype *single_step_through_delay;
   gdbarch_print_insn_ftype *print_insn;
@@ -307,8 +304,8 @@ struct gdbarch startup_gdbarch =
   0,  /* target_desc */
   /* target specific vector and its dump routine.  */
   NULL, NULL,
-  /*per-architecture data-pointers and swap regions.  */
-  0, NULL, NULL,
+  /*per-architecture data-pointers.  */
+  0, NULL,
   /* Multi-arch values */
   1,  /* bits_big_endian */
   8 * sizeof (short),  /* short_bit */
@@ -391,7 +388,6 @@ struct gdbarch startup_gdbarch =
   0,  /* frame_red_zone_size */
   convert_from_func_ptr_addr_identity,  /* convert_from_func_ptr_addr */
   core_addr_identity,  /* addr_bits_remove */
-  core_addr_identity,  /* smash_text_address */
   0,  /* software_single_step */
   0,  /* single_step_through_delay */
   0,  /* print_insn */
@@ -459,7 +455,6 @@ struct gdbarch startup_gdbarch =
   /* startup_gdbarch() */
 };
 
-struct gdbarch *target_gdbarch = &startup_gdbarch;
 
 /* Create a new ``struct gdbarch'' based on information provided by
    ``struct gdbarch_info''.  */
@@ -529,7 +524,6 @@ gdbarch_alloc (const struct gdbarch_info *info,
   gdbarch->stabs_argument_has_addr = default_stabs_argument_has_addr;
   gdbarch->convert_from_func_ptr_addr = convert_from_func_ptr_addr_identity;
   gdbarch->addr_bits_remove = core_addr_identity;
-  gdbarch->smash_text_address = core_addr_identity;
   gdbarch->skip_trampoline_code = generic_skip_trampoline_code;
   gdbarch->skip_solib_resolver = generic_skip_solib_resolver;
   gdbarch->in_solib_return_trampoline = generic_in_solib_return_trampoline;
@@ -692,7 +686,6 @@ verify_gdbarch (struct gdbarch *gdbarch)
   /* Skip verify of stabs_argument_has_addr, invalid_p == 0 */
   /* Skip verify of convert_from_func_ptr_addr, invalid_p == 0 */
   /* Skip verify of addr_bits_remove, invalid_p == 0 */
-  /* Skip verify of smash_text_address, invalid_p == 0 */
   /* Skip verify of software_single_step, has predicate.  */
   /* Skip verify of single_step_through_delay, has predicate.  */
   if (gdbarch->print_insn == 0)
@@ -1289,9 +1282,6 @@ gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file)
                       "gdbarch_dump: skip_trampoline_code = <%s>\n",
                       host_address_to_string (gdbarch->skip_trampoline_code));
   fprintf_unfiltered (file,
-                      "gdbarch_dump: smash_text_address = <%s>\n",
-                      host_address_to_string (gdbarch->smash_text_address));
-  fprintf_unfiltered (file,
                       "gdbarch_dump: gdbarch_software_single_step_p() = %d\n",
                       gdbarch_software_single_step_p (gdbarch));
   fprintf_unfiltered (file,
@@ -1314,16 +1304,16 @@ gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file)
                       host_address_to_string (gdbarch->stabs_argument_has_addr));
   fprintf_unfiltered (file,
                       "gdbarch_dump: stap_gdb_register_prefix = %s\n",
-                      gdbarch->stap_gdb_register_prefix);
+                      pstring (gdbarch->stap_gdb_register_prefix));
   fprintf_unfiltered (file,
                       "gdbarch_dump: stap_gdb_register_suffix = %s\n",
-                      gdbarch->stap_gdb_register_suffix);
+                      pstring (gdbarch->stap_gdb_register_suffix));
   fprintf_unfiltered (file,
                       "gdbarch_dump: stap_integer_prefix = %s\n",
-                      gdbarch->stap_integer_prefix);
+                      pstring (gdbarch->stap_integer_prefix));
   fprintf_unfiltered (file,
                       "gdbarch_dump: stap_integer_suffix = %s\n",
-                      gdbarch->stap_integer_suffix);
+                      pstring (gdbarch->stap_integer_suffix));
   fprintf_unfiltered (file,
                       "gdbarch_dump: gdbarch_stap_is_single_operand_p() = %d\n",
                       gdbarch_stap_is_single_operand_p (gdbarch));
@@ -1338,16 +1328,16 @@ gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file)
                       host_address_to_string (gdbarch->stap_parse_special_token));
   fprintf_unfiltered (file,
                       "gdbarch_dump: stap_register_indirection_prefix = %s\n",
-                      gdbarch->stap_register_indirection_prefix);
+                      pstring (gdbarch->stap_register_indirection_prefix));
   fprintf_unfiltered (file,
                       "gdbarch_dump: stap_register_indirection_suffix = %s\n",
-                      gdbarch->stap_register_indirection_suffix);
+                      pstring (gdbarch->stap_register_indirection_suffix));
   fprintf_unfiltered (file,
                       "gdbarch_dump: stap_register_prefix = %s\n",
-                      gdbarch->stap_register_prefix);
+                      pstring (gdbarch->stap_register_prefix));
   fprintf_unfiltered (file,
                       "gdbarch_dump: stap_register_suffix = %s\n",
-                      gdbarch->stap_register_suffix);
+                      pstring (gdbarch->stap_register_suffix));
   fprintf_unfiltered (file,
                       "gdbarch_dump: gdbarch_static_transform_name_p() = %d\n",
                       gdbarch_static_transform_name_p (gdbarch));
@@ -2982,23 +2972,6 @@ set_gdbarch_addr_bits_remove (struct gdbarch *gdbarch,
                               gdbarch_addr_bits_remove_ftype addr_bits_remove)
 {
   gdbarch->addr_bits_remove = addr_bits_remove;
-}
-
-CORE_ADDR
-gdbarch_smash_text_address (struct gdbarch *gdbarch, CORE_ADDR addr)
-{
-  gdb_assert (gdbarch != NULL);
-  gdb_assert (gdbarch->smash_text_address != NULL);
-  if (gdbarch_debug >= 2)
-    fprintf_unfiltered (gdb_stdlog, "gdbarch_smash_text_address called\n");
-  return gdbarch->smash_text_address (gdbarch, addr);
-}
-
-void
-set_gdbarch_smash_text_address (struct gdbarch *gdbarch,
-                                gdbarch_smash_text_address_ftype smash_text_address)
-{
-  gdbarch->smash_text_address = smash_text_address;
 }
 
 int
@@ -4669,13 +4642,21 @@ gdbarch_find_by_info (struct gdbarch_info info)
 /* Make the specified architecture current.  */
 
 void
-deprecated_target_gdbarch_select_hack (struct gdbarch *new_gdbarch)
+set_target_gdbarch (struct gdbarch *new_gdbarch)
 {
   gdb_assert (new_gdbarch != NULL);
   gdb_assert (new_gdbarch->initialized_p);
-  target_gdbarch = new_gdbarch;
+  current_inferior ()->gdbarch = new_gdbarch;
   observer_notify_architecture_changed (new_gdbarch);
   registers_changed ();
+}
+
+/* Return the current inferior's arch.  */
+
+struct gdbarch *
+target_gdbarch (void)
+{
+  return current_inferior ()->gdbarch;
 }
 
 extern void _initialize_gdbarch (void);
@@ -4683,7 +4664,7 @@ extern void _initialize_gdbarch (void);
 void
 _initialize_gdbarch (void)
 {
-  add_setshow_zinteger_cmd ("arch", class_maintenance, &gdbarch_debug, _("\
+  add_setshow_zuinteger_cmd ("arch", class_maintenance, &gdbarch_debug, _("\
 Set architecture debugging."), _("\
 Show architecture debugging."), _("\
 When non-zero, architecture debugging is enabled."),

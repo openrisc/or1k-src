@@ -1,10 +1,8 @@
-D/bitmaps////
 D/compat////
 D/cygwin////
 D/doc////
 D/generic////
 D/library////
-D/libtommath////
 D/mac////
 D/macosx////
 D/tests////
@@ -12,14 +10,16 @@ D/testsuite////
 D/tools////
 D/unix////
 D/win////
+/ChangeLog/1.43/Sat Oct 27 22:59:31 2012/-ko/
+/ChangeLog.1999/1.2/Sat Oct 27 22:59:31 2012//
+/ChangeLog.2000/1.2/Sat Oct 27 22:59:31 2012//
+/ChangeLog.2001/1.2/Sat Oct 27 22:59:31 2012//
+/Makefile.in/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/README/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/changes/1.5/Sat Oct 27 22:59:31 2012/-ko/
+/configure/1.8/Sat Oct 27 22:59:31 2012/-ko/
+/configure.in/1.6/Sat Oct 27 22:59:31 2012/-ko/
+/license.terms/1.5/Sat Oct 27 22:59:31 2012/-ko/
+D/bitmaps////
+D/libtommath////
 D/xlib////
-/ChangeLog/1.43/Mon May  7 21:35:10 2012/-ko/
-/ChangeLog.1999/1.2/Mon May  7 21:35:10 2012//
-/ChangeLog.2000/1.2/Mon May  7 21:35:10 2012//
-/ChangeLog.2001/1.2/Mon May  7 21:35:10 2012//
-/Makefile.in/1.5/Mon May  7 21:35:10 2012/-ko/
-/README/1.5/Mon May  7 21:35:10 2012/-ko/
-/changes/1.5/Mon May  7 21:35:10 2012/-ko/
-/configure/1.8/Mon May  7 21:35:10 2012/-ko/
-/configure.in/1.6/Mon May  7 21:35:10 2012/-ko/
-/license.terms/1.5/Mon May  7 21:35:10 2012/-ko/

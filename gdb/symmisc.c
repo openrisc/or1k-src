@@ -35,6 +35,7 @@
 #include "gdb_regex.h"
 #include "gdb_stat.h"
 #include "dictionary.h"
+#include "typeprint.h"
 
 #include "gdb_string.h"
 #include "readline/readline.h"
@@ -85,17 +86,18 @@ print_symbol_bcache_statistics (void)
   struct program_space *pspace;
   struct objfile *objfile;
 
-  immediate_quit++;
   ALL_PSPACES (pspace)
     ALL_PSPACE_OBJFILES (pspace, objfile)
   {
+    QUIT;
     printf_filtered (_("Byte cache statistics for '%s':\n"), objfile->name);
     print_bcache_statistics (psymbol_bcache_get_bcache (objfile->psymbol_cache),
                              "partial symbol cache");
-    print_bcache_statistics (objfile->macro_cache, "preprocessor macro cache");
-    print_bcache_statistics (objfile->filename_cache, "file name cache");
+    print_bcache_statistics (objfile->per_bfd->macro_cache,
+			     "preprocessor macro cache");
+    print_bcache_statistics (objfile->per_bfd->filename_cache,
+			     "file name cache");
   }
-  immediate_quit--;
 }
 
 void
@@ -106,10 +108,10 @@ print_objfile_statistics (void)
   struct symtab *s;
   int i, linetables, blockvectors;
 
-  immediate_quit++;
   ALL_PSPACES (pspace)
     ALL_PSPACE_OBJFILES (pspace, objfile)
   {
+    QUIT;
     printf_filtered (_("Statistics for '%s':\n"), objfile->name);
     if (OBJSTAT (objfile, n_stabs) > 0)
       printf_filtered (_("  Number of \"stab\" symbols read: %d\n"),
@@ -148,15 +150,16 @@ print_objfile_statistics (void)
 		       OBJSTAT (objfile, sz_strtab));
     printf_filtered (_("  Total memory used for objfile obstack: %d\n"),
 		     obstack_memory_used (&objfile->objfile_obstack));
+    printf_filtered (_("  Total memory used for BFD obstack: %d\n"),
+		     obstack_memory_used (&objfile->per_bfd->storage_obstack));
     printf_filtered (_("  Total memory used for psymbol cache: %d\n"),
 		     bcache_memory_used (psymbol_bcache_get_bcache
 		                          (objfile->psymbol_cache)));
     printf_filtered (_("  Total memory used for macro cache: %d\n"),
-		     bcache_memory_used (objfile->macro_cache));
+		     bcache_memory_used (objfile->per_bfd->macro_cache));
     printf_filtered (_("  Total memory used for file name cache: %d\n"),
-		     bcache_memory_used (objfile->filename_cache));
+		     bcache_memory_used (objfile->per_bfd->filename_cache));
   }
-  immediate_quit--;
 }
 
 static void
@@ -437,11 +440,12 @@ maintenance_print_symbols (char *args, int from_tty)
     perror_with_name (filename);
   make_cleanup_ui_file_delete (outfile);
 
-  immediate_quit++;
   ALL_SYMTABS (objfile, s)
-    if (symname == NULL || filename_cmp (symname, s->filename) == 0)
-    dump_symtab (objfile, s, outfile);
-  immediate_quit--;
+    {
+      QUIT;
+      if (symname == NULL || filename_cmp (symname, s->filename) == 0)
+	dump_symtab (objfile, s, outfile);
+    }
   do_cleanups (cleanups);
 }
 
@@ -477,7 +481,8 @@ print_symbol (void *args)
     {
       if (TYPE_TAG_NAME (SYMBOL_TYPE (symbol)))
 	{
-	  LA_PRINT_TYPE (SYMBOL_TYPE (symbol), "", outfile, 1, depth);
+	  LA_PRINT_TYPE (SYMBOL_TYPE (symbol), "", outfile, 1, depth,
+			 &type_print_raw_options);
 	}
       else
 	{
@@ -487,7 +492,8 @@ print_symbol (void *args)
 		     : (TYPE_CODE (SYMBOL_TYPE (symbol)) == TYPE_CODE_STRUCT
 			? "struct" : "union")),
 			    SYMBOL_LINKAGE_NAME (symbol));
-	  LA_PRINT_TYPE (SYMBOL_TYPE (symbol), "", outfile, 1, depth);
+	  LA_PRINT_TYPE (SYMBOL_TYPE (symbol), "", outfile, 1, depth,
+			 &type_print_raw_options);
 	}
       fprintf_filtered (outfile, ";\n");
     }
@@ -501,7 +507,8 @@ print_symbol (void *args)
 	  LA_PRINT_TYPE (SYMBOL_TYPE (symbol), SYMBOL_PRINT_NAME (symbol),
 			 outfile,
 			 TYPE_CODE (SYMBOL_TYPE (symbol)) != TYPE_CODE_ENUM,
-			 depth);
+			 depth,
+			 &type_print_raw_options);
 	  fprintf_filtered (outfile, "; ");
 	}
       else
@@ -663,13 +670,14 @@ maintenance_print_msymbols (char *args, int from_tty)
     perror_with_name (filename);
   make_cleanup_ui_file_delete (outfile);
 
-  immediate_quit++;
   ALL_PSPACES (pspace)
     ALL_PSPACE_OBJFILES (pspace, objfile)
-      if (symname == NULL || (!stat (objfile->name, &obj_st)
-			      && sym_st.st_ino == obj_st.st_ino))
-	dump_msymbols (objfile, outfile);
-  immediate_quit--;
+      {
+	QUIT;
+	if (symname == NULL || (!stat (objfile->name, &obj_st)
+				&& sym_st.st_ino == obj_st.st_ino))
+	  dump_msymbols (objfile, outfile);
+      }
   fprintf_filtered (outfile, "\n\n");
   do_cleanups (cleanups);
 }
@@ -682,11 +690,12 @@ maintenance_print_objfiles (char *ignore, int from_tty)
 
   dont_repeat ();
 
-  immediate_quit++;
   ALL_PSPACES (pspace)
     ALL_PSPACE_OBJFILES (pspace, objfile)
-      dump_objfile (objfile);
-  immediate_quit--;
+      {
+	QUIT;
+	dump_objfile (objfile);
+      }
 }
 
 

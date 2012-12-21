@@ -67,7 +67,7 @@ bytes_available (DWORD& n, HANDLE h)
       termios_printf ("PeekNamedPipe(%p) failed, %E", h);
       n = 0;
     }
-  debug_only_printf ("n %u, nleft %u, navail %u");
+  debug_only_printf ("n %u, nleft %u, navail %u", n, nleft, navail);
   return succeeded;
 }
 
@@ -91,7 +91,7 @@ static int osi;
 
 void
 fhandler_pty_master::flush_to_slave ()
-{ 
+{
   if (get_readahead_valid () && !(get_ttyp ()->ti.c_lflag & ICANON))
     accept_input ();
 }
@@ -176,7 +176,7 @@ fhandler_pty_master::accept_input ()
       DWORD rc;
       DWORD written = 0;
 
-      termios_printf ("about to write %d chars to slave", bytes_left);
+      paranoid_printf ("about to write %d chars to slave", bytes_left);
       rc = WriteFile (get_output_handle (), p, bytes_left, &written, NULL);
       if (!rc)
 	{
@@ -281,7 +281,7 @@ fhandler_pty_master::process_slave_output (char *buf, size_t len, int pktmode_on
 	      goto out;
 	    }
 	  pthread_testcancel ();
-	  if (WaitForSingleObject (signal_arrived, 10) == WAIT_OBJECT_0
+	  if (cygwait (NULL, 10, cw_sig_eintr) == WAIT_SIGNALED
 	      && !_my_tls.call_signal_handler ())
 	    {
 	      set_errno (EINTR);
@@ -645,14 +645,16 @@ fhandler_pty_slave::write (const void *ptr, size_t len)
 
   push_process_state process_state (PID_TTYOU);
 
-  acquire_output_mutex (INFINITE);
-
   while (len)
     {
       n = MIN (OUT_BUFFER_SIZE, len);
       char *buf = (char *)ptr;
       ptr = (char *) ptr + n;
       len -= n;
+
+      while (tc ()->output_stopped)
+	cygwait (10);
+      acquire_output_mutex (INFINITE);
 
       /* Previous write may have set write_error to != 0.  Check it here.
 	 This is less than optimal, but the alternative slows down pty
@@ -661,10 +663,14 @@ fhandler_pty_slave::write (const void *ptr, size_t len)
 	{
 	  set_errno (get_ttyp ()->write_error);
 	  towrite = (DWORD) -1;
+	  get_ttyp ()->write_error = 0;
+	  release_output_mutex ();
 	  break;
 	}
 
-      if (WriteFile (get_output_handle (), buf, n, &n, NULL) == FALSE)
+      BOOL res = WriteFile (get_output_handle (), buf, n, &n, NULL);
+      release_output_mutex ();
+      if (!res)
 	{
 	  DWORD err = GetLastError ();
 	  termios_printf ("WriteFile failed, %E");
@@ -680,7 +686,6 @@ fhandler_pty_slave::write (const void *ptr, size_t len)
 	  break;
 	}
     }
-  release_output_mutex ();
   return towrite;
 }
 
@@ -835,7 +840,6 @@ fhandler_pty_slave::read (void *ptr, size_t& len)
 	  if (!ReadFile (get_handle (), buf, readlen, &n, NULL))
 	    {
 	      termios_printf ("read failed, %E");
-	      bytes_in_pipe = 0;
 	      raise (SIGHUP);
 	      bytes_in_pipe = 0;
 	      ptr = NULL;
@@ -1482,8 +1486,6 @@ fhandler_pty_slave::fixup_after_exec ()
   if (!close_on_exec ())
     fixup_after_fork (NULL);
 }
-
-extern "C" BOOL WINAPI GetNamedPipeClientProcessId (HANDLE, PULONG);
 
 /* This thread function handles the master control pipe.  It waits for a
    client to connect.  Then it checks if the client process has permissions

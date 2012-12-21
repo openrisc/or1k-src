@@ -272,6 +272,14 @@ struct bp_target_info
   /* Vector of conditions the target should evaluate if it supports target-side
      breakpoint conditions.  */
   VEC(agent_expr_p) *conditions;
+
+  /* Vector of commands the target should evaluate if it supports
+     target-side breakpoint commands.  */
+  VEC(agent_expr_p) *tcommands;
+
+  /* Flag that is true if the breakpoint should be left in place even
+     when GDB is not connected.  */
+  int persist;
 };
 
 /* GDB maintains two types of information about each breakpoint (or
@@ -358,8 +366,11 @@ struct bp_location
 
   enum condition_status condition_changed;
 
-  /* Signals that breakpoint conditions need to be re-synched with the
-     target.  This has no use other than target-side breakpoints.  */
+  struct agent_expr *cmd_bytecode;
+
+  /* Signals that breakpoint conditions and/or commands need to be
+     re-synched with the target.  This has no use other than
+     target-side breakpoints.  */
   char needs_update;
 
   /* This location's address is in an unloaded solib, and so this
@@ -1173,6 +1184,7 @@ extern void rwatch_command_wrapper (char *, int, int);
 extern void tbreak_command (char *, int);
 
 extern struct breakpoint_ops bkpt_breakpoint_ops;
+extern struct breakpoint_ops tracepoint_breakpoint_ops;
 
 extern void initialize_breakpoint_ops (void);
 
@@ -1273,7 +1285,7 @@ extern void update_breakpoints_after_exec (void);
 
    It is an error to use this function on the process whose id is
    inferior_ptid.  */
-extern int detach_breakpoints (int);
+extern int detach_breakpoints (ptid_t ptid);
 
 /* This function is called when program space PSPACE is about to be
    deleted.  It takes care of updating breakpoints to not reference

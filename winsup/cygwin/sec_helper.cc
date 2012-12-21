@@ -175,7 +175,7 @@ cygsid::get_sid (DWORD s, DWORD cnt, DWORD *r, bool well_known)
     well_known_sid = well_known;
   else
     well_known_sid = (s != SECURITY_NT_AUTH
-		      || r[0] != SECURITY_NT_NON_UNIQUE_RID);
+		      || r[0] != SECURITY_NT_NON_UNIQUE);
   return psid;
 }
 
@@ -374,7 +374,7 @@ static const struct {
   { SE_CREATE_GLOBAL_NAME,		false },
   { SE_TRUSTED_CREDMAN_ACCESS_NAME,	false },
   { SE_RELABEL_NAME,			true  },
-  { SE_INCREASE_WORKING_SET_NAME,	false },
+  { SE_INC_WORKING_SET_NAME,		false },
   { SE_TIME_ZONE_NAME,			true  },
   { SE_CREATE_SYMBOLIC_LINK_NAME,	true  }
 };
@@ -555,7 +555,7 @@ PSECURITY_ATTRIBUTES __stdcall
 __sec_user (PVOID sa_buf, PSID sid1, PSID sid2, DWORD access2, BOOL inherit)
 {
   PSECURITY_ATTRIBUTES psa = (PSECURITY_ATTRIBUTES) sa_buf;
-  PSECURITY_DESCRIPTOR psd = (PSECURITY_DESCRIPTOR)
+  PISECURITY_DESCRIPTOR psd = (PISECURITY_DESCRIPTOR)
 			     ((char *) sa_buf + sizeof (*psa));
   PACL acl = (PACL) ((char *) sa_buf + sizeof (*psa) + sizeof (*psd));
   NTSTATUS status;
@@ -586,8 +586,8 @@ PSECURITY_DESCRIPTOR
 _recycler_sd (void *buf, bool users, bool dir)
 {
   NTSTATUS status;
-  PSECURITY_DESCRIPTOR psd = (PSECURITY_DESCRIPTOR) buf;
-  
+  PISECURITY_DESCRIPTOR psd = (PISECURITY_DESCRIPTOR) buf;
+
   if (!psd)
     return NULL;
   RtlCreateSecurityDescriptor (psd, SECURITY_DESCRIPTOR_REVISION);
@@ -606,7 +606,7 @@ _recycler_sd (void *buf, bool users, bool dir)
 			    dir ? CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE
 				: NO_INHERITANCE,
 			    FILE_ALL_ACCESS, well_known_system_sid);
-  if (users)	
+  if (users)
     RtlAddAccessAllowedAceEx (dacl, ACL_REVISION, NO_PROPAGATE_INHERIT_ACE,
 			      FILE_GENERIC_READ | FILE_GENERIC_EXECUTE
 			      | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES,
@@ -644,7 +644,7 @@ PSECURITY_DESCRIPTOR
 _everyone_sd (void *buf, ACCESS_MASK access)
 {
   NTSTATUS status;
-  PSECURITY_DESCRIPTOR psd = (PSECURITY_DESCRIPTOR) buf;
+  PISECURITY_DESCRIPTOR psd = (PISECURITY_DESCRIPTOR) buf;
 
   if (psd)
     {

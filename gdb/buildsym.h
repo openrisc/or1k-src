@@ -120,10 +120,6 @@ EXTERN struct pending *global_symbols;
 
 EXTERN struct pending *local_symbols;
 
-/* func params local to lexical  context */
-
-EXTERN struct pending *param_symbols;
-
 /* "using" directives local to lexical context.  */
 
 EXTERN struct using_direct *using_directives;
@@ -136,10 +132,6 @@ struct context_stack
     /* Outer locals at the time we entered */
 
     struct pending *locals;
-
-    /* Pending func params at the time we entered */
-
-    struct pending *params;
 
     /* Pending using directives at the time we entered.  */
 
@@ -258,8 +250,25 @@ extern void push_subfile (void);
 
 extern char *pop_subfile (void);
 
+extern struct block *end_symtab_get_static_block (CORE_ADDR end_addr,
+						  struct objfile *objfile,
+						  int expandable,
+						  int required);
+
+extern struct symtab *end_symtab_from_static_block (struct block *static_block,
+						    struct objfile *objfile,
+						    int section,
+						    int expandable);
+
 extern struct symtab *end_symtab (CORE_ADDR end_addr,
 				  struct objfile *objfile, int section);
+
+extern struct symtab *end_expandable_symtab (CORE_ADDR end_addr,
+					     struct objfile *objfile,
+					     int section);
+
+extern void augment_type_symtab (struct objfile *objfile,
+				 struct symtab *primary_symtab);
 
 /* Defined in stabsread.c.  */
 
@@ -276,6 +285,8 @@ extern struct context_stack *pop_context (void);
 extern void record_line (struct subfile *subfile, int line, CORE_ADDR pc);
 
 extern void start_symtab (char *name, char *dirname, CORE_ADDR start_addr);
+
+extern void restart_symtab (CORE_ADDR start_addr);
 
 extern int hashname (const char *name);
 

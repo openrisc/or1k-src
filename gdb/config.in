@@ -78,9 +78,6 @@
 /* Define to 1 if you have the `canonicalize_file_name' function. */
 #undef HAVE_CANONICALIZE_FILE_NAME
 
-/* Define to 1 if you have the <ctype.h> header file. */
-#undef HAVE_CTYPE_H
-
 /* Define to 1 if you have the <cursesX.h> header file. */
 #undef HAVE_CURSESX_H
 
@@ -168,9 +165,6 @@
 /* Define to 1 if you have the `getuid' function. */
 #undef HAVE_GETUID
 
-/* Define to 1 if you have the <gnu/libc-version.h> header file. */
-#undef HAVE_GNU_LIBC_VERSION_H
-
 /* Define if <sys/procfs.h> has gregset_t. */
 #undef HAVE_GREGSET_T
 
@@ -198,6 +192,9 @@
 /* Define to 1 if you have the `libiconvlist' function. */
 #undef HAVE_LIBICONVLIST
 
+/* Define if you have the lzma library. */
+#undef HAVE_LIBLZMA
+
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
 
@@ -224,6 +221,9 @@
 
 /* Define to 1 if you have the <link.h> header file. */
 #undef HAVE_LINK_H
+
+/* Define to 1 if you have the <linux/perf_event.h> header file. */
+#undef HAVE_LINUX_PERF_EVENT_H
 
 /* Define to 1 if you have the <locale.h> header file. */
 #undef HAVE_LOCALE_H
@@ -447,6 +447,12 @@
 /* Define to 1 if `struct thread' is a member of `td_pcb'. */
 #undef HAVE_STRUCT_THREAD_TD_PCB
 
+/* Define to 1 if `struct user_regs_struct' is a member of `fs_base'. */
+#undef HAVE_STRUCT_USER_REGS_STRUCT_FS_BASE
+
+/* Define to 1 if `struct user_regs_struct' is a member of `gs_base'. */
+#undef HAVE_STRUCT_USER_REGS_STRUCT_GS_BASE
+
 /* Define to 1 if you have the `syscall' function. */
 #undef HAVE_SYSCALL
 
@@ -532,9 +538,6 @@
 
 /* Define if using Solaris thread debugging. */
 #undef HAVE_THREAD_DB_LIB
-
-/* Define to 1 if you have the <time.h> header file. */
-#undef HAVE_TIME_H
 
 /* Define if you support the tkill syscall. */
 #undef HAVE_TKILL_SYSCALL
@@ -687,9 +690,6 @@
 	STACK_DIRECTION < 0 => grows toward lower addresses
 	STACK_DIRECTION = 0 => direction of growth unknown */
 #undef STACK_DIRECTION
-
-/* Define to 1 if the `S_IS*' macros in <sys/stat.h> do not work properly. */
-#undef STAT_MACROS_BROKEN
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS

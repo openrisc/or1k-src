@@ -1186,7 +1186,7 @@ spu2ppu_sniffer (const struct frame_unwind *self,
   CORE_ADDR base, func, backchain;
   gdb_byte buf[4];
 
-  if (gdbarch_bfd_arch_info (target_gdbarch)->arch == bfd_arch_spu)
+  if (gdbarch_bfd_arch_info (target_gdbarch ())->arch == bfd_arch_spu)
     return 0;
 
   base = get_frame_sp (this_frame);
@@ -1217,7 +1217,7 @@ spu2ppu_sniffer (const struct frame_unwind *self,
       else
 	{
 	  struct regcache *regcache;
-	  regcache = get_thread_arch_regcache (inferior_ptid, target_gdbarch);
+	  regcache = get_thread_arch_regcache (inferior_ptid, target_gdbarch ());
 	  cache->regcache = regcache_dup (regcache);
 	  *this_prologue_cache = cache;
 	  return 1;
@@ -1373,8 +1373,7 @@ spu_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
       struct value *arg = args[i];
       struct type *type = check_typedef (value_type (arg));
       const gdb_byte *contents = value_contents (arg);
-      int len = TYPE_LENGTH (type);
-      int n_regs = align_up (len, 16) / 16;
+      int n_regs = align_up (TYPE_LENGTH (type), 16) / 16;
 
       /* If the argument doesn't wholly fit into registers, it and
 	 all subsequent arguments go to the stack.  */

@@ -114,6 +114,7 @@ struct bpstats;
 struct inferior;
 
 extern PyObject *gdb_module;
+extern PyObject *gdb_python_module;
 extern PyTypeObject value_object_type;
 extern PyTypeObject block_object_type;
 extern PyTypeObject symbol_object_type;
@@ -232,6 +233,7 @@ struct symtab *symtab_object_to_symtab (PyObject *obj);
 struct symtab_and_line *sal_object_to_symtab_and_line (PyObject *obj);
 struct frame_info *frame_object_to_frame_info (PyObject *frame_obj);
 
+void gdbpy_initialize_gdb_readline (void);
 void gdbpy_initialize_auto_load (void);
 void gdbpy_initialize_values (void);
 void gdbpy_initialize_frames (void);

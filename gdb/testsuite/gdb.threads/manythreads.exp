@@ -17,17 +17,19 @@
 # This file was written by Jeff Johnston. (jjohnstn@redhat.com)
 
 
-set testfile "manythreads"
-set srcfile ${testfile}.c
-set binfile ${objdir}/${subdir}/${testfile}
+standard_testfile
 
-if {[gdb_compile_pthreads "${srcdir}/${subdir}/${srcfile}" "${binfile}" executable [list debug "incdir=${objdir}"]] != "" } {
+set opts { debug }
+if [info exists DEBUG] {
+    # make check RUNTESTFLAGS='gdb.threads/manythreads.exp DEBUG=1'
+    lappend opts "additional_flags=-DDEBUG"
+}
+
+if {[gdb_compile_pthreads "${srcdir}/${subdir}/${srcfile}" "${binfile}" executable $opts] != "" } {
     return -1
 }
 
-gdb_start
-gdb_reinitialize_dir $srcdir/$subdir
-gdb_load ${binfile}
+clean_restart ${binfile}
 gdb_test_no_output "set print sevenbit-strings"
 runto_main
 
@@ -61,9 +63,6 @@ gdb_test_multiple "" "stop threads 1" {
     exp_continue
   }
   -re "\\\[\[^\]\]* exited\\\]\r\n" {
-    exp_continue
-  }
-  -re "Thread \[^\n\]* executing\r\n" {
     exp_continue
   }
   -re "Program received signal SIGINT.*$gdb_prompt $" {
@@ -117,9 +116,6 @@ remote_expect host 1 {
   -re "\\\[\[^\]\]* exited\\\]\r\n" {
     exp_continue -continue_timer
   }
-  -re "Thread \[^\n\]* executing\r\n" {
-    exp_continue -continue_timer
-  }
   -re "Program received signal SIGINT.*$gdb_prompt $" {
     if { $failed == 0 } {
       fail "check for duplicate SIGINT"
@@ -143,9 +139,6 @@ gdb_test_multiple "" "stop threads 2" {
     exp_continue
   }
   -re "\\\[\[^\]\]* exited\\\]\r\n" {
-    exp_continue
-  }
-  -re "Thread \[^\n\]* executing\r\n" {
     exp_continue
   }
   -re "Program received signal SIGINT.*$gdb_prompt $" {

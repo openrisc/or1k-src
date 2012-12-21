@@ -359,6 +359,9 @@ delete_trace_state_variable (const char *name)
       {
 	xfree ((void *)tsv->name);
 	VEC_unordered_remove (tsv_s, tvariables, ix);
+
+	observer_notify_tsv_deleted (name);
+
 	return;
       }
 
@@ -423,6 +426,8 @@ trace_variable_command (char *args, int from_tty)
   tsv = create_trace_state_variable (internalvar_name (intvar));
   tsv->initial_value = initval;
 
+  observer_notify_tsv_created (tsv->name, initval);
+
   printf_filtered (_("Trace state variable $%s "
 		     "created, with initial value %s.\n"),
 		   tsv->name, plongest (tsv->initial_value));
@@ -442,6 +447,7 @@ delete_trace_variable_command (char *args, int from_tty)
       if (query (_("Delete all trace state variables? ")))
 	VEC_free (tsv_s, tvariables);
       dont_repeat ();
+      observer_notify_tsv_deleted (NULL);
       return;
     }
 
@@ -734,7 +740,8 @@ validate_actionline (char **line, struct breakpoint *b)
 	  for (loc = t->base.loc; loc; loc = loc->next)
 	    {
 	      p = tmp_p;
-	      exp = parse_exp_1 (&p, block_for_pc (loc->address), 1);
+	      exp = parse_exp_1 (&p, loc->address,
+				 block_for_pc (loc->address), 1);
 	      old_chain = make_cleanup (free_current_contents, &exp);
 
 	      if (exp->elts[0].opcode == OP_VAR_VALUE)
@@ -787,7 +794,8 @@ validate_actionline (char **line, struct breakpoint *b)
 	    {
 	      p = tmp_p;
 	      /* Only expressions are allowed for this action.  */
-	      exp = parse_exp_1 (&p, block_for_pc (loc->address), 1);
+	      exp = parse_exp_1 (&p, loc->address,
+				 block_for_pc (loc->address), 1);
 	      old_chain = make_cleanup (free_current_contents, &exp);
 
 	      /* We have something to evaluate, make sure that the expr to
@@ -1448,11 +1456,11 @@ encode_actions_1 (struct command_line *action,
 		}
 	      else
 		{
-		  unsigned long addr, len;
+		  unsigned long addr;
 		  struct cleanup *old_chain = NULL;
 		  struct cleanup *old_chain1 = NULL;
 
-		  exp = parse_exp_1 (&action_exp, 
+		  exp = parse_exp_1 (&action_exp, tloc->address,
 				     block_for_pc (tloc->address), 1);
 		  old_chain = make_cleanup (free_current_contents, &exp);
 
@@ -1478,8 +1486,10 @@ encode_actions_1 (struct command_line *action,
 		      /* Safe because we know it's a simple expression.  */
 		      tempval = evaluate_expression (exp);
 		      addr = value_address (tempval);
-		      len = TYPE_LENGTH (check_typedef (exp->elts[1].type));
-		      add_memrange (collect, memrange_absolute, addr, len);
+		      /* Initialize the TYPE_LENGTH if it is a typedef.  */
+		      check_typedef (exp->elts[1].type);
+		      add_memrange (collect, memrange_absolute, addr,
+				    TYPE_LENGTH (exp->elts[1].type));
 		      break;
 
 		    case OP_VAR_VALUE:
@@ -1542,7 +1552,7 @@ encode_actions_1 (struct command_line *action,
 		  struct cleanup *old_chain = NULL;
 		  struct cleanup *old_chain1 = NULL;
 
-		  exp = parse_exp_1 (&action_exp, 
+		  exp = parse_exp_1 (&action_exp, tloc->address,
 				     block_for_pc (tloc->address), 1);
 		  old_chain = make_cleanup (free_current_contents, &exp);
 
@@ -2210,6 +2220,7 @@ disconnect_tracing (int from_tty)
      full tfind_1 behavior because we're in the middle of detaching,
      and there's no point to updating current stack frame etc.  */
   set_current_traceframe (-1);
+  set_tracepoint_num (-1);
   set_traceframe_context (NULL);
 }
 
@@ -2283,11 +2294,15 @@ tfind_1 (enum trace_find_type type, int num,
   tp = get_tracepoint_by_number_on_target (target_tracept);
 
   reinit_frame_cache ();
-  registers_changed ();
   target_dcache_invalidate ();
-  set_traceframe_num (target_frameno);
-  clear_traceframe_info ();
+
   set_tracepoint_num (tp ? tp->base.number : target_tracept);
+
+  if (target_frameno != get_traceframe_number ())
+    observer_notify_traceframe_changed (target_frameno, tracepoint_number);
+
+  set_current_traceframe (target_frameno);
+
   if (target_frameno == -1)
     set_traceframe_context (NULL);
   else
@@ -2402,13 +2417,6 @@ trace_find_end_command (char *args, int from_tty)
   trace_find_command ("-1", from_tty);
 }
 
-/* tfind none */
-static void
-trace_find_none_command (char *args, int from_tty)
-{
-  trace_find_command ("-1", from_tty);
-}
-
 /* tfind start */
 static void
 trace_find_start_command (char *args, int from_tty)
@@ -2492,7 +2500,7 @@ trace_find_line_command (char *args, int from_tty)
     }
   else
     {
-      sals = decode_line_spec (args, DECODE_LINE_FUNFIRSTLINE);
+      sals = decode_line_with_current_source (args, DECODE_LINE_FUNFIRSTLINE);
       sal = sals.sals[0];
     }
   
@@ -3278,7 +3286,7 @@ set_current_traceframe (int num)
   if (newnum != num)
     warning (_("could not change traceframe"));
 
-  traceframe_number = newnum;
+  set_traceframe_num (newnum);
 
   /* Changing the traceframe changes our view of registers and of the
      frame chain.  */
@@ -3551,6 +3559,8 @@ create_tsv_from_upload (struct uploaded_tsv *utsv)
   tsv->initial_value = utsv->initial_value;
   tsv->builtin = utsv->builtin;
 
+  observer_notify_tsv_created (tsv->name, tsv->initial_value);
+
   do_cleanups (old_chain);
 
   return tsv;
@@ -3611,18 +3621,17 @@ merge_uploaded_trace_state_variables (struct uploaded_tsv **uploaded_tsvs)
 
 /* target tfile command */
 
-struct target_ops tfile_ops;
+static struct target_ops tfile_ops;
 
 /* Fill in tfile_ops with its defined operations and properties.  */
 
 #define TRACE_HEADER_SIZE 8
 
-char *trace_filename;
-int trace_fd = -1;
-off_t trace_frames_offset;
-off_t cur_offset;
-int cur_traceframe_number;
-int cur_data_size;
+static char *trace_filename;
+static int trace_fd = -1;
+static off_t trace_frames_offset;
+static off_t cur_offset;
+static int cur_data_size;
 int trace_regblock_size;
 
 static void tfile_interp_line (char *line,
@@ -3713,8 +3722,6 @@ tfile_open (char *filename, int from_tty)
   ts->buffer_free = 0;
   ts->disconnected_tracing = 0;
   ts->circular_buffer = 0;
-
-  cur_traceframe_number = -1;
 
   TRY_CATCH (ex, RETURN_MASK_ALL)
     {
@@ -4199,7 +4206,7 @@ tfile_get_traceframe_address (off_t tframe_offset)
   tfile_read ((gdb_byte *) &tpnum, 2);
   tpnum = (short) extract_signed_integer ((gdb_byte *) &tpnum, 2,
 					  gdbarch_byte_order
-					      (target_gdbarch));
+					      (target_gdbarch ()));
 
   tp = get_tracepoint_by_number_on_target (tpnum);
   /* FIXME this is a poor heuristic if multiple locations.  */
@@ -4210,28 +4217,6 @@ tfile_get_traceframe_address (off_t tframe_offset)
   cur_offset = saved_offset;
   lseek (trace_fd, cur_offset, SEEK_SET);
   return addr;
-}
-
-/* Make tfile's selected traceframe match GDB's selected
-   traceframe.  */
-
-static void
-set_tfile_traceframe (void)
-{
-  int newnum;
-
-  if (cur_traceframe_number == get_traceframe_number ())
-    return;
-
-  /* Avoid recursion, tfile_trace_find calls us again.  */
-  cur_traceframe_number = get_traceframe_number ();
-
-  newnum = target_trace_find (tfind_number,
-			      get_traceframe_number (), 0, 0, NULL);
-
-  /* Should not happen.  If it does, all bets are off.  */
-  if (newnum != get_traceframe_number ())
-    warning (_("could not set tfile's traceframe"));
 }
 
 /* Given a type of search and some parameters, scan the collection of
@@ -4250,12 +4235,7 @@ tfile_trace_find (enum trace_find_type type, int num,
   off_t offset, tframe_offset;
   ULONGEST tfaddr;
 
-  /* Lookups other than by absolute frame number depend on the current
-     trace selected, so make sure it is correct on the tfile end
-     first.  */
-  if (type != tfind_number)
-    set_tfile_traceframe ();
-  else if (num == -1)
+  if (num == -1)
     {
       if (tpp)
         *tpp = -1;
@@ -4270,14 +4250,14 @@ tfile_trace_find (enum trace_find_type type, int num,
       tfile_read ((gdb_byte *) &tpnum, 2);
       tpnum = (short) extract_signed_integer ((gdb_byte *) &tpnum, 2,
 					      gdbarch_byte_order
-						  (target_gdbarch));
+						  (target_gdbarch ()));
       offset += 2;
       if (tpnum == 0)
 	break;
       tfile_read ((gdb_byte *) &data_size, 4);
       data_size = (unsigned int) extract_unsigned_integer
                                      ((gdb_byte *) &data_size, 4,
-				      gdbarch_byte_order (target_gdbarch));
+				      gdbarch_byte_order (target_gdbarch ()));
       offset += 4;
       switch (type)
 	{
@@ -4314,7 +4294,7 @@ tfile_trace_find (enum trace_find_type type, int num,
 	    *tpp = tpnum;
 	  cur_offset = offset;
 	  cur_data_size = data_size;
-	  cur_traceframe_number = tfnum;
+
 	  return tfnum;
 	}
       /* Skip past the traceframe's data.  */
@@ -4385,7 +4365,7 @@ traceframe_walk_blocks (walk_blocks_callback_func callback,
           mlen = (unsigned short)
                 extract_unsigned_integer ((gdb_byte *) &mlen, 2,
                                           gdbarch_byte_order
-                                              (target_gdbarch));
+                                              (target_gdbarch ()));
 	  lseek (trace_fd, mlen, SEEK_CUR);
 	  pos += (8 + 2 + mlen);
 	  break;
@@ -4428,8 +4408,6 @@ tfile_fetch_registers (struct target_ops *ops,
      successful at getting register blocks.  */
   if (!trace_regblock_size)
     return;
-
-  set_tfile_traceframe ();
 
   regs = alloca (trace_regblock_size);
 
@@ -4514,8 +4492,6 @@ tfile_xfer_partial (struct target_ops *ops, enum target_object object,
   if (readbuf == NULL)
     error (_("tfile_xfer_partial: trace file is read-only"));
 
-  set_tfile_traceframe ();
-
  if (traceframe_number != -1)
     {
       int pos = 0;
@@ -4526,7 +4502,7 @@ tfile_xfer_partial (struct target_ops *ops, enum target_object object,
 	{
 	  ULONGEST maddr, amt;
 	  unsigned short mlen;
-	  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch);
+	  enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch ());
 
 	  tfile_read ((gdb_byte *) &maddr, 8);
 	  maddr = extract_unsigned_integer ((gdb_byte *) &maddr, 8,
@@ -4601,8 +4577,6 @@ tfile_get_trace_state_variable_value (int tsvnum, LONGEST *val)
 {
   int pos;
 
-  set_tfile_traceframe ();
-
   pos = 0;
   while ((pos = traceframe_find_block_type ('V', pos)) >= 0)
     {
@@ -4611,13 +4585,13 @@ tfile_get_trace_state_variable_value (int tsvnum, LONGEST *val)
       tfile_read ((gdb_byte *) &vnum, 4);
       vnum = (int) extract_signed_integer ((gdb_byte *) &vnum, 4,
 					   gdbarch_byte_order
-					   (target_gdbarch));
+					   (target_gdbarch ()));
       if (tsvnum == vnum)
 	{
 	  tfile_read ((gdb_byte *) val, 8);
 	  *val = extract_signed_integer ((gdb_byte *) val, 8,
 					 gdbarch_byte_order
-					 (target_gdbarch));
+					 (target_gdbarch ()));
 	  return 1;
 	}
       pos += (4 + 8);
@@ -4765,7 +4739,7 @@ parse_static_tracepoint_marker_definition (char *line, char **pp,
   p = unpack_varlen_hex (p, &addr);
   p++;  /* skip a colon */
 
-  marker->gdbarch = target_gdbarch;
+  marker->gdbarch = target_gdbarch ();
   marker->address = (CORE_ADDR) addr;
 
   endp = strchr (p, ':');
@@ -4864,7 +4838,7 @@ print_one_static_tracepoint_marker (int count,
 
       if (ui_out_is_mi_like_p (uiout))
 	{
-	  char *fullname = symtab_to_fullname (sal.symtab);
+	  const char *fullname = symtab_to_fullname (sal.symtab);
 
 	  if (fullname)
 	    ui_out_field_string (uiout, "fullname", fullname);
@@ -4942,7 +4916,7 @@ info_static_tracepoint_markers_command (char *arg, int from_tty)
   ui_out_table_header (uiout, 40, ui_left, "marker-id", "ID");
 
   ui_out_table_header (uiout, 3, ui_left, "enabled", "Enb");
-  if (gdbarch_addr_bit (target_gdbarch) <= 32)
+  if (gdbarch_addr_bit (target_gdbarch ()) <= 32)
     ui_out_table_header (uiout, 10, ui_left, "addr", "Address");
   else
     ui_out_table_header (uiout, 18, ui_left, "addr", "Address");
@@ -5277,13 +5251,10 @@ Default is the current PC, or the PC of the current trace frame."),
 	   &tfindlist);
 
   add_cmd ("end", class_trace, trace_find_end_command, _("\
-Synonym for 'none'.\n\
 De-select any trace frame and resume 'live' debugging."),
 	   &tfindlist);
 
-  add_cmd ("none", class_trace, trace_find_none_command,
-	   _("De-select any trace frame and resume 'live' debugging."),
-	   &tfindlist);
+  add_alias_cmd ("none", "end", class_trace, 0, &tfindlist);
 
   add_cmd ("start", class_trace, trace_find_start_command,
 	   _("Select the first trace frame in the trace buffer."),

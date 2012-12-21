@@ -30,6 +30,7 @@ struct gdbarch;
 struct regcache;
 struct ui_out;
 struct terminal_info;
+struct target_desc_info;
 
 #include "ptid.h"
 
@@ -43,6 +44,7 @@ struct terminal_info;
 #include "frame.h"
 
 #include "progspace.h"
+#include "registry.h"
 
 struct infcall_suspend_state;
 struct infcall_control_state;
@@ -201,7 +203,7 @@ extern char *construct_inferior_arguments (int, char **);
 
 /* From infrun.c */
 
-extern int debug_infrun;
+extern unsigned int debug_infrun;
 
 extern int stop_on_solib_events;
 
@@ -512,22 +514,31 @@ struct inferior
      from enum symfile_add_flags.  */
   int symfile_flags;
 
+  /* Info about an inferior's target description (if it's fetched; the
+     user supplied description's filename, if any; etc.).  */
+  struct target_desc_info *tdesc_info;
+
+  /* The architecture associated with the inferior through the
+     connection to the target.
+
+     The architecture vector provides some information that is really
+     a property of the inferior, accessed through a particular target:
+     ptrace operations; the layout of certain RSP packets; the
+     solib_ops vector; etc.  To differentiate architecture accesses to
+     per-inferior/target properties from
+     per-thread/per-frame/per-objfile properties, accesses to
+     per-inferior/target properties should be made through
+     this gdbarch.  */
+  struct gdbarch *gdbarch;
+
   /* Per inferior data-pointers required by other GDB modules.  */
-  void **data;
-  unsigned num_data;
+  REGISTRY_FIELDS;
 };
 
 /* Keep a registry of per-inferior data-pointers required by other GDB
    modules.  */
 
-extern const struct inferior_data *register_inferior_data (void);
-extern const struct inferior_data *register_inferior_data_with_cleanup
-  (void (*cleanup) (struct inferior *, void *));
-extern void clear_inferior_data (struct inferior *inf);
-extern void set_inferior_data (struct inferior *inf,
-			       const struct inferior_data *data, void *value);
-extern void *inferior_data (struct inferior *inf,
-			    const struct inferior_data *data);
+DECLARE_REGISTRY (inferior);
 
 /* Create an empty inferior list, or empty the existing one.  */
 extern void init_inferior_list (void);

@@ -32,6 +32,8 @@
 #include "gcore.h"
 #include "event-loop.h"
 #include "inf-loop.h"
+#include "gdb_bfd.h"
+#include "observer.h"
 
 #include <signal.h>
 
@@ -152,7 +154,7 @@ struct record_entry
 };
 
 /* This is the debug switch for process record.  */
-int record_debug = 0;
+unsigned int record_debug = 0;
 
 /* If true, query if PREC cannot record memory
    change of next instruction.  */
@@ -484,6 +486,20 @@ record_arch_list_add_reg (struct regcache *regcache, int regnum)
   return 0;
 }
 
+int
+record_read_memory (struct gdbarch *gdbarch,
+		    CORE_ADDR memaddr, gdb_byte *myaddr,
+		    ssize_t len)
+{
+  int ret = target_read_memory (memaddr, myaddr, len);
+
+  if (ret && record_debug)
+    printf_unfiltered (_("Process record: error reading memory "
+			 "at addr %s len = %ld.\n"),
+		       paddress (gdbarch, memaddr), (long) len);
+  return ret;
+}
+
 /* Record the value of a region of memory whose address is ADDR and
    length is LEN to record_arch_list.  */
 
@@ -496,20 +512,15 @@ record_arch_list_add_mem (CORE_ADDR addr, int len)
     fprintf_unfiltered (gdb_stdlog,
 			"Process record: add mem addr = %s len = %d to "
 			"record list.\n",
-			paddress (target_gdbarch, addr), len);
+			paddress (target_gdbarch (), addr), len);
 
   if (!addr)	/* FIXME: Why?  Some arch must permit it...  */
     return 0;
 
   rec = record_mem_alloc (addr, len);
 
-  if (target_read_memory (addr, record_get_loc (rec), len))
+  if (record_read_memory (target_gdbarch (), addr, record_get_loc (rec), len))
     {
-      if (record_debug)
-	fprintf_unfiltered (gdb_stdlog,
-			    "Process record: error reading memory at "
-			    "addr = %s len = %d.\n",
-			    paddress (target_gdbarch, addr), len);
       record_mem_release (rec);
       return -1;
     }
@@ -738,15 +749,9 @@ record_exec_insn (struct regcache *regcache, struct gdbarch *gdbarch,
                                   paddress (gdbarch, entry->u.mem.addr),
                                   entry->u.mem.len);
 
-            if (target_read_memory (entry->u.mem.addr, mem, entry->u.mem.len))
-              {
-                entry->u.mem.mem_entry_not_accessible = 1;
-                if (record_debug)
-                  warning (_("Process record: error reading memory at "
-			     "addr = %s len = %d."),
-                           paddress (gdbarch, entry->u.mem.addr),
-                           entry->u.mem.len);
-              }
+            if (record_read_memory (gdbarch,
+				    entry->u.mem.addr, mem, entry->u.mem.len))
+	      entry->u.mem.mem_entry_not_accessible = 1;
             else
               {
                 if (target_write_memory (entry->u.mem.addr, 
@@ -869,7 +874,7 @@ record_open_1 (char *name, int from_tty)
     error (_("Process record target can't debug inferior in non-stop mode "
 	     "(non-stop)."));
 
-  if (!gdbarch_process_record_p (target_gdbarch))
+  if (!gdbarch_process_record_p (target_gdbarch ()))
     error (_("Process record: the current architecture doesn't support "
 	     "record function."));
 
@@ -997,6 +1002,8 @@ record_open (char *name, int from_tty)
 				  NULL);
 
   record_init_record_breakpoints ();
+
+  observer_notify_record_changed (current_inferior (),  1);
 }
 
 /* "to_close" target method.  Close the process record target.  */
@@ -1102,6 +1109,9 @@ record_resume (struct target_ops *ops, ptid_t ptid, int step,
                 }
             }
         }
+
+      /* Make sure the target beneath reports all signals.  */
+      target_pass_signals (0, NULL);
 
       record_beneath_to_resume (record_beneath_to_resume_ops,
                                 ptid, step, signal);
@@ -1676,7 +1686,7 @@ record_xfer_partial (struct target_ops *ops, enum target_object object,
 	  if (!query (_("Because GDB is in replay mode, writing to memory "
 		        "will make the execution log unusable from this "
 		        "point onward.  Write memory at address %s?"),
-		       paddress (target_gdbarch, offset)))
+		       paddress (target_gdbarch (), offset)))
 	    error (_("Process record canceled the operation."));
 
 	  /* Destroy the record from here forward.  */
@@ -2253,6 +2263,8 @@ cmd_record_stop (char *args, int from_tty)
       unpush_target (&record_ops);
       printf_unfiltered (_("Process record is stopped and all execution "
                            "logs are deleted.\n"));
+
+      observer_notify_record_changed (current_inferior (), 0);
     }
   else
     printf_unfiltered (_("Process record is not started.\n"));
@@ -2638,7 +2650,7 @@ record_save_cleanups (void *data)
   bfd *obfd = data;
   char *pathname = xstrdup (bfd_get_filename (obfd));
 
-  bfd_close (obfd);
+  gdb_bfd_unref (obfd);
   unlink (pathname);
   xfree (pathname);
 }
@@ -2854,7 +2866,7 @@ cmd_record_save (char *args, int from_tty)
     }
 
   do_cleanups (set_cleanups);
-  bfd_close (obfd);
+  gdb_bfd_unref (obfd);
   discard_cleanups (old_cleanups);
 
   /* Succeeded.  */
@@ -2975,13 +2987,13 @@ _initialize_record (void)
   init_record_core_ops ();
   add_target (&record_core_ops);
 
-  add_setshow_zinteger_cmd ("record", no_class, &record_debug,
-			    _("Set debugging of record/replay feature."),
-			    _("Show debugging of record/replay feature."),
-			    _("When enabled, debugging output for "
-			      "record/replay feature is displayed."),
-			    NULL, show_record_debug, &setdebuglist,
-			    &showdebuglist);
+  add_setshow_zuinteger_cmd ("record", no_class, &record_debug,
+			     _("Set debugging of record/replay feature."),
+			     _("Show debugging of record/replay feature."),
+			     _("When enabled, debugging output for "
+			       "record/replay feature is displayed."),
+			     NULL, show_record_debug, &setdebuglist,
+			     &showdebuglist);
 
   c = add_prefix_cmd ("record", class_obscure, cmd_record_start,
 		      _("Abbreviated form of \"target record\" command."),

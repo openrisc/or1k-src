@@ -40,6 +40,7 @@
 #include "inferior.h"
 #include <ctype.h>
 #include "regcache.h"
+#include "gdb_bfd.h"
 
 /*
  * All this stuff just to get my host computer's IP address!
@@ -78,7 +79,7 @@ m32r_load_section (bfd *abfd, asection *s, void *obj)
   unsigned int *data_count = obj;
   if (s->flags & SEC_LOAD)
     {
-      int addr_size = gdbarch_addr_bit (target_gdbarch) / 8;
+      int addr_size = gdbarch_addr_bit (target_gdbarch ()) / 8;
       bfd_size_type section_size = bfd_section_size (abfd, s);
       bfd_vma section_base = bfd_section_lma (abfd, s);
       unsigned int buffer, i;
@@ -88,7 +89,7 @@ m32r_load_section (bfd *abfd, asection *s, void *obj)
       printf_filtered ("Loading section %s, size 0x%lx lma ",
 		       bfd_section_name (abfd, s),
 		       (unsigned long) section_size);
-      fputs_filtered (paddress (target_gdbarch, section_base), gdb_stdout);
+      fputs_filtered (paddress (target_gdbarch (), section_base), gdb_stdout);
       printf_filtered ("\n");
       gdb_flush (gdb_stdout);
       monitor_printf ("%s mw\r", phex_nz (section_base, addr_size));
@@ -124,13 +125,15 @@ m32r_load (char *filename, int from_tty)
   bfd *abfd;
   unsigned int data_count = 0;
   struct timeval start_time, end_time;
+  struct cleanup *cleanup;
 
   if (filename == NULL || filename[0] == 0)
     filename = get_exec_file (1);
 
-  abfd = bfd_openr (filename, 0);
+  abfd = gdb_bfd_open (filename, NULL, -1);
   if (!abfd)
     error (_("Unable to open file %s."), filename);
+  cleanup = make_cleanup_bfd_unref (abfd);
   if (bfd_check_format (abfd, bfd_object) == 0)
     error (_("File is not an object file."));
   gettimeofday (&start_time, NULL);
@@ -146,7 +149,7 @@ m32r_load (char *filename, int from_tty)
 
 	printf_filtered ("Loading section %s, size 0x%lx vma ",
 			 bfd_section_name (abfd, s), section_size);
-	fputs_filtered (paddress (target_gdbarch, section_base), gdb_stdout);
+	fputs_filtered (paddress (target_gdbarch (), section_base), gdb_stdout);
 	printf_filtered ("\n");
 	gdb_flush (gdb_stdout);
 	monitor_printf ("%x mw\r", section_base);
@@ -188,6 +191,7 @@ m32r_load (char *filename, int from_tty)
      confused...  */
 
   clear_symtab_users (0);
+  do_cleanups (cleanup);
 }
 
 static void
@@ -434,6 +438,7 @@ m32r_upload_command (char *args, int from_tty)
   char buf[1024];
   struct hostent *hostent;
   struct in_addr inet_addr;
+  struct cleanup *cleanup;
 
   /* First check to see if there's an ethernet port!  */
   monitor_printf ("ust\r");
@@ -524,7 +529,8 @@ m32r_upload_command (char *args, int from_tty)
     printf_filtered (" -- Ethernet load complete.\n");
 
   gettimeofday (&end_time, NULL);
-  abfd = bfd_openr (args, 0);
+  abfd = gdb_bfd_open (args, NULL, -1);
+  cleanup = make_cleanup_bfd_unref (abfd);
   if (abfd != NULL)
     {		/* Download is done -- print section statistics.  */
       if (bfd_check_format (abfd, bfd_object) == 0)
@@ -542,7 +548,7 @@ m32r_upload_command (char *args, int from_tty)
 	    printf_filtered ("Loading section %s, size 0x%lx lma ",
 			     bfd_section_name (abfd, s),
 			     (unsigned long) section_size);
-	    fputs_filtered (paddress (target_gdbarch, section_base),
+	    fputs_filtered (paddress (target_gdbarch (), section_base),
 			    gdb_stdout);
 	    printf_filtered ("\n");
 	    gdb_flush (gdb_stdout);
@@ -565,6 +571,7 @@ m32r_upload_command (char *args, int from_tty)
      confused...  */
 
   clear_symtab_users (0);
+  do_cleanups (cleanup);
 }
 
 /* Provide a prototype to silence -Wmissing-prototypes.  */

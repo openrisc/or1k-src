@@ -21,6 +21,7 @@
    Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
 
 #include <ansidecl.h>
+#define PACKAGE
 #include <bfd.h>
 #include <elf/common.h>
 #include <elf/external.h>
@@ -33,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/param.h>
 #include <windows.h>
 
 #include "dumper.h"
@@ -380,7 +382,7 @@ dumper::dump_memory_region (asection * to, process_mem_region * memory)
 
   while (size > 0)
     {
-      todo = min (size, PAGE_BUFFER_SIZE);
+      todo = MIN (size, PAGE_BUFFER_SIZE);
       if (!ReadProcessMemory (hProcess, pos, mem_buf, todo, &done))
 	{
 	  deb_printf ("Failed to read process memory at %x(%x), error %ld\n", pos, todo, GetLastError ());

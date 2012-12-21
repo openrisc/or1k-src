@@ -937,7 +937,9 @@ prim_record_minimal_symbol_full (const char *name, int name_len, int copy_name,
   MSYMBOL_TYPE (msymbol) = ms_type;
   MSYMBOL_TARGET_FLAG_1 (msymbol) = 0;
   MSYMBOL_TARGET_FLAG_2 (msymbol) = 0;
-  MSYMBOL_SIZE (msymbol) = 0;
+  /* Do not use the SET_MSYMBOL_SIZE macro to initialize the size,
+     as it would also set the has_size flag.  */
+  msymbol->size = 0;
 
   /* The hash pointers must be cleared! If they're not,
      add_minsym_to_hash_table will NOT add this msymbol to the hash table.  */
@@ -1167,6 +1169,13 @@ install_minimal_symbols (struct objfile *objfile)
 
   if (msym_count > 0)
     {
+      if (symtab_create_debug)
+	{
+	  fprintf_unfiltered (gdb_stdlog,
+			      "Installing %d minimal symbols of objfile %s.\n",
+			      msym_count, objfile->name);
+	}
+
       /* Allocate enough space in the obstack, into which we will gather the
          bunches of new and existing minimal symbols, sort them, and then
          compact out the duplicate entries.  Once we have a final table,
@@ -1222,13 +1231,7 @@ install_minimal_symbols (struct objfile *objfile)
          symbol count does *not* include this null symbol, which is why it
          is indexed by mcount and not mcount-1.  */
 
-      SYMBOL_LINKAGE_NAME (&msymbols[mcount]) = NULL;
-      SYMBOL_VALUE_ADDRESS (&msymbols[mcount]) = 0;
-      MSYMBOL_TARGET_FLAG_1 (&msymbols[mcount]) = 0;
-      MSYMBOL_TARGET_FLAG_2 (&msymbols[mcount]) = 0;
-      MSYMBOL_SIZE (&msymbols[mcount]) = 0;
-      MSYMBOL_TYPE (&msymbols[mcount]) = mst_unknown;
-      SYMBOL_SET_LANGUAGE (&msymbols[mcount], language_unknown);
+      memset (&msymbols[mcount], 0, sizeof (struct minimal_symbol));
 
       /* Attach the minimal symbol table to the specified objfile.
          The strings themselves are also located in the objfile_obstack

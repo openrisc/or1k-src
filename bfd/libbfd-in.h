@@ -96,6 +96,8 @@ struct areltdata
   bfd_size_type extra_size;	/* BSD4.4: extra bytes after the header.  */
   char *filename;		/* Null-terminated.  */
   file_ptr origin;		/* For element of a thin archive.  */
+  void *parent_cache;		/* Where and how to find this member.  */
+  file_ptr key;
 };
 
 #define arelt_size(bfd) (((struct areltdata *)((bfd)->arelt_data))->parsed_size)
@@ -160,8 +162,6 @@ extern bfd *_bfd_generic_get_elt_at_index
   (bfd *, symindex);
 bfd * _bfd_new_bfd
   (void);
-void _bfd_delete_bfd
-  (bfd *);
 bfd_boolean _bfd_free_cached_info
   (bfd *);
 
@@ -232,7 +232,9 @@ int bfd_generic_stat_arch_elt
 /* Generic routines to use for BFD_JUMP_TABLE_GENERIC.  Use
    BFD_JUMP_TABLE_GENERIC (_bfd_generic).  */
 
-#define _bfd_generic_close_and_cleanup bfd_true
+#define _bfd_generic_close_and_cleanup _bfd_archive_close_and_cleanup
+extern bfd_boolean _bfd_archive_close_and_cleanup
+  (bfd *);
 #define _bfd_generic_bfd_free_cached_info bfd_true
 extern bfd_boolean _bfd_generic_new_section_hook
   (bfd *, asection *);
@@ -540,15 +542,20 @@ extern const struct dwarf_debug_section dwarf_debug_sections[];
 /* Find the nearest line using DWARF 2 debugging information.  */
 extern bfd_boolean _bfd_dwarf2_find_nearest_line
   (bfd *, const struct dwarf_debug_section *, asection *, asymbol **, bfd_vma,
-   const char **, const char **, unsigned int *, unsigned int, void **);
+   const char **, const char **, unsigned int *, unsigned int *, unsigned int,
+   void **);
 
 /* Find the line using DWARF 2 debugging information.  */
 extern bfd_boolean _bfd_dwarf2_find_line
   (bfd *, asymbol **, asymbol *, const char **,
-   unsigned int *, unsigned int, void **);
+   unsigned int *, unsigned int *, unsigned int, void **);
 
 bfd_boolean _bfd_generic_find_line
   (bfd *, asymbol **, asymbol *, const char **, unsigned int *);
+
+bfd_boolean _bfd_generic_find_nearest_line_discriminator
+  (bfd *, asection *, asymbol **, bfd_vma, const char **, const char **,
+   unsigned int *, unsigned int *);
 
 /* Find inliner info after calling bfd_find_nearest_line. */
 extern bfd_boolean _bfd_dwarf2_find_inliner_info

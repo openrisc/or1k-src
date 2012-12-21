@@ -26,8 +26,7 @@
 #include "linux-osdata.h"
 
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
+#include <sys/sysinfo.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,6 +43,7 @@
 #include "buffer.h"
 #include "gdb_assert.h"
 #include "gdb_dirent.h"
+#include "gdb_stat.h"
 
 /* Define PID_T to be a fixed size that is at least as large as pid_t,
    so that reading pid values embedded in /proc works
@@ -254,30 +254,8 @@ get_process_owner (uid_t *owner, PID_T pid)
     return -1;
 }
 
-/* Returns the number of CPU cores found on the system.  */
-
-static int
-get_number_of_cpu_cores (void)
-{
-  int cores = 0;
-  FILE *f = fopen ("/proc/cpuinfo", "r");
-
-  while (!feof (f))
-    {
-      char buf[512];
-      char *p = fgets (buf, sizeof (buf), f);
-
-      if (p && strncmp (buf, "processor", 9) == 0)
-	++cores;
-    }
-
-  fclose (f);
-
-  return cores;
-}
-
 /* Find the CPU cores used by process PID and return them in CORES.
-   CORES points to an array of at least get_number_of_cpu_cores ()
+   CORES points to an array of at least sysconf(_SC_NPROCESSOR_ONLN)
    elements.  */
 
 static int
@@ -341,7 +319,7 @@ linux_xfer_osdata_processes (gdb_byte *readbuf,
       dirp = opendir ("/proc");
       if (dirp)
 	{
-	  const int num_cores = get_number_of_cpu_cores ();
+	  const int num_cores = sysconf (_SC_NPROCESSORS_ONLN);
 	  struct dirent *dp;
 
 	  while ((dp = readdir (dirp)) != NULL)
@@ -759,7 +737,7 @@ linux_xfer_osdata_fds (gdb_byte *readbuf,
 			    continue;
 
 			  fdname = xstrprintf ("%s/%s", pathname, dp2->d_name);
-			  rslt = readlink (fdname, buf, 1000);
+			  rslt = readlink (fdname, buf, sizeof (buf) - 1);
 			  if (rslt >= 0)
 			    buf[rslt] = '\0';
 
@@ -1543,26 +1521,27 @@ linux_xfer_osdata_modules (gdb_byte *readbuf,
 
 struct osdata_type {
   char *type;
+  char *title;
   char *description;
   LONGEST (*getter) (gdb_byte *readbuf, ULONGEST offset, LONGEST len);
 } osdata_table[] = {
-  { "processes", "Listing of all processes",
+  { "processes", "Processes", "Listing of all processes",
     linux_xfer_osdata_processes },
-  { "procgroups", "Listing of all process groups",
+  { "procgroups", "Process groups", "Listing of all process groups",
     linux_xfer_osdata_processgroups },
-  { "threads", "Listing of all threads",
+  { "threads", "Threads", "Listing of all threads",
     linux_xfer_osdata_threads },
-  { "files", "Listing of all file descriptors",
+  { "files", "File descriptors", "Listing of all file descriptors",
     linux_xfer_osdata_fds },
-  { "sockets", "Listing of all internet-domain sockets",
+  { "sockets", "Sockets", "Listing of all internet-domain sockets",
     linux_xfer_osdata_isockets },
-  { "shm", "Listing of all shared-memory regions",
+  { "shm", "Shared-memory regions", "Listing of all shared-memory regions",
     linux_xfer_osdata_shm },
-  { "semaphores", "Listing of all semaphores",
+  { "semaphores", "Semaphores", "Listing of all semaphores",
     linux_xfer_osdata_sem },
-  { "msg", "Listing of all message queues",
+  { "msg", "Message queues", "Listing of all message queues",
     linux_xfer_osdata_msg },
-  { "modules", "Listing of all loaded kernel modules",
+  { "modules", "Kernel modules", "Listing of all loaded kernel modules",
     linux_xfer_osdata_modules },
   { NULL, NULL, NULL }
 };
@@ -1594,9 +1573,11 @@ linux_common_xfer_osdata (const char *annex, gdb_byte *readbuf,
 			       "<item>"
 			       "<column name=\"Type\">%s</column>"
 			       "<column name=\"Description\">%s</column>"
+			       "<column name=\"Title\">%s</column>"
 			       "</item>",
 			       osdata_table[i].type,
-			       osdata_table[i].description);
+			       osdata_table[i].description,
+			       osdata_table[i].title);
 
 	  buffer_grow_str0 (&buffer, "</osdata>\n");
 	  buf = buffer_finish (&buffer);

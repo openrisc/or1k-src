@@ -20,7 +20,7 @@
 
 #include "server.h"
 
-#include <sys/wait.h>
+#include "gdb_wait.h"
 #include <stdio.h>
 #include <sys/ptrace.h>
 #include <fcntl.h>
@@ -50,9 +50,6 @@
 /* PPU side system calls.  */
 #define INSTR_SC	0x44000002
 #define NR_spu_run	0x0116
-
-/* Get current thread ID (Linux task ID).  */
-#define current_ptid ((struct inferior_list_entry *)current_inferior)->id
 
 /* These are used in remote-utils.c.  */
 int using_threads = 0;
