@@ -62,3 +62,16 @@ extern const struct relax_type md_relax_table[];
 
 #define elf_tc_final_processing or1k_elf_final_processing
 void or1k_elf_final_processing (void);
+
+/* Enable cfi directives.  */
+#define TARGET_USE_CFIPOP 1
+
+/* Stack grows to lower addresses and wants 4 byte boundary */
+#define DWARF2_CIE_DATA_ALIGNMENT -4
+
+/* Define the column that represents the PC.  */
+#define DWARF2_DEFAULT_RETURN_COLUMN 9
+
+/* or1k instructions are 4 bytes long.  */
+#define DWARF2_LINE_MIN_INSN_LENGTH 	4
+
