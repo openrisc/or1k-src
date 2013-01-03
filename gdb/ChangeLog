@@ -1,3 +1,9 @@
+2013-01-03  Franck Jullien  <elec4fun@gmail.com>
+
+	* or1k-tdesc.c  : Add file for or1k support
+	* or1k-tdesc.h  : Add file for or1k support
+	* configure.tgt : Add or1k targets
+
 2012-11-29  Yao Qi  <yao@codesourcery.com>
 	    Tom Tromey  <tromey@redhat.com>
 
