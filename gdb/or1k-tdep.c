@@ -2965,6 +2965,8 @@ or1k_spr_command (char *args,
    registers. */
 /*---------------------------------------------------------------------------*/
 
+extern initialize_file_ftype _initialize_or1k_tdep; /* -Wmissing-prototypes */
+
 void
 _initialize_or1k_tdep (void)
 {
