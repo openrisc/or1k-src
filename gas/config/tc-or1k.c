@@ -27,6 +27,7 @@
 #include "opcodes/or1k-opc.h"
 #include "cgen.h"
 #include "elf/or1k.h"
+#include "dw2gencfi.h"
 
 /* Structure to hold all of the different components describing
    an individual instruction.  */
@@ -333,3 +334,11 @@ or1k_elf_final_processing (void)
   if (nodelay)
     elf_elfheader (stdoutput)->e_flags |= EF_OR1K_NODELAY;
 }
+
+/* Standard calling conventions leave the CFA at SP on entry.  */
+void
+or1k_cfi_frame_initial_instructions (void)
+{
+    cfi_add_CFA_def_cfa_register (1);
+}
+

@@ -1,3 +1,11 @@
+2013-01-22  Christian Svensson  <blue@cmd.nu>
+
+	* config/tc-or1k.h:
+	(tc_cfi_frame_initial_instructions) define.
+	(or1k_cfi_frame_initial_instructions) prototype (body in tc-or1k.c)
+	* config/tc-or1k.c:
+	(or1k_cfi_frame_initial_instructions) set SP as the default CFA reg.
+
 2012-12-29  Christian Svensson  <blue@cmd.nu>
 
 	* config/tc-or1k.h (TARGET_USE_CFIPOP): Enable CFI.
