@@ -1315,6 +1315,27 @@ if test "x$with_mpc$with_mpc_include$with_mpc_lib" = x && test -d ${srcdir}/mpc;
   have_gmp=yes
 fi
 
+# Choose to use or1ksim or the CGEN simulator. Default is or1ksim.
+# --disable-or1ksim to choose the CGEN simulator.
+AC_ARG_ENABLE([or1ksim],
+              [AS_HELP_STRING([--disable-or1ksim],
+              [disable or1ksim and use CGEN sim instead])],
+              [ENABLE_OR1KSIM=$enableval],
+              [ENABLE_OR1KSIM=yes])
+
+if test "x${ENABLE_OR1KSIM}" = xno ; then
+  enable_or1ksim=no
+else
+  enable_or1ksim=yes
+fi
+
+# Option to explicitly specify the location of the or1ksim installation
+AC_ARG_WITH([or1ksim],
+            [AS_HELP_STRING([--with-or1ksim=PATH],
+            [specify the or1ksim installation directory explicitly (otherwise use default search paths)])],
+            [],
+            [])
+
 # Specify a location for mpfr
 # check for this first so it ends up on the link line before gmp.
 AC_ARG_WITH(mpfr-dir,

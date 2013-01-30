@@ -1,0 +1,38 @@
+#Make sure we look in the right place for the board description files
+if ![info exists boards_dir] {
+        set boards_dir {}
+}
+
+# Add our local boards directory if we don't have it
+if ![info exists boards_dir] {
+    lappend boards_dir "[file dirname $env(DEJAGNU)]/boards"
+} else {
+    set boards_dir "[file dirname $env(DEJAGNU)]/boards"
+}
+
+# We don't get a good mapping of the target triplet here. target_alias will
+# remain as we gave it. We'd like to use config.guess, but we need to find one
+# that knows about or1k, so for now, we do things by steam.
+
+# This change is needed, since the dg- directives in tests look at the full
+# triplet, while we use target_alias to select the tool name prefix.
+global target_list
+case "$target_triplet" in {
+    { "or1k-*elf" } {
+	set target_triplet "or1k-unknown-elf"
+        set target_list { "or1k-elf-sim" }
+    }
+    { "or32-*linux*" } {
+	set target_triplet "or32-unknown-gnu-linux"
+        set target_list { "or1k-linux-sim" }
+    }
+  }
+
+verbose "OR1K boards_dir     = $boards_dir"
+verbose "OR1K target_triplet = $target_triplet"
+
+if [info exists target_list] {
+    verbose "OR1K target_list    = $target_list"
+} else {
+    verbose "OR1K target_list      UNDEFINED"
+}

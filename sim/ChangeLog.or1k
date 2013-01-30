@@ -1,3 +1,18 @@
+2013-01-30  Franck Jullien  <franck.jullien@gmail.com>
+
+	* configure.ac : add choice between or1ksim or CGEN sim
+	* configure : Regenerate.
+	* or1ksim/aclocal.m4: new file
+	* or1ksim/ChangeLog: new file
+	* or1ksim/config.in: new file
+	* or1ksim/configure: new file
+	* or1ksim/configure.ac: new file
+	* or1ksim/Makefile.in: new file
+	* or1ksim/or32sim.h: new file
+	* or1ksim/README: new file
+	* or1ksim/tconfig.in: new file
+	* or1ksim/wrapper.c: new file
+
 2012-06-22  Peter Gavin  <pgavin@gmail.com>
 
 	* configure.tgt: fix typo keeping testsuite from running

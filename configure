@@ -755,6 +755,8 @@ enable_bootstrap
 with_mpc
 with_mpc_include
 with_mpc_lib
+enable_or1ksim
+with_or1ksim
 with_mpfr_dir
 with_mpfr
 with_mpfr_include
@@ -1469,6 +1471,7 @@ Optional Features:
   --enable-static-libjava[=ARG]
                           build static libjava [default=no]
   --enable-bootstrap      enable bootstrapping [yes if native build]
+  --disable-or1ksim       disable or1ksim and use CGEN sim instead
   --disable-isl-version-check
                           disable check for ISL version
   --disable-cloog-version-check
@@ -1500,6 +1503,8 @@ Optional Packages:
                           --with-mpc-lib=PATH/lib
   --with-mpc-include=PATH specify directory for installed MPC include files
   --with-mpc-lib=PATH     specify directory for the installed MPC library
+  --with-or1ksim=PATH     specify the or1ksim installation directory
+                          explicitly (otherwise use default search paths)
   --with-mpfr-dir=PATH    this option has been REMOVED
   --with-mpfr=PATH        specify prefix directory for installed MPFR package.
                           Equivalent to --with-mpfr-include=PATH/include plus
@@ -5321,6 +5326,30 @@ if test "x$with_mpc$with_mpc_include$with_mpc_lib" = x && test -d ${srcdir}/mpc;
   # hence making the test fail.
   have_gmp=yes
 fi
+
+# Choose to use or1ksim or the CGEN simulator. Default is or1ksim.
+# --disable-or1ksim to choose the CGEN simulator.
+# Check whether --enable-or1ksim was given.
+if test "${enable_or1ksim+set}" = set; then :
+  enableval=$enable_or1ksim; ENABLE_OR1KSIM=$enableval
+else
+  ENABLE_OR1KSIM=yes
+fi
+
+
+if test "x${ENABLE_OR1KSIM}" = xno ; then
+  enable_or1ksim=no
+else
+  enable_or1ksim=yes
+fi
+
+# Option to explicitly specify the location of the or1ksim installation
+
+# Check whether --with-or1ksim was given.
+if test "${with_or1ksim+set}" = set; then :
+  withval=$with_or1ksim;
+fi
+
 
 # Specify a location for mpfr
 # check for this first so it ends up on the link line before gmp.

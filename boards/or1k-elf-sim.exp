@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# Copyright (C) 2010 Embecosm Limited
+
+# Contributor Jeremy Bennett <jeremy.bennett@embecosm.com>
+# Contributor Joern Rennecke <joern.rennecke@embecosm.com>
+
+# This file is a board description for testing OpenRISC with newlib and Or1ksim
+
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the Free
+# Software Foundation; either version 3 of the License, or (at your option)
+# any later version.
+
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+
+# You should have received a copy of the GNU General Public License along
+# with this program.  If not, see <http://www.gnu.org/licenses/>.          
+
+# This is a list of toolchains that are supported on this board.
+set_board_info target_install {or1k-elf}
+
+# Load the generic configuration for this board. This will define a basic set
+# of routines needed by the tool to communicate with the board.
+load_generic_config "sim"
+
+# basic-sim.exp is a basic description for the standard Cygnus simulator.
+load_base_board_description "basic-sim"
+
+# The name of the sim subdir in src/sim.
+setup_sim or1k
+
+# Options for the simulator
+# set cfg_file [lookfor_file ${srcdir} libgloss/or1k/sim.cfg]
+# set_board_info sim,options "-a \"-f ${cfg_file}\""
+
+# No multilib options needed by default.
+process_multilib_options ""
+
+# We only support newlib on this
+# target.  We assume that all multilib options have been specified
+# before we get here.
+
+# We do not specify the newlib include flags, since our strange file structure
+# doesn't work with the standard expect commands, and will end up generating a
+# blank -isystem option, which confuses things severely.
+
+# It's sufficient just to specify -mnewlib, but we explicitly specify
+# -mboard=or1ksim, althoug at present that is the default anyway.
+set_board_info compiler  "[find_gcc]"
+set_board_info cflags    "-mnewlib -mboard=or1ksim"
+
+# No linker script needed.
+set_board_info ldscript ""
+
+# This simulator isn't slow.
+set_board_info slow_simulator 0
+
+# Can't pass arguments to programs on this target..
+set_board_info noargs  1
+
+# Used by a few gcc.c-torture testcases to delimit how large the stack can
+# be.
+set_board_info gcc,stack_size 65536
+
+# GDB options
+
+# We can't do input in GDB (yet! HA!). It *will* do output, hurrah.
+set_board_info gdb,noinferiorio 1
+# Or pass arguments.
+set_board_info gdb,noargs  1
+set_board_info noargs 1
+# And there's no support for signals.
+set_board_info gdb,nosignals  1

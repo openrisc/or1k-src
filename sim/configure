@@ -625,6 +625,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_sim
+enable_or1ksim
 '
       ac_precious_vars='build_alias
 host_alias
@@ -652,6 +653,7 @@ microblaze
 mips
 mn10300
 moxie
+or1ksim
 or1k
 rl78
 rx
@@ -1281,6 +1283,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-sim
+  --disable-or1ksim       disable or1ksim and use CGEN sim instead
 
 Some influential environment variables:
   CC          C compiler command
@@ -3608,6 +3611,22 @@ esac
 fi
 
 
+# Choose to use or1ksim or the CGEN simulator. Default is or1ksim.
+# --disable-or1ksim to choose the CGEN simulator.
+# Check whether --enable-or1ksim was given.
+if test "${enable_or1ksim+set}" = set; then :
+  enableval=$enable_or1ksim; ENABLE_OR1KSIM=$enableval
+else
+  ENABLE_OR1KSIM=yes
+fi
+
+
+if test "x${ENABLE_OR1KSIM}" = xno ; then
+  enable_or1ksim=no
+else
+  enable_or1ksim=yes
+fi
+
 
 if test "${enable_sim}" != no; then
 
@@ -3770,11 +3789,19 @@ subdirs="$subdirs arm"
        sim_testsuite=yes
        ;;
    or1k-*-* | or1knd-*-*)
+if test "${enable_or1ksim}" != no; then
+
+  sim_arch=or1ksim
+  subdirs="$subdirs or1ksim"
+
+
+else
 
   sim_arch=or1k
   subdirs="$subdirs or1k"
 
 
+fi
        sim_testsuite=yes
        ;;
    rl78-*-*)

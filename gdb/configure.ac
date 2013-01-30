@@ -265,6 +265,38 @@ fi
 
 AC_SUBST(TARGET_OBS)
 
+# Choose to use or1ksim or the CGEN simulator. Default is or1ksim.
+# --disable-or1ksim to choose the CGEN simulator.
+AC_ARG_ENABLE([or1ksim],
+              [AS_HELP_STRING([--disable-or1ksim],
+              [disable or1ksim and use CGEN sim instead])],
+              [ENABLE_OR1KSIM=$enableval],
+              [ENABLE_OR1KSIM=yes])
+
+if test "x${ENABLE_OR1KSIM}" = xno ; then
+  enable_or1ksim=no
+else
+  enable_or1ksim=yes
+fi
+
+# Option to explicitly specify the location of the Or1ksim installation
+AC_ARG_WITH([or1ksim],
+            [AS_HELP_STRING([--with-or1ksim=PATH],
+            [specify the Or1ksim installation directory explicitly (otherwise use default search paths)])],
+            [],
+            [])
+
+if test "x$enable_or1ksim" != xno; then
+
+  if test "x$withval" != x
+  then
+      CONFIG_LDFLAGS="${CONFIG_LDFLAGS} -Wl,-rpath -Wl,$withval/lib -L$withval/lib -lsim"
+  else
+      CONFIG_LDFLAGS="${CONFIG_LDFLAGS} -Wl,-rpath -Wl,/opt/or1ksim/lib -L/opt/or1ksim/lib -lsim"
+  fi
+
+fi
+
 # For other settings, only the main target counts.
 gdb_sim=
 gdb_osabi=

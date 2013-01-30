@@ -36,6 +36,20 @@ yes | no) ;;
 *)	AC_MSG_ERROR(bad value ${enableval} given for --enable-sim option) ;;
 esac])
 
+# Choose to use or1ksim or the CGEN simulator. Default is or1ksim.
+# --disable-or1ksim to choose the CGEN simulator.
+AC_ARG_ENABLE([or1ksim],
+              [AS_HELP_STRING([--disable-or1ksim],
+              [disable or1ksim and use CGEN sim instead])],
+              [ENABLE_OR1KSIM=$enableval],
+              [ENABLE_OR1KSIM=yes])
+
+if test "x${ENABLE_OR1KSIM}" = xno ; then
+  enable_or1ksim=no
+else
+  enable_or1ksim=yes
+fi
+
 m4_define([SIM_ARCH], [
   sim_arch=$1
   AC_CONFIG_SUBDIRS($1)

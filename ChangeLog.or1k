@@ -1,3 +1,8 @@
+2013-01-30  Franck Jullien  <elec4fun@gmail.com>
+
+	* configure.ac : add choice between or1ksim or CGEN sim
+	* configure    : Regenerate.
+
 2012-05-13  Peter Gavin  <pgavin@gmail.com>
 
 	* config.guess, config.sub: add or1knd target

@@ -1,0 +1,15 @@
+			GDB simulator based on Or1ksim
+			==============================
+
+This is a GDB simulator, based on Or1ksim, the OpenRISC architectural
+simulator. 
+
+At present, this is a simple proof of concept, sufficient to allow regression
+to be run against Or1ksim.
+
+It does require the latest SVN build of Or1ksim, since it uses additional
+library interface functions, which are not available in Or1ksim 0.4.0.
+
+
+Jeremy Bennett
+30 June 2010

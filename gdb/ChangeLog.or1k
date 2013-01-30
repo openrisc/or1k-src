@@ -1,0 +1,11 @@
+2013-01-30  Franck Jullien  <franck.jullien@gmail.com>
+
+	* configure.ac : add choice between or1ksim or CGEN sim
+	* configure    : Regenerate.
+
+2013-01-30  Franck Jullien  <franck.jullien@gmail.com>
+
+	* or1k-tdesc.c  : Add file for or1k support
+	* or1k-tdesc.h  : Add file for or1k support
+	* configure.tgt : Add or1k targets
+	* gdb.texinfo   : Add OpenRISC documentation

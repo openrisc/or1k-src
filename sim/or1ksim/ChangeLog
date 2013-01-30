@@ -1,0 +1,55 @@
+2011-04-15  Jeremy Bennett  <jeremy.bennett@embecosm.com>
+
+	* wrapper.c (sim_resume): Don't print count of cycles on exit -
+	should be silent.
+
+2010-11-02  Joern Rennecke  <joern.rennecke@embecosm.com>
+
+	* Makefile.in (wrapper.o): Depend on targ-vals.h .
+
+2010-09-20  Jeremy Bennett  <jeremy.bennett@embecosm.com>
+
+	* wrapper.c (sim_read, sim_write). Corrected pointer print format.
+	(sim_fetch_register, sim_store_register): Added missing arg "len"
+	to debug printf statements.
+
+2010-09-01  Jeremy Bennett  <jeremy.bennett@embecosm.com>
+
+	* wrapper.c (sim_write). Buffer changed to const char.
+
+2010-08-19  Jeremy Bennett  <jeremy.bennett@embecosm.com>
+
+	* wrapper.c: OR32_SIM_DEBUG added to control debug messages.
+	(sim_close, sim_load, sim_create_inferior, sim_fetch_register)
+	(sim_stop): Debug statement added.
+	(sim_read, sim_write): Debug statements now controlled by
+	OR32_SIM_DEBUG.
+	(sim_store_register, sim_resume): Debug statement added and
+	existing debug statements now controlled by OR32_SIM_DEBUG.
+
+2010-08-15  Jeremy Bennett  <jeremy.bennett@embecosm.com>
+
+	* wrapper.c (sim_open): Assign result of or1ksim_init correctly.
+	(sim_fetch_register): Return correct length on success.
+
+2010-08-04  Jeremy Bennett  <jeremy.bennett@embecosm.com>
+
+	* wrapper.c (sim_resume): Only set the NPC back on a true
+	breakpoint, not a single step. Clear the single step flag if NOT
+	stepping before unstalling.
+
+2010-07-20  Jeremy Bennett  <jeremy.bennett@embecosm.com>
+
+	* configure: Regenerated.
+	* Makefile.in: Added LIBS.
+
+2010-06-30  Jeremy Bennett  <jeremy.bennett@embecosm.com>
+
+	* config.in: Generated.
+	* configure: Generated.
+	* configure.ac: Created.
+	* Makefile.in: Created.
+	* or32sim.h: Created.
+	* README: Created.
+	* tconfig.in: Created.
+	* wrapper.c: Created.

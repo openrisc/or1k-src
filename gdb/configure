@@ -785,6 +785,8 @@ with_auto_load_dir
 with_auto_load_safe_path
 enable_targets
 enable_64_bit_bfd
+enable_or1ksim
+with_or1ksim
 enable_gdbcli
 enable_gdbmi
 enable_tui
@@ -1466,6 +1468,7 @@ Optional Features:
   --enable-targets=TARGETS
                           alternative target configurations
   --enable-64-bit-bfd     64-bit support (on hosts with narrower word sizes)
+  --disable-or1ksim       disable or1ksim and use CGEN sim instead
   --disable-gdbcli        disable command-line interface (CLI)
   --disable-gdbmi         disable machine-interface (MI)
   --enable-tui            enable full-screen terminal user interface (TUI)
@@ -1501,6 +1504,8 @@ Optional Packages:
                           [--with-auto-load-dir]
   --without-auto-load-safe-path
                           do not restrict auto-loaded files locations
+  --with-or1ksim=PATH     specify the Or1ksim installation directory
+                          explicitly (otherwise use default search paths)
   --with-libunwind-ia64   use libunwind frame unwinding for ia64 targets
   --with-curses           use the curses library instead of the termcap
                           library
@@ -5170,6 +5175,41 @@ _ACEOF
 fi
 
 
+
+# Choose to use or1ksim or the CGEN simulator. Default is or1ksim.
+# --disable-or1ksim to choose the CGEN simulator.
+# Check whether --enable-or1ksim was given.
+if test "${enable_or1ksim+set}" = set; then :
+  enableval=$enable_or1ksim; ENABLE_OR1KSIM=$enableval
+else
+  ENABLE_OR1KSIM=yes
+fi
+
+
+if test "x${ENABLE_OR1KSIM}" = xno ; then
+  enable_or1ksim=no
+else
+  enable_or1ksim=yes
+fi
+
+# Option to explicitly specify the location of the Or1ksim installation
+
+# Check whether --with-or1ksim was given.
+if test "${with_or1ksim+set}" = set; then :
+  withval=$with_or1ksim;
+fi
+
+
+if test "x$enable_or1ksim" != xno; then
+
+  if test "x$withval" != x
+  then
+      CONFIG_LDFLAGS="${CONFIG_LDFLAGS} -Wl,-rpath -Wl,$withval/lib -L$withval/lib -lsim"
+  else
+      CONFIG_LDFLAGS="${CONFIG_LDFLAGS} -Wl,-rpath -Wl,/opt/or1ksim/lib -L/opt/or1ksim/lib -lsim"
+  fi
+
+fi
 
 # For other settings, only the main target counts.
 gdb_sim=
