@@ -65,7 +65,6 @@ case $targ in
  m68*-*-rtemscoff* | \
  maxq-*-coff | \
  i960-*-rtems* | \
- or1k-*-rtems* | \
  m68*-*-lynxos* | \
  sparc-*-lynxos* | \
  vax-*-vms* | \
@@ -1149,6 +1148,10 @@ case "${targ}" in
     ;;
 
   or1knd-*-elf | or1knd-*-linux*)
+    targ_defvec=bfd_elf32_or1k_vec
+    ;;
+
+  or1k-*-rtems* | or1knd-*-rtems*)
     targ_defvec=bfd_elf32_or1k_vec
     ;;
 

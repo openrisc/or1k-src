@@ -354,6 +354,7 @@ case ${generic_target} in
 
   or1k-*-elf | or1knd-*-elf)		fmt=elf endian=big ;;
   or1k-*-linux* | or1knd-*-linux*)	fmt=elf em=linux endian=big ;;
+  or1k-*-rtems* | or1knd-*-rtems*)	fmt=elf endian=big ;;
 
   pj*)					fmt=elf ;;
 
