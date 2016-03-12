@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #ifdef MEMOPS_DEFINE_INLINE
 #define MEMOPS_INLINE
 #else
-#define MEMOPS_INLINE extern inline
+#define MEMOPS_INLINE EXTERN_INLINE
 #endif
 
 /* Integer memory read support.

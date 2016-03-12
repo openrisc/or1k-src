@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #if defined (__GNUC__) && ! defined (SEMOPS_DEFINE_INLINE)
 #define SEMOPS_DEFINE_INLINE
-#define SEMOPS_INLINE extern inline
+#define SEMOPS_INLINE EXTERN_INLINE
 #else
 #define SEMOPS_INLINE
 #endif
