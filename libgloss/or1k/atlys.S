@@ -9,7 +9,7 @@
 .weak _board_clk_freq
 
 _board_mem_base:	.long	0x0
-_board_mem_size:	.long	0x2000000
+_board_mem_size:	.long	0x8000000
 
 _board_clk_freq:	.long	50000000
 
